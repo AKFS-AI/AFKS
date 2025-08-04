@@ -25,6 +25,22 @@
 
 ---
 
+## ⚠️ **중요: 버튼 이벤트 연결 방법**
+
+**실제 SceneController 메서드들:**
+- `LoadMainMenu()` - 메인 메뉴로 이동
+- `LoadGameScene()` - 게임 씬으로 이동  
+- `QuitGame()` - 게임 종료
+- `ReloadCurrentScene()` - 현재 씬 재시작
+
+**버튼 이벤트 연결 순서:**
+1. 버튼 선택 > Inspector > Button 컴포넌트
+2. **On Click ()** > **+** 클릭
+3. **None (Object)** 필드에 **SceneController GameObject** 드래그
+4. **No Function** 드롭다운에서 **SceneController > 원하는 메서드** 선택
+
+---
+
 ## 🎯 STEP 1: InventorySlot 프리팹 생성 (최우선)
 
 ### 프리팹 생성
@@ -278,7 +294,10 @@ MainMenu
   ```
   Main Menu Scene Name: "MainMenu"
   Game Scene Name: "GameplayScene"
+  Loading Scene Name: "Loading"
+  Minimum Loading Time: 1
   Enable Fade Transition: true
+  Fade Transition Duration: 0.5
   ```
 
 ### MainMenu UIManager 연결
@@ -287,9 +306,27 @@ Menu Canvas: MenuCanvas
 Settings Panel: SettingsPanel
 ```
 
-### 버튼 이벤트 연결
-- **StartButton**: SceneController.LoadGameScene()
-- **ExitButton**: SceneController.QuitGame()
+### 버튼 이벤트 연결 (정확한 메서드명)
+
+#### StartButton 설정
+1. **StartButton 선택** > Inspector > Button 컴포넌트
+2. **On Click ()** > **+** 클릭
+3. **None (Object)** 필드에 **SceneController** 드래그
+4. **No Function** 드롭다운에서 **SceneController > LoadGameScene()** 선택
+
+#### ExitButton 설정  
+1. **ExitButton 선택** > Inspector > Button 컴포넌트
+2. **On Click ()** > **+** 클릭
+3. **None (Object)** 필드에 **SceneController** 드래그
+4. **No Function** 드롭다운에서 **SceneController > QuitGame()** 선택
+
+#### 사용 가능한 메서드들
+```
+SceneController.LoadMainMenu() - 메인 메뉴로 이동
+SceneController.LoadGameScene() - 게임 씬으로 이동
+SceneController.QuitGame() - 게임 종료
+SceneController.ReloadCurrentScene() - 현재 씬 재시작
+```
 
 ---
 
@@ -625,6 +662,15 @@ GameplayScene
 #### 9. SceneController
 - **생성**: Create Empty
 - **컴포넌트**: SceneController.cs
+- **설정**:
+  ```
+  Main Menu Scene Name: "MainMenu"
+  Game Scene Name: "GameplayScene"
+  Loading Scene Name: "Loading"
+  Minimum Loading Time: 1
+  Enable Fade Transition: true
+  Fade Transition Duration: 0.5
+  ```
 
 ### GameplayScene 매니저 연결
 
@@ -696,7 +742,7 @@ Max Concurrent Events: 1
 - [ ] SettingsCanvas 생성됨
 - [ ] SceneController 추가됨
 - [ ] EventSystem 존재함
-- [ ] 버튼 이벤트 연결됨
+- [ ] 버튼 이벤트 연결됨 (StartButton→LoadGameScene, ExitButton→QuitGame)
 
 ### GameplayScene 씬 체크리스트
 - [ ] 7개 매니저 생성됨
@@ -709,11 +755,13 @@ Max Concurrent Events: 1
 - [ ] HorrorEventManager 참조 연결됨
 
 ### 테스트 체크리스트
-- [ ] MainMenu에서 "게임 시작" 버튼으로 씬 전환
+- [ ] MainMenu에서 "게임 시작" 버튼 클릭 → GameplayScene 전환 성공
+- [ ] MainMenu에서 "종료" 버튼 클릭 → 게임 종료 성공
 - [ ] GameplayScene에서 ESC키로 메뉴 토글
 - [ ] GameplayScene에서 Tab키로 인벤토리 토글
-- [ ] Console에 에러 없음
+- [ ] Console에 "[SceneController]" 로그 메시지 확인
 - [ ] 인벤토리 슬롯 동적 생성 확인
+- [ ] 모든 한글 텍스트 정상 표시 (TextMeshPro)
 
 ---
 

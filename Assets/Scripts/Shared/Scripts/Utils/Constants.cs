@@ -7,7 +7,7 @@ namespace AFKS.Shared.Utils
     {
         // === GAME SETTINGS ===
         public const int TARGET_FRAME_RATE = 60;
-        public const float MEMORY_THRESHOLD_MB = 100f;
+        public const float MEMORY_THRESHOLD_MB = 8192f; // PC 게임 기준 8GB 임계값 (16GB RAM 환경 고려)
         public const int MAX_PRELOAD_STAGES = 2;
         
         // === STAGE SETTINGS ===
