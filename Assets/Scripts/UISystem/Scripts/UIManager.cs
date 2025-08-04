@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System.Collections.Generic;
 using System.Collections;
 using AFKS.Shared.Events;
@@ -29,8 +30,8 @@ namespace AFKS.UISystem
         [Header("🎒 인벤토리 UI")]
         [SerializeField, Tooltip("인벤토리 슬롯들이 배치될 컨테이너")] private Transform inventoryContainer;
         [SerializeField, Tooltip("인벤토리 슬롯 프리팹 (동적 생성용)")] private GameObject inventorySlotPrefab;
-        [SerializeField, Tooltip("선택된 아이템 이름 표시 텍스트")] private Text itemNameText;
-        [SerializeField, Tooltip("선택된 아이템 설명 표시 텍스트")] private Text itemDescriptionText;
+        [SerializeField, Tooltip("선택된 아이템 이름 표시 텍스트")] private TextMeshProUGUI itemNameText;
+        [SerializeField, Tooltip("선택된 아이템 설명 표시 텍스트")] private TextMeshProUGUI itemDescriptionText;
         [SerializeField, Tooltip("선택된 아이템 상세 이미지")] private Image itemDetailImage;
         
         [Header("⚙️ 설정")]

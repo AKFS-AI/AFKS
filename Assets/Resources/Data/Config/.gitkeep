@@ -1,0 +1,4 @@
+# 게임 설정 데이터
+# GameConfig ScriptableObject 파일들
+# 게임 전반의 설정값들 (성능, 오디오, UI 등)
+# 예시: DefaultGameConfig.asset, MobileConfig.asset, DebugConfig.asset

@@ -1,0 +1,4 @@
+# 공포 이벤트 데이터
+# HorrorEventData ScriptableObject 파일들
+# 점프스케어, 환경 효과, 사운드 이벤트 등 정의
+# 예시: JumpScare_Basic.asset, CreepySound.asset, LightFlicker.asset

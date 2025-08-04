@@ -1,0 +1,4 @@
+# UI 스프라이트
+# 버튼, 패널, 아이콘 등 UI 요소들
+# 권장 해상도: 2의 배수 (512x512, 1024x1024)
+# 예시: ButtonBackground.png, PanelFrame.png, CloseIcon.png

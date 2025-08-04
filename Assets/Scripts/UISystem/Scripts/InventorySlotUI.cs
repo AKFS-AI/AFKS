@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using UnityEngine.EventSystems;
 using AFKS.InventorySystem;
 
@@ -12,7 +13,7 @@ namespace AFKS.UISystem
     {
         [Header("🖼️ UI 컴포넌트")]
         [SerializeField, Tooltip("아이템 아이콘을 표시할 Image 컴포넌트")] private Image itemIcon;
-        [SerializeField, Tooltip("아이템 개수를 표시할 Text 컴포넌트")] private Text quantityText;
+        [SerializeField, Tooltip("아이템 개수를 표시할 TextMeshPro 컴포넌트")] private TextMeshProUGUI quantityText;
         [SerializeField, Tooltip("슬롯 배경 Image 컴포넌트")] private Image backgroundImage;
         [SerializeField, Tooltip("선택 상태를 표시할 하이라이트 Image")] private Image selectionHighlight;
         
@@ -54,7 +55,7 @@ namespace AFKS.UISystem
                 itemIcon = transform.Find("ItemIcon")?.GetComponent<Image>();
             
             if (quantityText == null)
-                quantityText = transform.Find("QuantityText")?.GetComponent<Text>();
+                quantityText = transform.Find("QuantityText")?.GetComponent<TextMeshProUGUI>();
             
             if (backgroundImage == null)
                 backgroundImage = GetComponent<Image>();

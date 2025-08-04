@@ -1,0 +1,4 @@
+# 아이템 데이터
+# ItemData ScriptableObject 파일들
+# 각 아이템별 설정, 속성, 효과 등 정의
+# 예시: Cross.asset, Flashlight.asset, Key_Room1.asset

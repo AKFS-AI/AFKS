@@ -1,0 +1,4 @@
+# 커스텀 셰이더들
+# 특수 시각 효과용 셰이더 파일들
+# 권장 포맷: .shader, .hlsl
+# 예시: HorrorDistortion.shader, GlowEffect.shader, FadeShader.shader

@@ -1,0 +1,4 @@
+# 현지화 데이터
+# 다국어 지원을 위한 텍스트 데이터
+# JSON 또는 ScriptableObject 형태
+# 예시: Korean.json, English.json, Japanese.json

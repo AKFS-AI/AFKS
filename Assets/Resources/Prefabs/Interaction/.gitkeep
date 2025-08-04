@@ -1,0 +1,3 @@
+# 상호작용 오브젝트 프리팹
+# 클릭 가능한 영역, 상호작용 포인트 등
+# 예시: InteractionPoint.prefab, ClickableArea.prefab, TriggerZone.prefab

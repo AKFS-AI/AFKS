@@ -1,0 +1,4 @@
+# 스테이지 데이터
+# StageData ScriptableObject 파일들
+# 각 스테이지의 배경, 상호작용 포인트, 공포 이벤트 등 정의
+# 예시: Stage01_Intro.asset, Stage02_Corridor.asset, Stage03_Room.asset
