@@ -32,7 +32,7 @@ namespace AFKS.Core
         [Header("🖼️ UI 설정")]
         [SerializeField, Tooltip("UI 애니메이션 지속 시간 (초)")] private float uiAnimationDuration = 0.3f;
         [SerializeField, Tooltip("UI 애니메이션 활성화")] private bool enableUIAnimations = true;
-        [SerializeField, Tooltip("최대 인벤토리 슬롯 개수")] private int maxInventorySlots = 2;
+        [SerializeField, Tooltip("최대 아이템 슬롯 개수")] private int maxItemSlots = 2;
         [SerializeField, Tooltip("햅틱 피드백 활성화 (모바일)")] private bool enableHapticFeedback = false;
         
         [Header("🖱️ 입력 설정")]

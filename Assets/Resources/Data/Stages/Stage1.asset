@@ -22,7 +22,41 @@ MonoBehaviour:
   ambientSound: {fileID: 0}
   musicVolume: 0.7
   ambientVolume: 0.5
-  interactionPoints: []
+  interactionPoints:
+  - id: 
+    displayName: 
+    description: 
+    position: {x: 0, y: 0}
+    size: {x: 0, y: 0}
+    interactionType: 0
+    isEnabled: 0
+    isVisible: 0
+    hoverSprite: {fileID: 0}
+    hoverColor: {r: 0, g: 0, b: 0, a: 0}
+    hoverScale: 0
+    interactionSound: {fileID: 0}
+    hoverSound: {fileID: 0}
+    requiredItems: []
+    enableConditions: []
+    result:
+      resultType: 0
+      message: 
+      itemToAdd: {fileID: 0}
+      nextStageIndex: 0
+      soundEffect: {fileID: 0}
+      additionalActions: []
+      giveItem: 0
+      itemId: 
+      changeStage: 0
+      targetStageIndex: 0
+      triggerHorrorEvent: 0
+      horrorEventId: 
+      showDialog: 0
+      dialogText: 
+      playAudio: 0
+      audioClip: {fileID: 0}
+      executeCustomAction: 0
+      customActionId: 
   horrorEvents: []
   unlockConditions: []
   isUnlockedByDefault: 1

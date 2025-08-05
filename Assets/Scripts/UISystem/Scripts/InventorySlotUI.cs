@@ -7,13 +7,13 @@ using AFKS.ItemSystem;
 namespace AFKS.UISystem
 {
     /// <summary>
-    /// 인벤토리 슬롯 UI 컴포넌트
+    /// 간단한 아이템 슬롯 UI (열쇠, 손전등 전용)
     /// </summary>
     public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("🖼️ UI 컴포넌트")]
         [SerializeField, Tooltip("아이템 아이콘을 표시할 Image 컴포넌트")] private Image itemIcon;
-        [SerializeField, Tooltip("아이템 개수를 표시할 TextMeshPro 컴포넌트")] private TextMeshProUGUI quantityText;
+        [SerializeField, Tooltip("아이템 이름을 표시할 TextMeshPro 컴포넌트")] private TextMeshProUGUI itemNameText;
         [SerializeField, Tooltip("슬롯 배경 Image 컴포넌트")] private Image backgroundImage;
         [SerializeField, Tooltip("선택 상태를 표시할 하이라이트 Image")] private Image selectionHighlight;
         
@@ -22,27 +22,47 @@ namespace AFKS.UISystem
         [SerializeField, Tooltip("마우스 호버 시 슬롯 색상")] private Color hoverColor = Color.yellow;
         [SerializeField, Tooltip("선택 상태의 슬롯 색상")] private Color selectedColor = Color.green;
         [SerializeField, Tooltip("빈 슬롯의 색상")] private Color emptyColor = Color.gray;
+        [SerializeField, Tooltip("보유한 아이템 색상")] private Color hasItemColor = Color.white;
+        [SerializeField, Tooltip("미보유 아이템 색상")] private Color noItemColor = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+        
+        [Header("🔑 아이템 설정")]
+        [SerializeField, Tooltip("이 슬롯의 아이템 ID (key 또는 flashlight)")] private string assignedItemId;
+        [SerializeField, Tooltip("아이템 기본 아이콘")] private Sprite defaultIcon;
+        [SerializeField, Tooltip("아이템 이름")] private string itemDisplayName;
         
         // === PROPERTIES ===
         public int SlotIndex { get; private set; }
-        public InventoryItem CurrentItem { get; private set; }
-        public bool IsEmpty => CurrentItem == null;
+        public string ItemId => assignedItemId;
+        public bool HasItem => GetHasItem();
         public bool IsSelected { get; private set; }
         
         // === PRIVATE FIELDS ===
         private bool isHovered = false;
+        private ItemManager itemManager;
+        
+        // === UNITY LIFECYCLE ===
+        private void Start()
+        {
+            Initialize();
+        }
         
         // === INITIALIZATION ===
         
         /// <summary>
-        /// 인벤토리 슬롯 초기화
+        /// 아이템 슬롯 초기화
         /// </summary>
         /// <param name="index">슬롯 인덱스</param>
-        public void Initialize(int index)
+        /// <param name="itemId">할당된 아이템 ID</param>
+        public void Initialize(int index = -1, string itemId = "")
         {
-            SlotIndex = index;
+            if (index >= 0) SlotIndex = index;
+            if (!string.IsNullOrEmpty(itemId)) assignedItemId = itemId;
+            
+            itemManager = ItemManager.Instance;
             SetupComponents();
-            SetItem(null);
+            UpdateVisual();
+            
+            Debug.Log($"[인벤토리슬롯UI] 슬롯 {SlotIndex} 초기화 완료 - 아이템: {assignedItemId}");
         }
         
         /// <summary>
@@ -54,8 +74,8 @@ namespace AFKS.UISystem
             if (itemIcon == null)
                 itemIcon = transform.Find("ItemIcon")?.GetComponent<Image>();
             
-            if (quantityText == null)
-                quantityText = transform.Find("QuantityText")?.GetComponent<TextMeshProUGUI>();
+            if (itemNameText == null)
+                itemNameText = transform.Find("ItemNameText")?.GetComponent<TextMeshProUGUI>();
             
             if (backgroundImage == null)
                 backgroundImage = GetComponent<Image>();
@@ -68,117 +88,104 @@ namespace AFKS.UISystem
             {
                 selectionHighlight.gameObject.SetActive(false);
             }
+            
+            // 기본 아이콘 및 이름 설정
+            SetupDefaultItemInfo();
+        }
+        
+        /// <summary>
+        /// 기본 아이템 정보 설정
+        /// </summary>
+        private void SetupDefaultItemInfo()
+        {
+            if (string.IsNullOrEmpty(assignedItemId)) return;
+            
+            switch (assignedItemId.ToLower())
+            {
+                case "key":
+                case "열쇠":
+                    if (string.IsNullOrEmpty(itemDisplayName))
+                        itemDisplayName = "열쇠";
+                    break;
+                case "flashlight":
+                case "손전등":
+                    if (string.IsNullOrEmpty(itemDisplayName))
+                        itemDisplayName = "손전등";
+                    break;
+            }
         }
         
         // === ITEM MANAGEMENT ===
         
         /// <summary>
-        /// 슬롯에 아이템 설정
+        /// 아이템 보유 여부 확인
         /// </summary>
-        /// <param name="item">설정할 아이템 (null이면 빈 슬롯)</param>
-        public void SetItem(InventoryItem item)
+        private bool GetHasItem()
         {
-            CurrentItem = item;
-            UpdateVisual();
+            if (itemManager == null || string.IsNullOrEmpty(assignedItemId))
+                return false;
+                
+            return itemManager.HasKeyItem(assignedItemId);
         }
         
         /// <summary>
         /// 시각적 요소 업데이트
         /// </summary>
-        private void UpdateVisual()
+        public void UpdateVisual()
         {
-            if (IsEmpty)
+            bool hasItem = HasItem;
+            
+            // 아이콘 업데이트
+            if (itemIcon != null)
             {
-                // 빈 슬롯 처리
-                if (itemIcon != null)
+                if (defaultIcon != null)
+                {
+                    itemIcon.sprite = defaultIcon;
+                    itemIcon.color = hasItem ? hasItemColor : noItemColor;
+                }
+                else
                 {
                     itemIcon.sprite = null;
                     itemIcon.color = Color.clear;
                 }
-                
-                if (quantityText != null)
-                {
-                    quantityText.text = "";
-                }
-                
-                if (backgroundImage != null)
-                {
-                    backgroundImage.color = emptyColor;
-                }
-            }
-            else
-            {
-                // 아이템이 있는 슬롯 처리
-                #pragma warning disable CS0618 // Type or member is obsolete
-                ItemData itemData = CurrentItem.ItemData;
-                #pragma warning restore CS0618 // Type or member is obsolete
-                
-                if (itemIcon != null && itemData.Icon != null)
-                {
-                    itemIcon.sprite = itemData.Icon;
-                    itemIcon.color = itemData.IconTint;
-                }
-                
-                if (quantityText != null)
-                {
-                    if (itemData.IsStackable && CurrentItem.Quantity > 1)
-                    {
-                        quantityText.text = CurrentItem.Quantity.ToString();
-                    }
-                    else
-                    {
-                        quantityText.text = "";
-                    }
-                }
-                
-                if (backgroundImage != null)
-                {
-                    // 희귀도에 따른 배경색 설정
-                    Color rarityColor = itemData.GetRarityColor();
-                    rarityColor.a = 0.3f; // 투명도 조정
-                    backgroundImage.color = rarityColor;
-                }
             }
             
-            // 상태에 따른 색상 업데이트
-            UpdateStateColor();
+            // 이름 텍스트 업데이트
+            if (itemNameText != null)
+            {
+                itemNameText.text = hasItem ? itemDisplayName : $"[미보유] {itemDisplayName}";
+                itemNameText.color = hasItem ? hasItemColor : noItemColor;
+            }
+            
+            // 배경 색상 업데이트
+            UpdateBackgroundColor();
         }
         
         /// <summary>
-        /// 상태에 따른 색상 업데이트
+        /// 배경 색상 업데이트
         /// </summary>
-        private void UpdateStateColor()
+        private void UpdateBackgroundColor()
         {
             if (backgroundImage == null) return;
             
             Color targetColor;
             
-            if (IsEmpty)
-            {
-                targetColor = emptyColor;
-            }
-            else if (IsSelected)
-            {
+            if (IsSelected)
                 targetColor = selectedColor;
-            }
             else if (isHovered)
-            {
                 targetColor = hoverColor;
-            }
+            else if (HasItem)
+                targetColor = normalColor;
             else
-            {
-                targetColor = CurrentItem.ItemData.GetRarityColor();
-                targetColor.a = 0.3f;
-            }
+                targetColor = emptyColor;
             
-            // 부드러운 색상 전환을 위해서는 코루틴 사용 가능
             backgroundImage.color = targetColor;
         }
         
-        // === SELECTION ===
+        // === SELECTION MANAGEMENT ===
         
         /// <summary>
-        /// 슬롯 선택 설정
+        /// 슬롯 선택 상태 설정
         /// </summary>
         /// <param name="selected">선택 여부</param>
         public void SetSelected(bool selected)
@@ -190,80 +197,52 @@ namespace AFKS.UISystem
                 selectionHighlight.gameObject.SetActive(selected);
             }
             
-            UpdateStateColor();
+            UpdateBackgroundColor();
         }
         
         // === EVENT HANDLERS ===
         
+        /// <summary>
+        /// 마우스 클릭 처리
+        /// </summary>
+        /// <param name="eventData">포인터 이벤트 데이터</param>
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (IsEmpty) return;
-            
             if (eventData.button == PointerEventData.InputButton.Left)
             {
-                // 좌클릭: 아이템 선택/사용
                 HandleLeftClick();
             }
             else if (eventData.button == PointerEventData.InputButton.Right)
             {
-                // 우클릭: 아이템 정보 표시
                 HandleRightClick();
             }
         }
-        
-        public void OnPointerEnter(PointerEventData eventData)
-        {
-            isHovered = true;
-            UpdateStateColor();
-            
-            // 아이템 정보 표시
-            if (!IsEmpty)
-            {
-                ShowItemInfo();
-            }
-        }
-        
-        public void OnPointerExit(PointerEventData eventData)
-        {
-            isHovered = false;
-            UpdateStateColor();
-            
-            // 아이템 정보 숨김
-            HideItemInfo();
-        }
-        
-        // === CLICK HANDLERS ===
         
         /// <summary>
         /// 좌클릭 처리
         /// </summary>
         private void HandleLeftClick()
         {
-            if (IsEmpty) return;
-            
-            #pragma warning disable CS0618 // Type or member is obsolete
-            ItemData itemData = CurrentItem.ItemData;
-            #pragma warning restore CS0618 // Type or member is obsolete
-            
-            // 키 아이템 사용 (간단화)
-            if (itemData.IsUsable)
+            if (!HasItem)
             {
-                if (AFKS.ItemSystem.ItemManager.Instance != null)
+                Debug.Log($"[인벤토리슬롯UI] {itemDisplayName}을(를) 아직 보유하지 않았습니다");
+                return;
+            }
+            
+            Debug.Log($"[인벤토리슬롯UI] {itemDisplayName} 선택됨");
+            
+            // 다른 슬롯들의 선택 해제 (필요시 UIManager에서 처리)
+            SetSelected(!IsSelected);
+            
+            // 아이템 사용 (실제로는 보유 확인만)
+            if (itemManager != null)
+            {
+                bool used = itemManager.UseKeyItem(assignedItemId);
+                if (used)
                 {
-                    // 키 아이템은 사용이 아닌 보유 여부만 확인
-                    Debug.Log($"[인벤토리슬롯UI] 키 아이템 선택됨: {itemData.ItemId}");
+                    Debug.Log($"[인벤토리슬롯UI] {itemDisplayName} 사용 가능 확인됨");
                 }
             }
-            else
-            {
-                // 선택 토글
-                SetSelected(!IsSelected);
-                
-                // 다른 슬롯들의 선택 해제 (단일 선택)
-                DeselectOtherSlots();
-            }
-            
-                                Debug.Log($"[인벤토리슬롯UI] 아이템 좌클릭: {itemData.ItemName}");
         }
         
         /// <summary>
@@ -271,99 +250,94 @@ namespace AFKS.UISystem
         /// </summary>
         private void HandleRightClick()
         {
-            if (IsEmpty) return;
+            ShowItemInfo();
+        }
+        
+        /// <summary>
+        /// 마우스 호버 시작
+        /// </summary>
+        /// <param name="eventData">포인터 이벤트 데이터</param>
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            isHovered = true;
+            UpdateBackgroundColor();
             
-            // 아이템 상세 정보 표시
-            ShowDetailedItemInfo();
+            // 호버 시 간단한 정보 표시
+            if (HasItem)
+            {
+                Debug.Log($"[인벤토리슬롯UI] {itemDisplayName}: 사용 가능");
+            }
+            else
+            {
+                Debug.Log($"[인벤토리슬롯UI] {itemDisplayName}: 아직 획득하지 않음");
+            }
+        }
+        
+        /// <summary>
+        /// 마우스 호버 종료
+        /// </summary>
+        /// <param name="eventData">포인터 이벤트 데이터</param>
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            isHovered = false;
+            UpdateBackgroundColor();
+        }
+        
+        // === UTILITY METHODS ===
+        
+        /// <summary>
+        /// 아이템 정보 표시
+        /// </summary>
+        public void ShowItemInfo()
+        {
+            if (string.IsNullOrEmpty(assignedItemId)) return;
             
-                            Debug.Log($"[인벤토리슬롯UI] 아이템 우클릭: {CurrentItem.ItemData.ItemName}");
-        }
-        
-        /// <summary>
-        /// 다른 슬롯들의 선택 해제
-        /// </summary>
-        private void DeselectOtherSlots()
-        {
-            // 부모의 모든 InventorySlotUI 찾기
-            InventorySlotUI[] allSlots = GetComponentsInParent<InventorySlotUI>();
-            
-            foreach (var slot in allSlots)
+            // 간단한 아이템 정보 표시
+            switch (assignedItemId.ToLower())
             {
-                if (slot != this)
-                {
-                    slot.SetSelected(false);
-                }
-            }
-        }
-        
-        // === INFO DISPLAY ===
-        
-        /// <summary>
-        /// 아이템 기본 정보 표시
-        /// </summary>
-        private void ShowItemInfo()
-        {
-            if (UIManager.Instance != null && CurrentItem != null)
-            {
-                #pragma warning disable CS0618 // Type or member is obsolete
-                ItemData itemData = CurrentItem.ItemData;
-                #pragma warning restore CS0618 // Type or member is obsolete
-                string info = $"{itemData.ItemName}";
-                
-                if (itemData.IsStackable && CurrentItem.Quantity > 1)
-                {
-                    info += $" x{CurrentItem.Quantity}";
-                }
-                
-                // 툴팁이나 상태바에 정보 표시
-                // UIManager.Instance.ShowTooltip(info);
+                case "key":
+                case "열쇠":
+                    Debug.Log("[인벤토리슬롯UI] 열쇠: 문을 여는 데 사용됩니다");
+                    break;
+                case "flashlight":
+                case "손전등":
+                    Debug.Log("[인벤토리슬롯UI] 손전등: 어둠을 밝히는 데 사용됩니다");
+                    break;
+                default:
+                    Debug.LogWarning($"[인벤토리슬롯UI] 알 수 없는 아이템: {assignedItemId}");
+                    break;
             }
         }
         
         /// <summary>
-        /// 아이템 정보 숨김
-        /// </summary>
-        private void HideItemInfo()
-        {
-            if (UIManager.Instance != null)
-            {
-                // UIManager.Instance.HideTooltip();
-            }
-        }
-        
-        /// <summary>
-        /// 아이템 상세 정보 표시
-        /// </summary>
-        private void ShowDetailedItemInfo()
-        {
-            if (UIManager.Instance != null && CurrentItem != null)
-            {
-                #pragma warning disable CS0618 // Type or member is obsolete
-                ItemData itemData = CurrentItem.ItemData;
-                #pragma warning restore CS0618 // Type or member is obsolete
-                string detailedInfo = $"{itemData.ItemName}\n\n{itemData.Description}";
-                
-                // 상세 정보 패널에 표시
-                UIManager.Instance.ShowDialog(detailedInfo, 0f); // 0초 = 무한 표시
-            }
-        }
-        
-        // === UTILITY ===
-        
-        /// <summary>
-        /// 슬롯 비우기
-        /// </summary>
-        public void ClearSlot()
-        {
-            SetItem(null);
-        }
-        
-        /// <summary>
-        /// 슬롯 새로고침
+        /// 슬롯 새로고침 (외부에서 호출)
         /// </summary>
         public void RefreshSlot()
         {
             UpdateVisual();
+        }
+        
+        // === DEBUG METHODS ===
+        
+        /// <summary>
+        /// 에디터에서 테스트용 시각 업데이트
+        /// </summary>
+        [ContextMenu("시각 업데이트 테스트")]
+        public void DebugUpdateVisual()
+        {
+            if (Application.isPlaying)
+            {
+                UpdateVisual();
+            }
+        }
+        
+        /// <summary>
+        /// 슬롯 정보 출력
+        /// </summary>
+        [ContextMenu("슬롯 정보 출력")]
+        public void DebugPrintSlotInfo()
+        {
+            Debug.Log($"[인벤토리슬롯UI] 슬롯 {SlotIndex}: {assignedItemId} - 보유: {HasItem}, 선택: {IsSelected}");
         }
     }
 }
