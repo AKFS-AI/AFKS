@@ -147,16 +147,16 @@ namespace AFKS.UISystem
         
         private void Update()
         {
-            // 퀵 네비게이션 키 확인
+            // 최적화: 패널이 보이지 않을 때는 ESC 키 체크 불필요
+            if (isVisible && Input.GetKeyDown(KeyCode.Escape))
+            {
+                SetPanelVisibility(false);
+            }
+            
+            // 퀵 네비게이션 키 확인 (최적화: 게임 플레이 중일 때만)
             if (Input.GetKeyDown(quickNavKey))
             {
                 ToggleStageSelection();
-            }
-            
-            // ESC 키로 패널 닫기
-            if (Input.GetKeyDown(KeyCode.Escape) && isVisible)
-            {
-                SetPanelVisibility(false);
             }
         }
         
@@ -274,7 +274,7 @@ namespace AFKS.UISystem
         {
             if (currentStageText == null) return;
             
-            var currentStage = stageManager.CurrentStageData;
+            var currentStage = stageManager.CurrentStage;
             if (currentStage != null)
             {
                 currentStageText.text = $"현재 위치: {currentStage.StageName}";
@@ -386,101 +386,6 @@ namespace AFKS.UISystem
             return stageManager.CanAccessStage(stageIndex) && 
                    stageManager.CanTransitionToStage(stageManager.CurrentStageIndex, stageIndex) &&
                    !stageManager.IsTransitioning;
-        }
-    }
-    
-    /// <summary>
-    /// 개별 스테이지 버튼 UI
-    /// </summary>
-    public class StageButtonUI : MonoBehaviour
-    {
-        [Header("🎯 UI 요소들")]
-        [SerializeField] private Button button;
-        [SerializeField] private TextMeshProUGUI stageNameText;
-        [SerializeField] private TextMeshProUGUI stageIndexText;
-        [SerializeField] private Image buttonImage;
-        [SerializeField] private Image lockIcon;
-        
-        private int stageIndex;
-        private StageData stageData;
-        private StageNavigationUI navigationUI;
-        
-        /// <summary>
-        /// 스테이지 버튼 초기화
-        /// </summary>
-        public void Initialize(int index, StageData data, StageNavigationUI navUI)
-        {
-            stageIndex = index;
-            stageData = data;
-            navigationUI = navUI;
-            
-            SetupComponents();
-            SetupButton();
-            UpdateButtonState();
-        }
-        
-        private void SetupComponents()
-        {
-            if (button == null) button = GetComponent<Button>();
-            if (stageNameText == null) stageNameText = GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonImage == null) buttonImage = GetComponent<Image>();
-            
-            // 자동으로 텍스트 컴포넌트들 찾기
-            var texts = GetComponentsInChildren<TextMeshProUGUI>();
-            if (texts.Length > 0) stageNameText = texts[0];
-            if (texts.Length > 1) stageIndexText = texts[1];
-        }
-        
-        private void SetupButton()
-        {
-            if (button != null)
-            {
-                button.onClick.AddListener(OnButtonClicked);
-            }
-            
-            // 텍스트 설정
-            if (stageNameText != null)
-            {
-                stageNameText.text = stageData.StageName;
-            }
-            
-            if (stageIndexText != null)
-            {
-                stageIndexText.text = $"Stage {stageIndex + 1}";
-            }
-        }
-        
-        /// <summary>
-        /// 버튼 상태 업데이트
-        /// </summary>
-        public void UpdateButtonState()
-        {
-            bool isInteractable = navigationUI.IsStageButtonInteractable(stageIndex);
-            Color buttonColor = navigationUI.GetStageButtonColor(stageIndex);
-            
-            // 버튼 상호작용 설정
-            if (button != null)
-            {
-                button.interactable = isInteractable;
-            }
-            
-            // 색상 설정
-            if (buttonImage != null)
-            {
-                buttonImage.color = buttonColor;
-            }
-            
-            // 잠금 아이콘 표시
-            if (lockIcon != null)
-            {
-                bool isLocked = !StageManager.Instance.CanAccessStage(stageIndex);
-                lockIcon.gameObject.SetActive(isLocked);
-            }
-        }
-        
-        private void OnButtonClicked()
-        {
-            navigationUI.RequestStageChange(stageIndex);
         }
     }
 }

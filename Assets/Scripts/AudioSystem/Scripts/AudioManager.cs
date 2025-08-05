@@ -5,13 +5,15 @@ using System.Linq;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Utils;
+using AFKS.Shared.Core;
 
 namespace AFKS.AudioSystem
 {
     /// <summary>
     /// 오디오 시스템을 관리하는 매니저
+    /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
-    public class AudioManager : MonoBehaviour, ISaveable
+    public class AudioManager : BaseSingleton<AudioManager>, ISaveable
     {
                 [Header("🔊 오디오 소스")]
         [SerializeField, Tooltip("배경음악(BGM) 전용 오디오 소스")] private AudioSource bgmSource;
@@ -21,10 +23,6 @@ namespace AFKS.AudioSystem
         [Header("⚙️ 설정")]
         [SerializeField, Range(1, 16), Tooltip("동시 재생 가능한 최대 효과음 개수")] private int maxSfxSources = 8;
         [SerializeField, Range(0.1f, 5f), Tooltip("BGM 크로스페이드 전환 시간 (초)")] private float crossfadeDuration = 1f;
-
-#pragma warning disable CS0414 // 향후 오디오 풀링 기능 확장을 위해 보관
-        [SerializeField, Tooltip("오디오 풀링 시스템 활성화 (향후 확장용)")] private bool enableAudioPooling = true;
-#pragma warning restore CS0414
         
         [Header("🎵 볼륨 조절")]
         [SerializeField, Range(0f, 1f), Tooltip("전체 마스터 볼륨")] private float masterVolume = 1f;
@@ -79,31 +77,12 @@ namespace AFKS.AudioSystem
         // === CACHE MANAGEMENT ===
         private const int MAX_AUDIO_CACHE_SIZE = 50; // 최대 캐시 크기 제한
         
-        // === SINGLETON ACCESS ===
-        private static AudioManager instance;
-        public static AudioManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<AudioManager>();
-                return instance;
-            }
-        }
+        // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-                InitializeAudioManager();
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            InitializeAudioManager();
         }
         
         private void Update()

@@ -17,7 +17,7 @@ MonoBehaviour:
   stageDescription: 
   backgroundImage: {fileID: 2687057441370610899, guid: 9db26eb71a6524d4da5d803925cca886, type: 3}
   ambientColor: {r: 0.8, g: 0.8, b: 1, a: 1}
-  enableDarkMode: 1
+  enableDarkMode: 0
   backgroundMusic: {fileID: 0}
   ambientSound: {fileID: 0}
   musicVolume: 0.7
@@ -41,14 +41,14 @@ MonoBehaviour:
     result:
       resultType: 0
       message: 
-      itemToAdd: {fileID: 0}
-      nextStageIndex: 0
       soundEffect: {fileID: 0}
       additionalActions: []
+      itemToAdd: {fileID: 0}
       giveItem: 0
       itemId: 
       changeStage: 0
       targetStageIndex: 0
+      nextStageIndex: 0
       triggerHorrorEvent: 0
       horrorEventId: 
       showDialog: 0

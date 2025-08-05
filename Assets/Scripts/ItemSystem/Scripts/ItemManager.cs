@@ -1,13 +1,15 @@
 using UnityEngine;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
+using AFKS.Shared.Core;
 
 namespace AFKS.ItemSystem
 {
     /// <summary>
     /// 오직 열쇠와 손전등만 관리하는 간단한 아이템 매니저
+    /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
-    public class ItemManager : MonoBehaviour, ISaveable
+    public class ItemManager : BaseSingleton<ItemManager>, ISaveable
     {
         [Header("🔑 아이템 상태")]
         [SerializeField, Tooltip("열쇠 보유 여부")] private bool hasKey = false;
@@ -32,34 +34,14 @@ namespace AFKS.ItemSystem
         public bool HasFlashlight => hasFlashlight;
         public bool HasAllItems => hasKey && hasFlashlight;
         public int ItemCount => (hasKey ? 1 : 0) + (hasFlashlight ? 1 : 0);
-        public int ObtainedItemCount => ItemCount; // 호환성
         
-        // === SINGLETON ACCESS ===
-        private static ItemManager instance;
-        public static ItemManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<ItemManager>();
-                return instance;
-            }
-        }
+        // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-                LoadSavedState();
-                Debug.Log("[아이템매니저] 초기화 완료 - 열쇠: " + hasKey + ", 손전등: " + hasFlashlight);
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            LoadSavedState();
+            Debug.Log("[아이템매니저] 초기화 완료 - 열쇠: " + hasKey + ", 손전등: " + hasFlashlight);
         }
         
         // === ITEM MANAGEMENT ===

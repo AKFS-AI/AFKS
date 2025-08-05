@@ -7,6 +7,7 @@ namespace AFKS.StageSystem
 {
     /// <summary>
     /// 스테이지 정보를 담는 ScriptableObject
+    /// 개선됨: 관련 클래스들이 별도 파일로 분리되어 더 명확한 구조
     /// </summary>
     [CreateAssetMenu(fileName = "StageData", menuName = "AFKS/Stage/Stage Data")]
     public class StageData : ScriptableObject
@@ -77,7 +78,26 @@ namespace AFKS.StageSystem
             {
                 if (!string.IsNullOrEmpty(point.id) && !ids.Add(point.id))
                 {
-                    Debug.LogWarning($"[StageData] Duplicate interaction ID found: {point.id}");
+                    Debug.LogWarning($"[StageData] 중복된 상호작용 ID 발견: {point.id}");
+                }
+            }
+            
+            // 공포 이벤트 ID 중복 체크
+            HashSet<string> eventIds = new HashSet<string>();
+            foreach (var horrorEvent in horrorEvents)
+            {
+                if (!string.IsNullOrEmpty(horrorEvent.eventId) && !eventIds.Add(horrorEvent.eventId))
+                {
+                    Debug.LogWarning($"[StageData] 중복된 공포 이벤트 ID 발견: {horrorEvent.eventId}");
+                }
+            }
+            
+            // 조건들의 유효성 검증
+            foreach (var condition in unlockConditions)
+            {
+                if (!condition.IsValid())
+                {
+                    Debug.LogWarning($"[StageData] 잘못된 잠금 해제 조건이 발견되었습니다.");
                 }
             }
         }
@@ -98,6 +118,19 @@ namespace AFKS.StageSystem
         }
         
         /// <summary>
+        /// 특정 ID의 공포 이벤트 찾기
+        /// </summary>
+        public HorrorEventData GetHorrorEvent(string eventId)
+        {
+            foreach (var horrorEvent in horrorEvents)
+            {
+                if (horrorEvent.eventId == eventId)
+                    return horrorEvent;
+            }
+            return null;
+        }
+        
+        /// <summary>
         /// 스테이지 잠금 해제 조건 확인
         /// </summary>
         public bool CheckUnlockConditions()
@@ -112,224 +145,97 @@ namespace AFKS.StageSystem
             
             return true;
         }
-    }
-    
-    // === INTERACTION POINT ===
-    [System.Serializable]
-    public class InteractionPoint
-    {
-        [Header("Basic Info")]
-        public string id;
-        public string displayName;
-        [TextArea(2, 3)] public string description;
-        
-        [Header("Position")]
-        public Vector2 position;
-        public Vector2 size = Vector2.one;
-        
-        [Header("Interaction")]
-        public InteractionType interactionType;
-        public bool isEnabled = true;
-        public bool isVisible = true;
-        
-        [Header("Visual Feedback")]
-        public Sprite hoverSprite;
-        public Color hoverColor = Color.white;
-        public float hoverScale = 1.1f;
-        
-        [Header("Audio")]
-        public AudioClip interactionSound;
-        public AudioClip hoverSound;
-        
-        [Header("Conditions")]
-        public List<string> requiredItems = new List<string>();
-        public List<StageCondition> enableConditions = new List<StageCondition>();
-        
-        [Header("Results")]
-        public InteractionResult result;
         
         /// <summary>
-        /// 상호작용 가능 여부 확인
+        /// 활성화된 상호작용 포인트들만 반환
         /// </summary>
-        public bool CanInteract()
+        public List<InteractionPoint> GetActiveInteractionPoints()
         {
-            if (!isEnabled) return false;
+            List<InteractionPoint> activePoints = new List<InteractionPoint>();
             
-            // 필요 아이템 체크 (나중에 인벤토리 시스템과 연동)
-            // foreach (string itemId in requiredItems)
-            // {
-            //     if (!InventoryManager.Instance.HasItem(itemId))
-            //         return false;
-            // }
-            
-            // 활성화 조건 체크
-            foreach (var condition in enableConditions)
+            foreach (var point in interactionPoints)
             {
-                if (!condition.IsConditionMet())
-                    return false;
+                if (point.isEnabled && point.CanInteract())
+                {
+                    activePoints.Add(point);
+                }
             }
             
-            return true;
+            return activePoints;
         }
-    }
-    
-    // === INTERACTION RESULT ===
-    [System.Serializable]
-    public class InteractionResult
-    {
-        [Header("Result Type")]
-        public int resultType = 0; // 0: Normal, 1: Item, 2: Stage Change
-        [TextArea(2, 3)] public string message;
-        #pragma warning disable CS0618 // Type or member is obsolete
-        public ItemData itemToAdd;
-        #pragma warning restore CS0618 // Type or member is obsolete
-        public int nextStageIndex = -1;
-        public AudioClip soundEffect;
-        public string[] additionalActions;
-        
-        [Header("Legacy Fields")]
-        public bool giveItem = false;
-        public string itemId;
-        
-        [Header("Stage")]
-        public bool changeStage = false;
-        public int targetStageIndex = -1;
-        
-        [Header("Horror")]
-        public bool triggerHorrorEvent = false;
-        public string horrorEventId;
-        
-        [Header("Dialog")]
-        public bool showDialog = false;
-        [TextArea(3, 5)] public string dialogText;
-        
-        [Header("Audio")]
-        public bool playAudio = false;
-        public AudioClip audioClip;
-        
-        [Header("Custom")]
-        public bool executeCustomAction = false;
-        public string customActionId;
-    }
-    
-    // === HORROR EVENT DATA ===
-    [System.Serializable]
-    public class HorrorEventData
-    {
-        [Header("Basic Info")]
-        public string eventId;
-        public string eventName;
-        [TextArea(2, 3)] public string description;
-        
-        [Header("Trigger")]
-        public HorrorTriggerType triggerType;
-        public float triggerDelay = 0f;
-        public string triggerCondition; // 조건 ID
-        
-        [Header("Visual")]
-        public Sprite jumpscareImage;
-        public Vector2 imagePosition = Vector2.zero;
-        public Vector2 imageSize = Vector2.one;
-        public float displayDuration = 2f;
-        
-        [Header("Audio")]
-        public AudioClip horrorSound;
-        public float volume = 0.8f;
-        
-        [Header("Effects")]
-        public bool enableScreenShake = true;
-        public float shakeIntensity = 0.5f;
-        public float shakeDuration = 1f;
-        
-        [Header("Settings")]
-        public bool canRepeat = false;
-        public float cooldownTime = 10f;
-    }
-    
-    // === STAGE CONDITION ===
-    [System.Serializable]
-    public class StageCondition
-    {
-        [Header("Condition")]
-        public ConditionType conditionType;
-        public string targetId;
-        public string requiredValue;
-        
-        [Header("Logic")]
-        public bool invertCondition = false;
         
         /// <summary>
-        /// 조건 확인 (실제 게임 상태와 연동)
+        /// 트리거 가능한 공포 이벤트들만 반환
         /// </summary>
-        public bool IsConditionMet()
+        public List<HorrorEventData> GetTriggableHorrorEvents()
         {
-            bool result = false;
+            List<HorrorEventData> triggableEvents = new List<HorrorEventData>();
             
-            switch (conditionType)
+            foreach (var horrorEvent in horrorEvents)
             {
-                case ConditionType.HasItem:
-                    // ItemManager 사용 (열쇠, 손전등 전용)
-                    if (AFKS.ItemSystem.ItemManager.Instance != null)
-                    {
-                        result = AFKS.ItemSystem.ItemManager.Instance.HasKeyItem(targetId);
-                    }
-                    else
-                    {
-                        result = false; // 관리자가 없으면 false
-                    }
-                    break;
-                    
-                case ConditionType.StageCompleted:
-                    if (AFKS.Core.GameManager.Instance != null && int.TryParse(targetId, out int stageIndex))
-                    {
-                        result = AFKS.StageSystem.StageManager.Instance?.CurrentStageIndex >= stageIndex;
-                    }
-                    else
-                    {
-                        result = false;
-                    }
-                    break;
-                    
-                case ConditionType.VariableEquals:
-                    // 게임 변수 시스템이 구현되면 연동, 현재는 PlayerPrefs 사용
-                    string savedValue = UnityEngine.PlayerPrefs.GetString($"GameVar_{targetId}", "");
-                    result = savedValue == requiredValue;
-                    break;
-                    
-                case ConditionType.Always:
-                    result = true;
-                    break;
-                    
-                case ConditionType.Never:
-                    result = false;
-                    break;
-                    
-                default:
-                    UnityEngine.Debug.LogWarning($"[StageCondition] Unknown condition type: {conditionType}");
-                    result = false;
-                    break;
+                if (horrorEvent.IsValid() && horrorEvent.CanTrigger())
+                {
+                    triggableEvents.Add(horrorEvent);
+                }
             }
             
-            return invertCondition ? !result : result;
+            return triggableEvents;
         }
-    }
-    
-    // === ENUMS ===
-    public enum HorrorTriggerType
-    {
-        OnStageEnter,       // 스테이지 진입 시
-        OnInteraction,      // 특정 상호작용 시
-        OnTimer,           // 시간 경과 시
-        OnCondition,       // 특정 조건 달성 시
-        Manual             // 수동 트리거
-    }
-    
-    public enum ConditionType
-    {
-        Always,            // 항상 참
-        Never,             // 항상 거짓
-        HasItem,           // 아이템 보유
-        StageCompleted,    // 스테이지 완료
-        VariableEquals     // 변수 값 일치
+        
+        /// <summary>
+        /// 스테이지 완전성 검증
+        /// </summary>
+        public bool ValidateStageData()
+        {
+            bool isValid = true;
+            
+            // 기본 정보 검증
+            if (string.IsNullOrEmpty(stageName))
+            {
+                Debug.LogError($"[StageData] 스테이지 {stageIndex}의 이름이 비어있습니다.");
+                isValid = false;
+            }
+            
+            if (backgroundImage == null)
+            {
+                Debug.LogWarning($"[StageData] 스테이지 {stageIndex}에 배경 이미지가 없습니다.");
+            }
+            
+            // 상호작용 포인트 검증
+            foreach (var point in interactionPoints)
+            {
+                if (string.IsNullOrEmpty(point.id))
+                {
+                    Debug.LogError($"[StageData] 스테이지 {stageIndex}에 ID가 없는 상호작용 포인트가 있습니다.");
+                    isValid = false;
+                }
+            }
+            
+            // 공포 이벤트 검증
+            foreach (var horrorEvent in horrorEvents)
+            {
+                if (!horrorEvent.IsValid())
+                {
+                    Debug.LogError($"[StageData] 스테이지 {stageIndex}에 잘못된 공포 이벤트가 있습니다: {horrorEvent.eventId}");
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        /// <summary>
+        /// 디버그 정보 출력
+        /// </summary>
+        [ContextMenu("디버그 정보 출력")]
+        public void PrintDebugInfo()
+        {
+            Debug.Log($"=== StageData Debug Info ===");
+            Debug.Log($"Stage {stageIndex}: {stageName}");
+            Debug.Log($"Interaction Points: {interactionPoints.Count}");
+            Debug.Log($"Horror Events: {horrorEvents.Count}");
+            Debug.Log($"Unlock Conditions: {unlockConditions.Count}");
+            Debug.Log($"Is Valid: {ValidateStageData()}");
+        }
     }
 }

@@ -77,6 +77,12 @@ namespace AFKS.UISystem
             if (instance == null)
             {
                 instance = this;
+                
+                // 루트 GameObject로 설정하여 DontDestroyOnLoad 경고 방지
+                if (transform.parent != null)
+                {
+                    transform.SetParent(null);
+                }
                 DontDestroyOnLoad(gameObject);
                 InitializeUIManager();
             }

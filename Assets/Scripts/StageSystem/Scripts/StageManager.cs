@@ -5,14 +5,16 @@ using System.Collections.Generic;
 using AFKS.Shared.Utils;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
+using AFKS.Shared.Core;
 using AFKS.Core;
 
 namespace AFKS.StageSystem
 {
     /// <summary>
     /// 스테이지 관리 및 전환을 담당하는 매니저
+    /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
-    public class StageManager : MonoBehaviour, ISaveable
+    public class StageManager : BaseSingleton<StageManager>, ISaveable
     {
         [Header("🎭 스테이지 설정")]
         [SerializeField, Tooltip("게임에서 사용할 모든 스테이지 데이터 목록")] private List<StageData> stages = new List<StageData>();
@@ -46,7 +48,6 @@ namespace AFKS.StageSystem
         
         // === PROPERTIES ===
         public StageData CurrentStage => GetStageData(currentStageIndex);
-        public StageData CurrentStageData => GetStageData(currentStageIndex);
         public int CurrentStageIndex => currentStageIndex;
         public int TotalStages => stages.Count;
         public bool IsTransitioning { get; private set; }
@@ -60,35 +61,16 @@ namespace AFKS.StageSystem
         // === PRIVATE FIELDS ===
         private Dictionary<int, Sprite> preloadedBackgrounds = new Dictionary<int, Sprite>();
         private List<StageInteractionController> interactionControllers = new List<StageInteractionController>();
-        private Dictionary<int, List<PixelPerfectInteractionController>> stageInteractionPoints = new Dictionary<int, List<PixelPerfectInteractionController>>();
+        private Dictionary<int, List<PixelInteractionController>> stageInteractionPoints = new Dictionary<int, List<PixelInteractionController>>();
         private bool isInitialized = false;
         private Coroutine autoSaveCoroutine;
         
-        // === SINGLETON ACCESS ===
-        private static StageManager instance;
-        public static StageManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<StageManager>();
-                return instance;
-            }
-        }
+        // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
+            // 초기화는 Start에서 처리
         }
         
         private void Start()
@@ -383,6 +365,18 @@ namespace AFKS.StageSystem
         /// </summary>
         private void CreateInteractionPoint(InteractionPoint interactionPoint)
         {
+            // Canvas 자동 찾기 (null인 경우)
+            if (stageCanvas == null)
+            {
+                stageCanvas = FindFirstObjectByType<CanvasGroup>();
+                if (stageCanvas == null)
+                {
+                    Debug.LogWarning("[StageManager] CanvasGroup을 찾을 수 없습니다. 상호작용 포인트 생성을 건너뜁니다.");
+                    return;
+                }
+                Debug.Log($"[StageManager] CanvasGroup을 자동으로 찾았습니다: {stageCanvas.name}");
+            }
+            
             // GameObject 생성
             GameObject pointObject = new GameObject($"InteractionPoint_{interactionPoint.id}");
             pointObject.transform.SetParent(stageCanvas.transform, false);
@@ -640,9 +634,9 @@ namespace AFKS.StageSystem
     private void InitializePixelPerfectInteractions()
     {
         // 각 스테이지별 픽셀 퍼펙트 상호작용 포인트 수집
-        var allPixelPerfectControllers = FindObjectsByType<PixelPerfectInteractionController>(FindObjectsSortMode.None);
+                    var allPixelInteractionControllers = FindObjectsByType<PixelInteractionController>(FindObjectsSortMode.None);
         
-        foreach (var controller in allPixelPerfectControllers)
+        foreach (var controller in allPixelInteractionControllers)
         {
             // 상호작용 컨트롤러가 속한 스테이지 확인 (GameObject 이름 또는 태그로)
             int stageIndex = GetStageIndexFromController(controller);
@@ -650,7 +644,7 @@ namespace AFKS.StageSystem
             {
                 if (!stageInteractionPoints.ContainsKey(stageIndex))
                 {
-                    stageInteractionPoints[stageIndex] = new List<PixelPerfectInteractionController>();
+                    stageInteractionPoints[stageIndex] = new List<PixelInteractionController>();
                 }
                 stageInteractionPoints[stageIndex].Add(controller);
             }
@@ -660,7 +654,7 @@ namespace AFKS.StageSystem
     /// <summary>
     /// 컨트롤러가 속한 스테이지 인덱스 확인
     /// </summary>
-    private int GetStageIndexFromController(PixelPerfectInteractionController controller)
+    private int GetStageIndexFromController(PixelInteractionController controller)
     {
         // GameObject 이름에서 스테이지 인덱스 추출 (예: "Stage0_InteractionPoints")
         Transform parent = controller.transform.parent;

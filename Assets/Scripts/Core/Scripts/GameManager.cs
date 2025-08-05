@@ -2,34 +2,17 @@ using UnityEngine;
 using AFKS.Shared.Utils;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
+using AFKS.Shared.Core;
 
 namespace AFKS.Core
 {
     /// <summary>
     /// 게임 전체를 관리하는 핵심 매니저
-    /// 싱글톤 패턴으로 구현
+    /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
-    public class GameManager : MonoBehaviour, ISaveable
+    public class GameManager : BaseSingleton<GameManager>, ISaveable
     {
-        // === SINGLETON ===
-        private static GameManager instance;
-        public static GameManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = FindFirstObjectByType<GameManager>();
-                    if (instance == null)
-                    {
-                        GameObject go = new GameObject("GameManager");
-                        instance = go.AddComponent<GameManager>();
-                        DontDestroyOnLoad(go);
-                    }
-                }
-                return instance;
-            }
-        }
+        // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === PROPERTIES ===
         [Header("🎮 게임 설정")]
@@ -61,18 +44,9 @@ namespace AFKS.Core
         public string SaveID => "GameManager";
         
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-                InitializeGame();
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            InitializeGame();
         }
         
         private void Start()
@@ -89,9 +63,9 @@ namespace AFKS.Core
                 OnGameTimeUpdated.Raise(gameTime);
             }
             
-            // 성능 모니터링 (최적화: 1초마다 실행)
+            // 성능 모니터링 (최적화: 3초마다 실행으로 부하 감소)
             performanceMonitorTimer += Time.unscaledDeltaTime;
-            if (performanceMonitorTimer >= 1f)
+            if (performanceMonitorTimer >= 3f)
             {
                 MonitorPerformance();
                 performanceMonitorTimer = 0f;
@@ -244,20 +218,26 @@ namespace AFKS.Core
         // === PERFORMANCE MONITORING ===
         private void MonitorPerformance()
         {
-            // 메모리 사용량 체크
+            // 메모리 사용량 체크 (최적화: 임계값 초과 시에만 GC 실행)
             long memoryUsage = System.GC.GetTotalMemory(false) / (1024 * 1024); // MB 단위
             
             if (memoryUsage > Constants.MEMORY_THRESHOLD_MB)
             {
-                Debug.LogWarning($"[게임매니저] 높은 메모리 사용량 감지: {memoryUsage}MB");
-                // 필요 시 가비지 컬렉션 강제 실행
-                System.GC.Collect();
+                Debug.LogWarning($"[게임매니저] 높은 메모리 사용량 감지: {memoryUsage}MB / {Constants.MEMORY_THRESHOLD_MB}MB");
+                
+                // 임계값을 크게 초과한 경우에만 강제 GC 실행 (성능 영향 최소화)
+                if (memoryUsage > Constants.MEMORY_THRESHOLD_MB * 1.5f)
+                {
+                    System.GC.Collect();
+                    Debug.Log($"[게임매니저] 가비지 컬렉션 실행됨. 이전: {memoryUsage}MB");
+                }
             }
             
-            // 프레임레이트 체크
+            // 프레임레이트 체크 (변경된 경우에만 재설정)
             if (Application.targetFrameRate != Constants.TARGET_FRAME_RATE)
             {
                 Application.targetFrameRate = Constants.TARGET_FRAME_RATE;
+                Debug.Log($"[게임매니저] 프레임레이트 재설정: {Constants.TARGET_FRAME_RATE}FPS");
             }
         }
         

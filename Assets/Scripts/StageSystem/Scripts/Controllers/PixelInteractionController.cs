@@ -11,8 +11,9 @@ namespace AFKS.StageSystem
 {
     /// <summary>
     /// 이미지 기반 픽셀 퍼펙트 상호작용 컨트롤러
+    /// 파일명 단축: PixelPerfectInteractionController → PixelInteractionController
     /// </summary>
-    public class PixelPerfectInteractionController : MonoBehaviour, IInteractable, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+    public class PixelInteractionController : MonoBehaviour, IInteractable, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
     {
         [Header("🎯 이미지 기반 설정")]
         [SerializeField, Tooltip("상호작용할 이미지")] private Image targetImage;
@@ -42,8 +43,8 @@ namespace AFKS.StageSystem
         [SerializeField, Tooltip("마스크 해상도")] private int maskResolution = 128;
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<string> OnPixelPerfectInteractionTriggered = new GameEvent<string>();
-        public static readonly GameEvent<string> OnPixelPerfectInteractionHover = new GameEvent<string>();
+        public static readonly GameEvent<string> OnPixelInteractionTriggered = new GameEvent<string>();
+        public static readonly GameEvent<string> OnPixelInteractionHover = new GameEvent<string>();
         
         // === PROPERTIES ===
         public string InteractionId => interactionId;
@@ -82,7 +83,7 @@ namespace AFKS.StageSystem
             
             if (debugMode)
             {
-                Debug.Log($"[픽셀퍼펙트상호작용] 초기화 완료: {interactionId}");
+                Debug.Log($"[픽셀상호작용] 초기화 완료: {interactionId}");
             }
         }
         
@@ -97,7 +98,7 @@ namespace AFKS.StageSystem
                 targetImage = GetComponent<Image>();
                 if (targetImage == null)
                 {
-                    Debug.LogError($"[픽셀퍼펙트상호작용] {gameObject.name}: 이미지 컴포넌트를 찾을 수 없습니다!");
+                    Debug.LogError($"[픽셀상호작용] {gameObject.name}: 이미지 컴포넌트를 찾을 수 없습니다!");
                     return;
                 }
             }
@@ -109,7 +110,7 @@ namespace AFKS.StageSystem
             // 텍스처 읽기 가능 여부 확인
             if (targetImage.sprite?.texture != null && !targetImage.sprite.texture.isReadable)
             {
-                Debug.LogWarning($"[픽셀퍼펙트상호작용] 텍스처 {targetImage.sprite.texture.name}을 읽을 수 없습니다! Import 설정에서 Read/Write를 활성화하세요.");
+                Debug.LogWarning($"[픽셀상호작용] 텍스처 {targetImage.sprite.texture.name}을 읽을 수 없습니다! Import 설정에서 Read/Write를 활성화하세요.");
             }
         }
         
@@ -149,7 +150,7 @@ namespace AFKS.StageSystem
             
             if (debugMode)
             {
-                Debug.Log($"[픽셀퍼펙트상호작용] {interactionId}에 대해 {maskWidth}x{maskHeight} 마스크를 미리 계산했습니다.");
+                Debug.Log($"[픽셀상호작용] {interactionId}에 대해 {maskWidth}x{maskHeight} 마스크를 미리 계산했습니다.");
             }
         }
         
@@ -265,9 +266,9 @@ namespace AFKS.StageSystem
                 IsHovered = true;
                 
                 // 호버 사운드 재생
-                if (hoverSound != null)
+                if (hoverSound != null && AFKS.AudioSystem.AudioManager.Instance != null)
                 {
-                    // AudioManager.Instance.PlaySFX(hoverSound);
+                    AFKS.AudioSystem.AudioManager.Instance.PlaySFX(hoverSound);
                 }
                 
                 // 호버 효과 시작
@@ -276,11 +277,11 @@ namespace AFKS.StageSystem
                 hoverCoroutine = StartCoroutine(HoverEffect(true));
                 
                 // 이벤트 발생
-                OnPixelPerfectInteractionHover.Raise(interactionId);
+                OnPixelInteractionHover.Raise(interactionId);
                 
                 if (debugMode)
                 {
-                    Debug.Log($"[픽셀퍼펙트상호작용] 마우스 진입: {interactionId}");
+                    Debug.Log($"[픽셀상호작용] 마우스 진입: {interactionId}");
                 }
             }
         }
@@ -298,7 +299,7 @@ namespace AFKS.StageSystem
                 
                 if (debugMode)
                 {
-                    Debug.Log($"[픽셀퍼펙트상호작용] 마우스 나감: {interactionId}");
+                    Debug.Log($"[픽셀상호작용] 마우스 나감: {interactionId}");
                 }
             }
         }
@@ -324,13 +325,13 @@ namespace AFKS.StageSystem
             
             if (debugMode)
             {
-                Debug.Log($"[픽셀퍼펙트상호작용] 상호작용 실행: {interactionId}");
+                Debug.Log($"[픽셀상호작용] 상호작용 실행: {interactionId}");
             }
             
             // 클릭 사운드 재생
-            if (clickSound != null)
+            if (clickSound != null && AFKS.AudioSystem.AudioManager.Instance != null)
             {
-                // AudioManager.Instance.PlaySFX(clickSound);
+                AFKS.AudioSystem.AudioManager.Instance.PlaySFX(clickSound);
             }
             
             // 클릭 피드백 효과
@@ -340,7 +341,7 @@ namespace AFKS.StageSystem
             HandleClickCounter();
             
             // 이벤트 발생
-            OnPixelPerfectInteractionTriggered.Raise(interactionId);
+            OnPixelInteractionTriggered.Raise(interactionId);
             
             // 짧은 딜레이 후 상호작용 완료
             yield return new WaitForSeconds(0.1f);
@@ -360,28 +361,25 @@ namespace AFKS.StageSystem
             int currentCount = clickCounters[interactionId];
             int requiredCount = requiredClickCounts[interactionId];
             
-                            Debug.Log($"[픽셀퍼펙트상호작용] {interactionId} 클릭: {currentCount}/{requiredCount}");
+            Debug.Log($"[픽셀상호작용] {interactionId} 클릭: {currentCount}/{requiredCount}");
             
             // 진행 상황 메시지
             if (!string.IsNullOrEmpty(resultMessage))
             {
                 string progressMessage = resultMessage.Replace("{0}", currentCount.ToString()).Replace("{1}", requiredCount.ToString());
-                Debug.Log($"[픽셀퍼펙트상호작용] {progressMessage}");
+                Debug.Log($"[픽셀상호작용] {progressMessage}");
             }
             
             // 필요한 클릭 수에 도달했는지 확인
             if (currentCount >= requiredCount)
             {
-                Debug.Log($"[픽셀퍼펙트상호작용] {interactionId}: 클릭 조건 완료!");
+                Debug.Log($"[픽셀상호작용] {interactionId}: 클릭 조건 완료!");
                 
                 // 다음 스테이지로 이동
                 if (targetStageIndex >= 0 && StageManager.Instance != null)
                 {
                     StageManager.Instance.ChangeStage(targetStageIndex);
                 }
-                
-                // 카운터 리셋 (선택적)
-                // clickCounters[interactionId] = 0;
             }
         }
         
@@ -521,6 +519,31 @@ namespace AFKS.StageSystem
             {
                 StopCoroutine(hoverCoroutine);
             }
+            
+            // 해당 인스턴스의 데이터 정리 (메모리 누수 방지)
+            if (!string.IsNullOrEmpty(interactionId))
+            {
+                clickCounters.Remove(interactionId);
+                requiredClickCounts.Remove(interactionId);
+            }
+        }
+        
+        /// <summary>
+        /// 애플리케이션 종료 시 static Dictionary 정리 (메모리 누수 방지)
+        /// </summary>
+        private void OnApplicationQuit()
+        {
+            ClearAllStaticData();
+        }
+        
+        /// <summary>
+        /// 모든 static 데이터 정리 (메모리 누수 방지)
+        /// </summary>
+        public static void ClearAllStaticData()
+        {
+            clickCounters.Clear();
+            requiredClickCounts.Clear();
+            Debug.Log("[PixelInteractionController] 모든 static 데이터가 정리되었습니다.");
         }
         
         // === GIZMOS ===

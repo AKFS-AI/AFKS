@@ -6,9 +6,9 @@ namespace AFKS.Shared.Events
 {
     /// <summary>
     /// 게임 이벤트 시스템
+    /// 런타임 이벤트용 일반 클래스로 변경 (ScriptableObject 오류 방지)
     /// </summary>
-    [CreateAssetMenu(fileName = "New Game Event", menuName = "AFKS/Events/Game Event")]
-    public class GameEvent : ScriptableObject
+    public class GameEvent
     {
         /// <summary>
         /// 이벤트 리스너들

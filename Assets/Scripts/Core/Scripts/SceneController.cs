@@ -3,21 +3,19 @@ using UnityEngine.SceneManagement;
 using System.Collections;
 using AFKS.Shared.Events;
 using AFKS.Shared.Utils;
+using AFKS.Shared.Core;
 
 namespace AFKS.Core
 {
     /// <summary>
     /// 씬 전환 및 관리를 담당하는 컨트롤러
+    /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
-    public class SceneController : MonoBehaviour
+    public class SceneController : BaseSingleton<SceneController>
     {
         [Header("🎬 씬 설정")]
         [SerializeField, Tooltip("메인 메뉴 씬 이름")] private string mainMenuSceneName = "MainMenu";
         [SerializeField, Tooltip("게임 메인 씬 이름")] private string gameSceneName = "Main";
-        
-#pragma warning disable CS0414 // 향후 로딩 씬 기능 확장을 위해 보관
-        [SerializeField, Tooltip("로딩 씬 이름 (향후 확장용)")] private string loadingSceneName = "Loading";
-#pragma warning restore CS0414
         
         [Header("⏳ 로딩 설정")]
         [SerializeField, Range(0.5f, 5f), Tooltip("최소 로딩 표시 시간 (초)")] private float minimumLoadingTime = 1f;
@@ -38,30 +36,12 @@ namespace AFKS.Core
         public bool IsLoading { get; private set; }
         public float LoadingProgress { get; private set; }
         
-        // === SINGLETON ACCESS ===
-        private static SceneController instance;
-        public static SceneController Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<SceneController>();
-                return instance;
-            }
-        }
+        // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            // SceneController는 별도 초기화 로직 불필요
         }
         
         // === PUBLIC METHODS ===
