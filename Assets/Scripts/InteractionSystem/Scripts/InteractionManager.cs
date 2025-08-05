@@ -81,7 +81,7 @@ namespace AFKS.InteractionSystem
         // === INITIALIZATION ===
         private void InitializeManager()
         {
-            Debug.Log("[InteractionManager] Initialized");
+            Debug.Log("[상호작용매니저] 초기화 완료");
         }
         
         // === INTERACTION REGISTRATION ===
@@ -95,13 +95,13 @@ namespace AFKS.InteractionSystem
         {
             if (string.IsNullOrEmpty(id) || interactable == null)
             {
-                Debug.LogWarning("[InteractionManager] Invalid registration parameters");
+                Debug.LogWarning("[상호작용매니저] 잘못된 등록 매개변수");
                 return;
             }
             
             if (registeredInteractables.ContainsKey(id))
             {
-                Debug.LogWarning($"[InteractionManager] Interactable already registered: {id}");
+                Debug.LogWarning($"[상호작용매니저] 이미 등록된 상호작용 객체: {id}");
                 return;
             }
             
@@ -109,7 +109,7 @@ namespace AFKS.InteractionSystem
             
             if (showDebugInfo)
             {
-                Debug.Log($"[InteractionManager] Registered interactable: {id}");
+                Debug.Log($"[상호작용매니저] 상호작용 객체 등록: {id}");
             }
         }
         
@@ -125,7 +125,7 @@ namespace AFKS.InteractionSystem
                 
                 if (showDebugInfo)
                 {
-                    Debug.Log($"[InteractionManager] Unregistered interactable: {id}");
+                    Debug.Log($"[상호작용매니저] 상호작용 객체 등록 해제: {id}");
                 }
             }
         }
@@ -136,7 +136,7 @@ namespace AFKS.InteractionSystem
         public void ClearAllInteractables()
         {
             registeredInteractables.Clear();
-            Debug.Log("[InteractionManager] Cleared all interactables");
+            Debug.Log("[상호작용매니저] 모든 상호작용 객체 제거 완료");
         }
         
         // === INTERACTION CONTROL ===
@@ -153,7 +153,7 @@ namespace AFKS.InteractionSystem
                 
                 if (showDebugInfo)
                 {
-                    Debug.Log($"[InteractionManager] Disabled interaction: {id}");
+                    Debug.Log($"[상호작용매니저] 상호작용 비활성화: {id}");
                 }
             }
         }
@@ -170,7 +170,7 @@ namespace AFKS.InteractionSystem
                 
                 if (showDebugInfo)
                 {
-                    Debug.Log($"[InteractionManager] Enabled interaction: {id}");
+                    Debug.Log($"[상호작용매니저] 상호작용 활성화: {id}");
                 }
             }
         }
@@ -191,7 +191,7 @@ namespace AFKS.InteractionSystem
         public void DisableAllInteractions()
         {
             enableGlobalInteractions = false;
-            Debug.Log("[InteractionManager] Disabled all interactions");
+            Debug.Log("[상호작용매니저] 모든 상호작용 비활성화 완료");
         }
         
         /// <summary>
@@ -200,7 +200,7 @@ namespace AFKS.InteractionSystem
         public void EnableAllInteractions()
         {
             enableGlobalInteractions = true;
-            Debug.Log("[InteractionManager] Enabled all interactions");
+            Debug.Log("[상호작용매니저] 모든 상호작용 활성화 완료");
         }
         
         // === INTERACTION EXECUTION ===
@@ -224,20 +224,20 @@ namespace AFKS.InteractionSystem
                     
                     if (showDebugInfo)
                     {
-                        Debug.Log($"[InteractionManager] Triggered interaction: {id}");
+                        Debug.Log($"[상호작용매니저] 상호작용 실행: {id}");
                     }
                 }
                 else
                 {
                     if (showDebugInfo)
                     {
-                        Debug.Log($"[InteractionManager] Interaction not available: {id}");
+                        Debug.Log($"[상호작용매니저] 상호작용을 사용할 수 없습니다: {id}");
                     }
                 }
             }
             else
             {
-                Debug.LogWarning($"[InteractionManager] Interaction not found: {id}");
+                Debug.LogWarning($"[상호작용매니저] 상호작용을 찾을 수 없습니다: {id}");
             }
         }
         
@@ -266,7 +266,7 @@ namespace AFKS.InteractionSystem
             
             if (showDebugInfo)
             {
-                Debug.Log($"[InteractionManager] Interaction triggered: {interactionId}");
+                Debug.Log($"[상호작용매니저] 상호작용 트리거: {interactionId}");
             }
             
             // 상호작용별 특수 처리
@@ -280,7 +280,7 @@ namespace AFKS.InteractionSystem
         {
             if (showDebugInfo)
             {
-                Debug.Log($"[InteractionManager] Interaction hovered: {interactionId}");
+                Debug.Log($"[상호작용매니저] 상호작용 호버: {interactionId}");
             }
         }
         
@@ -331,7 +331,7 @@ namespace AFKS.InteractionSystem
         {
             // 십자가를 인벤토리에 추가
             // InventoryManager.Instance.AddItem("cross");
-            Debug.Log("[InteractionManager] Cross collected");
+            Debug.Log("[상호작용매니저] 십자가 수집됨");
         }
         
         /// <summary>
@@ -341,7 +341,7 @@ namespace AFKS.InteractionSystem
         {
             // CCTV 화면 켜기 및 공포 이벤트 트리거
             // HorrorEventManager.Instance.TriggerEvent("cctv_ghost");
-            Debug.Log("[InteractionManager] CCTV activated");
+            Debug.Log("[상호작용매니저] CCTV 활성화");
         }
         
         // === UTILITY METHODS ===
@@ -386,10 +386,10 @@ namespace AFKS.InteractionSystem
         /// <summary>
         /// 디버그 정보 출력
         /// </summary>
-        [ContextMenu("Print Debug Info")]
+        [ContextMenu("디버그 정보 출력")]
         public void PrintDebugInfo()
         {
-            Debug.Log($"[InteractionManager] === DEBUG INFO ===");
+            Debug.Log($"[상호작용매니저] === 디버그 정보 ===");
             Debug.Log($"Global Interactions Enabled: {enableGlobalInteractions}");
             Debug.Log($"Registered Interactions: {registeredInteractables.Count}");
             Debug.Log($"Disabled Interactions: {disabledInteractions.Count}");

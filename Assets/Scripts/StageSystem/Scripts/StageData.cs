@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using AFKS.Shared.Interfaces;
+using AFKS.ItemSystem;
 
 namespace AFKS.StageSystem
 {
@@ -176,7 +177,17 @@ namespace AFKS.StageSystem
     [System.Serializable]
     public class InteractionResult
     {
-        [Header("Item")]
+        [Header("Result Type")]
+        public int resultType = 0; // 0: Normal, 1: Item, 2: Stage Change
+        [TextArea(2, 3)] public string message;
+        #pragma warning disable CS0618 // Type or member is obsolete
+        public ItemData itemToAdd;
+        #pragma warning restore CS0618 // Type or member is obsolete
+        public int nextStageIndex = -1;
+        public AudioClip soundEffect;
+        public string[] additionalActions;
+        
+        [Header("Legacy Fields")]
         public bool giveItem = false;
         public string itemId;
         
@@ -248,7 +259,7 @@ namespace AFKS.StageSystem
         public bool invertCondition = false;
         
         /// <summary>
-        /// 조건 확인 (나중에 게임 상태와 연동)
+        /// 조건 확인 (실제 게임 상태와 연동)
         /// </summary>
         public bool IsConditionMet()
         {
@@ -257,18 +268,32 @@ namespace AFKS.StageSystem
             switch (conditionType)
             {
                 case ConditionType.HasItem:
-                    // result = InventoryManager.Instance.HasItem(targetId);
-                    result = true; // 임시
+                    // ItemManager 사용 (열쇠, 손전등 전용)
+                    if (AFKS.ItemSystem.ItemManager.Instance != null)
+                    {
+                        result = AFKS.ItemSystem.ItemManager.Instance.HasKeyItem(targetId);
+                    }
+                    else
+                    {
+                        result = false; // 관리자가 없으면 false
+                    }
                     break;
                     
                 case ConditionType.StageCompleted:
-                    // result = GameManager.Instance.IsStageCompleted(int.Parse(targetId));
-                    result = true; // 임시
+                    if (AFKS.Core.GameManager.Instance != null && int.TryParse(targetId, out int stageIndex))
+                    {
+                        result = AFKS.StageSystem.StageManager.Instance?.CurrentStageIndex >= stageIndex;
+                    }
+                    else
+                    {
+                        result = false;
+                    }
                     break;
                     
                 case ConditionType.VariableEquals:
-                    // result = GameDataManager.GetVariable(targetId) == requiredValue;
-                    result = true; // 임시
+                    // 게임 변수 시스템이 구현되면 연동, 현재는 PlayerPrefs 사용
+                    string savedValue = UnityEngine.PlayerPrefs.GetString($"GameVar_{targetId}", "");
+                    result = savedValue == requiredValue;
                     break;
                     
                 case ConditionType.Always:
@@ -276,6 +301,11 @@ namespace AFKS.StageSystem
                     break;
                     
                 case ConditionType.Never:
+                    result = false;
+                    break;
+                    
+                default:
+                    UnityEngine.Debug.LogWarning($"[StageCondition] Unknown condition type: {conditionType}");
                     result = false;
                     break;
             }

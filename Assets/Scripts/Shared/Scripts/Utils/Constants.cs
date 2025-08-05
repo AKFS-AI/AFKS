@@ -27,7 +27,7 @@ namespace AFKS.Shared.Utils
         
         // === UI SETTINGS ===
         public const float UI_ANIMATION_DURATION = 0.3f;
-        public const int INVENTORY_MAX_SLOTS = 10;
+        public const int INVENTORY_MAX_SLOTS = 2; // 열쇠, 손전등 전용
         
         // === INPUT SETTINGS ===
         public const float DOUBLE_CLICK_TIME = 0.3f;

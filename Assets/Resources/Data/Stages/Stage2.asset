@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ba882183df805744e85545ffdd56cb8a, type: 3}
-  m_Name: Stage1
+  m_Name: Stage2
   m_EditorClassIdentifier: 
-  stageIndex: 0
+  stageIndex: 1
   stageName: 
   stageDescription: 
-  backgroundImage: {fileID: 2687057441370610899, guid: 9db26eb71a6524d4da5d803925cca886, type: 3}
-  ambientColor: {r: 0.8, g: 0.8, b: 1, a: 1}
+  backgroundImage: {fileID: 0}
+  ambientColor: {r: 0.7, g: 0.7, b: 0.9, a: 1}
   enableDarkMode: 1
   backgroundMusic: {fileID: 0}
   ambientSound: {fileID: 0}
@@ -25,7 +25,7 @@ MonoBehaviour:
   interactionPoints: []
   horrorEvents: []
   unlockConditions: []
-  isUnlockedByDefault: 1
-  nextStageIndex: 1
+  isUnlockedByDefault: 0
+  nextStageIndex: 2
   additionalImages: []
   additionalSounds: []

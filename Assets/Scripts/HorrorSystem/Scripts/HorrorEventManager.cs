@@ -91,6 +91,7 @@ namespace AFKS.HorrorSystem
         private void OnDestroy()
         {
             StageManager.OnStageDataLoaded.RemoveListener(OnStageLoaded);
+            ForceCleanupAllEvents();
         }
         
         // === INITIALIZATION ===
@@ -101,7 +102,7 @@ namespace AFKS.HorrorSystem
                 CreateHorrorCanvas();
             }
             
-            Debug.Log("[HorrorEventManager] Initialized");
+            Debug.Log("[공포이벤트매니저] 초기화 완료");
         }
         
         /// <summary>
@@ -135,31 +136,31 @@ namespace AFKS.HorrorSystem
         {
             if (!enableHorrorEvents && !forceExecute)
             {
-                Debug.Log("[HorrorEventManager] Horror events disabled");
+                Debug.Log("[공포이벤트매니저] 공포 이벤트 비활성화");
                 return false;
             }
             
             if (!CanTriggerEvent && !forceExecute)
             {
-                Debug.Log("[HorrorEventManager] Global cooldown active");
+                Debug.Log("[공포이벤트매니저] 전역 쿨다운 활성화");
                 return false;
             }
             
             if (ActiveEventsCount >= maxConcurrentEvents && !forceExecute)
             {
-                Debug.Log("[HorrorEventManager] Max concurrent events reached");
+                Debug.Log("[공포이벤트매니저] 최대 동시 이벤트 수에 도달");
                 return false;
             }
             
             if (!registeredEvents.TryGetValue(eventId, out HorrorEventData eventData))
             {
-                Debug.LogError($"[HorrorEventManager] Event not found: {eventId}");
+                Debug.LogError($"[공포이벤트매니저] 이벤트를 찾을 수 없습니다: {eventId}");
                 return false;
             }
             
             if (IsEventOnCooldown(eventId) && !forceExecute)
             {
-                Debug.Log($"[HorrorEventManager] Event on cooldown: {eventId}");
+                Debug.Log($"[공포이벤트매니저] 이벤트 쿨다운 중: {eventId}");
                 return false;
             }
             
@@ -197,15 +198,22 @@ namespace AFKS.HorrorSystem
             // 이벤트 실행
             yield return StartCoroutine(controller.ExecuteEvent());
             
-            // 정리
-            activeEvents.Remove(controller);
-            Destroy(controller.gameObject);
+            // 정리 (안전한 리소스 해제)
+            if (controller != null)
+            {
+                activeEvents.Remove(controller);
+                
+                // 컨트롤러 정리 후 제거
+                controller.Reset();
+                Destroy(controller.gameObject);
+                controller = null;
+            }
             
             // 완료 알림
             onHorrorEventCompleted?.Raise();
             OnHorrorEventCompleted.Raise(eventData.eventId);
             
-            Debug.Log($"[HorrorEventManager] Completed horror event: {eventData.eventName}");
+            Debug.Log($"[공포이벤트매니저] 공포 이벤트 완료: {eventData.eventName}");
         }
         
         /// <summary>
@@ -233,7 +241,7 @@ namespace AFKS.HorrorSystem
             
             if (availableEvents.Count == 0)
             {
-                Debug.Log("[HorrorEventManager] No available events for random trigger");
+                Debug.Log("[공포이벤트매니저] 랜덤 트리거에 사용가능한 이벤트가 없습니다");
                 return false;
             }
             
@@ -256,7 +264,7 @@ namespace AFKS.HorrorSystem
             }
             
             activeEvents.Clear();
-            Debug.Log("[HorrorEventManager] Stopped all horror events");
+            Debug.Log("[공포이벤트매니저] 모든 공포 이벤트 중지");
         }
         
         // === EVENT REGISTRATION ===
@@ -268,12 +276,12 @@ namespace AFKS.HorrorSystem
         {
             if (eventData == null || string.IsNullOrEmpty(eventData.eventId))
             {
-                Debug.LogWarning("[HorrorEventManager] Invalid event data");
+                Debug.LogWarning("[공포이벤트매니저] 잘못된 이벤트 데이터");
                 return;
             }
             
             registeredEvents[eventData.eventId] = eventData;
-            Debug.Log($"[HorrorEventManager] Registered event: {eventData.eventName}");
+            Debug.Log($"[공포이벤트매니저] 이벤트 등록: {eventData.eventName}");
         }
         
         /// <summary>
@@ -284,7 +292,7 @@ namespace AFKS.HorrorSystem
             if (registeredEvents.ContainsKey(eventId))
             {
                 registeredEvents.Remove(eventId);
-                Debug.Log($"[HorrorEventManager] Unregistered event: {eventId}");
+                Debug.Log($"[공포이벤트매니저] 이벤트 등록 해제: {eventId}");
             }
         }
         
@@ -386,10 +394,10 @@ namespace AFKS.HorrorSystem
         /// <summary>
         /// 디버그 정보 출력
         /// </summary>
-        [ContextMenu("Print Debug Info")]
+        [ContextMenu("디버그 정보 출력")]
         public void PrintDebugInfo()
         {
-            Debug.Log($"[HorrorEventManager] === DEBUG INFO ===");
+            Debug.Log($"[공포이벤트매니저] === 디버그 정보 ===");
             Debug.Log($"Horror Events Enabled: {enableHorrorEvents}");
             Debug.Log($"Active Events: {ActiveEventsCount}/{maxConcurrentEvents}");
             Debug.Log($"Registered Events: {registeredEvents.Count}");
@@ -402,5 +410,30 @@ namespace AFKS.HorrorSystem
                 Debug.Log($"- {kvp.Value.eventName} (ID: {kvp.Key}) - Cooldown: {onCooldown}");
             }
         }
+        
+        /// <summary>
+        /// 모든 활성 이벤트 강제 정리 (메모리 누수 방지)
+        /// </summary>
+        [ContextMenu("모든 이벤트 강제 정리")]
+        public void ForceCleanupAllEvents()
+        {
+            Debug.Log("[공포이벤트매니저] 모든 활성 이벤트 강제 정리");
+            
+            // 활성 이벤트들 안전하게 정리
+            var eventsToClean = new List<HorrorEventController>(activeEvents);
+            foreach (var controller in eventsToClean)
+            {
+                if (controller != null)
+                {
+                    controller.Reset();
+                    Destroy(controller.gameObject);
+                }
+            }
+            
+            activeEvents.Clear();
+            Debug.Log($"[공포이벤트매니저] {eventsToClean.Count}개 활성 이벤트 정리 완료");
+        }
+        
+
     }
 }

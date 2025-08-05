@@ -22,6 +22,7 @@ namespace AFKS.Core
         [SerializeField, Range(0f, 1f), Tooltip("기본 BGM 볼륨")] private float defaultBGMVolume = 0.7f;
         [SerializeField, Range(0f, 1f), Tooltip("기본 효과음 볼륨")] private float defaultSFXVolume = 0.8f;
         [SerializeField, Tooltip("오디오 이펙트 활성화")] private bool enableAudioEffects = true;
+        [SerializeField, Tooltip("최대 오디오 캐시 크기")] private int maxAudioCacheSize = 50;
         
         [Header("😱 공포 설정")]
         [SerializeField, Tooltip("공포 이벤트 간 최소 대기 시간 (초)")] private float horrorCooldown = 5f;
@@ -31,6 +32,7 @@ namespace AFKS.Core
         [Header("🖼️ UI 설정")]
         [SerializeField, Tooltip("UI 애니메이션 지속 시간 (초)")] private float uiAnimationDuration = 0.3f;
         [SerializeField, Tooltip("UI 애니메이션 활성화")] private bool enableUIAnimations = true;
+        [SerializeField, Tooltip("최대 인벤토리 슬롯 개수")] private int maxInventorySlots = 2;
         [SerializeField, Tooltip("햅틱 피드백 활성화 (모바일)")] private bool enableHapticFeedback = false;
         
         [Header("🖱️ 입력 설정")]
@@ -55,6 +57,7 @@ namespace AFKS.Core
         public float DefaultBGMVolume => defaultBGMVolume;
         public float DefaultSFXVolume => defaultSFXVolume;
         public bool EnableAudioEffects => enableAudioEffects;
+        public int MaxAudioCacheSize => maxAudioCacheSize;
         
         public float HorrorCooldown => horrorCooldown;
         public int MaxConcurrentHorrorEvents => maxConcurrentHorrorEvents;
@@ -62,6 +65,7 @@ namespace AFKS.Core
         
         public float UIAnimationDuration => uiAnimationDuration;
         public bool EnableUIAnimations => enableUIAnimations;
+        public int MaxItemSlots => maxItemSlots;
         public bool EnableHapticFeedback => enableHapticFeedback;
         
         public float DoubleClickTime => doubleClickTime;

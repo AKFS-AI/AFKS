@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
-using AFKS.InventorySystem;
+using AFKS.ItemSystem;
 
 namespace AFKS.UISystem
 {
@@ -109,7 +109,9 @@ namespace AFKS.UISystem
             else
             {
                 // 아이템이 있는 슬롯 처리
+                #pragma warning disable CS0618 // Type or member is obsolete
                 ItemData itemData = CurrentItem.ItemData;
+                #pragma warning restore CS0618 // Type or member is obsolete
                 
                 if (itemIcon != null && itemData.Icon != null)
                 {
@@ -239,14 +241,17 @@ namespace AFKS.UISystem
         {
             if (IsEmpty) return;
             
+            #pragma warning disable CS0618 // Type or member is obsolete
             ItemData itemData = CurrentItem.ItemData;
+            #pragma warning restore CS0618 // Type or member is obsolete
             
-            // 사용 가능한 아이템이면 사용
+            // 키 아이템 사용 (간단화)
             if (itemData.IsUsable)
             {
-                if (InventoryManager.Instance != null)
+                if (AFKS.ItemSystem.ItemManager.Instance != null)
                 {
-                    InventoryManager.Instance.UseItem(itemData.ItemId);
+                    // 키 아이템은 사용이 아닌 보유 여부만 확인
+                    Debug.Log($"[인벤토리슬롯UI] 키 아이템 선택됨: {itemData.ItemId}");
                 }
             }
             else
@@ -258,7 +263,7 @@ namespace AFKS.UISystem
                 DeselectOtherSlots();
             }
             
-            Debug.Log($"[InventorySlotUI] Left clicked item: {itemData.ItemName}");
+                                Debug.Log($"[인벤토리슬롯UI] 아이템 좌클릭: {itemData.ItemName}");
         }
         
         /// <summary>
@@ -271,7 +276,7 @@ namespace AFKS.UISystem
             // 아이템 상세 정보 표시
             ShowDetailedItemInfo();
             
-            Debug.Log($"[InventorySlotUI] Right clicked item: {CurrentItem.ItemData.ItemName}");
+                            Debug.Log($"[인벤토리슬롯UI] 아이템 우클릭: {CurrentItem.ItemData.ItemName}");
         }
         
         /// <summary>
@@ -300,7 +305,9 @@ namespace AFKS.UISystem
         {
             if (UIManager.Instance != null && CurrentItem != null)
             {
+                #pragma warning disable CS0618 // Type or member is obsolete
                 ItemData itemData = CurrentItem.ItemData;
+                #pragma warning restore CS0618 // Type or member is obsolete
                 string info = $"{itemData.ItemName}";
                 
                 if (itemData.IsStackable && CurrentItem.Quantity > 1)
@@ -331,7 +338,9 @@ namespace AFKS.UISystem
         {
             if (UIManager.Instance != null && CurrentItem != null)
             {
+                #pragma warning disable CS0618 // Type or member is obsolete
                 ItemData itemData = CurrentItem.ItemData;
+                #pragma warning restore CS0618 // Type or member is obsolete
                 string detailedInfo = $"{itemData.ItemName}\n\n{itemData.Description}";
                 
                 // 상세 정보 패널에 표시

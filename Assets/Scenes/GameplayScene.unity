@@ -1174,6 +1174,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stages:
   - {fileID: 11400000, guid: 0a63dcec07d933b4cb4f3d362547689f, type: 2}
+  - {fileID: 11400000, guid: a4c842ae44e8b9d4aa545a1e9ded75c5, type: 2}
   currentStageIndex: 0
   backgroundImage: {fileID: 1203855436}
   stageCanvas: {fileID: 0}

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using System.Linq;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Utils;
@@ -75,6 +76,9 @@ namespace AFKS.AudioSystem
         private List<AudioSource> activeSfxSources = new List<AudioSource>();
         private Coroutine bgmFadeCoroutine;
         
+        // === CACHE MANAGEMENT ===
+        private const int MAX_AUDIO_CACHE_SIZE = 50; // 최대 캐시 크기 제한
+        
         // === SINGLETON ACCESS ===
         private static AudioManager instance;
         public static AudioManager Instance
@@ -112,7 +116,7 @@ namespace AFKS.AudioSystem
         {
             CreateAudioSources();
             LoadAudioSettings();
-            Debug.Log("[AudioManager] Initialized");
+            Debug.Log("[오디오매니저] 초기화 완료");
         }
         
         /// <summary>
@@ -191,7 +195,7 @@ namespace AFKS.AudioSystem
         {
             if (clip == null)
             {
-                Debug.LogWarning("[AudioManager] BGM clip is null");
+                Debug.LogWarning("[오디오매니저] BGM 클립이 null입니다");
                 return;
             }
             
@@ -223,7 +227,7 @@ namespace AFKS.AudioSystem
             onBGMChanged?.Raise();
             OnBGMChanged.Raise(clip);
             
-            Debug.Log($"[AudioManager] Playing BGM: {clip.name}");
+            Debug.Log($"[오디오매니저] BGM 재생: {clip.name}");
         }
         
         /// <summary>
@@ -262,7 +266,7 @@ namespace AFKS.AudioSystem
             onBGMChanged?.Raise();
             OnBGMChanged.Raise(newClip);
             
-            Debug.Log($"[AudioManager] Crossfaded to BGM: {newClip.name}");
+            Debug.Log($"[오디오매니저] BGM 크로스페이드: {newClip.name}");
         }
         
         /// <summary>
@@ -317,14 +321,14 @@ namespace AFKS.AudioSystem
         {
             if (clip == null)
             {
-                Debug.LogWarning("[AudioManager] SFX clip is null");
+                Debug.LogWarning("[오디오매니저] SFX 클립이 null입니다");
                 return null;
             }
             
             AudioSource source = GetAvailableSFXSource();
             if (source == null)
             {
-                Debug.LogWarning("[AudioManager] No available SFX sources");
+                Debug.LogWarning("[오디오매니저] 사용가능한 SFX 소스가 없습니다");
                 return null;
             }
             
@@ -337,7 +341,7 @@ namespace AFKS.AudioSystem
             
             OnSFXPlayed.Raise(clip.name);
             
-            Debug.Log($"[AudioManager] Playing SFX: {clip.name}");
+            Debug.Log($"[오디오매니저] SFX 재생: {clip.name}");
             return source;
         }
         
@@ -389,7 +393,7 @@ namespace AFKS.AudioSystem
         {
             if (clip == null)
             {
-                Debug.LogWarning("[AudioManager] Ambient clip is null");
+                Debug.LogWarning("[오디오매니저] 엠비언트 클립이 null입니다");
                 return;
             }
             
@@ -404,7 +408,7 @@ namespace AFKS.AudioSystem
                 ambientSource.Play();
             }
             
-            Debug.Log($"[AudioManager] Playing ambient: {clip.name}");
+            Debug.Log($"[오디오매니저] 엠비언트 재생: {clip.name}");
         }
         
         /// <summary>
@@ -573,6 +577,35 @@ namespace AFKS.AudioSystem
             PlayerPrefs.Save();
         }
         
+        /// <summary>
+        /// 오디오 캐시에 클립 추가 (메모리 누수 방지)
+        /// </summary>
+        private void AddToAudioCache(string key, AudioClip clip)
+        {
+            if (audioCache.ContainsKey(key)) return;
+            
+            // 캐시 크기 제한 확인
+            if (audioCache.Count >= MAX_AUDIO_CACHE_SIZE)
+            {
+                // 가장 오래된 캐시 항목 제거 (간단한 FIFO 방식)
+                var firstKey = System.Linq.Enumerable.First(audioCache.Keys);
+                audioCache.Remove(firstKey);
+                Debug.Log($"[오디오매니저] 캐시 한계 도달, 제거: {firstKey}");
+            }
+            
+            audioCache[key] = clip;
+            Debug.Log($"[오디오매니저] 캐시에 추가: {key}");
+        }
+        
+        /// <summary>
+        /// 오디오 캐시 정리
+        /// </summary>
+        public void ClearAudioCache()
+        {
+            audioCache.Clear();
+            Debug.Log("[오디오매니저] 오디오 캐시 청소 완료");
+        }
+        
         // === SAVE SYSTEM ===
         public string GetSaveData()
         {
@@ -603,11 +636,11 @@ namespace AFKS.AudioSystem
                 
                 UpdateAllVolumes();
                 
-                Debug.Log("[AudioManager] Save data loaded successfully");
+                Debug.Log("[오디오매니저] 저장 데이터 로드 성공");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[AudioManager] Failed to load save data: {e.Message}");
+                Debug.LogError($"[오디오매니저] 저장 데이터 로드 실패: {e.Message}");
             }
         }
     }

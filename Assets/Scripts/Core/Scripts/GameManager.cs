@@ -40,6 +40,9 @@ namespace AFKS.Core
         [SerializeField, Range(0, 10), Tooltip("현재 진행 중인 스테이지 인덱스")] private int currentStageIndex = 0;
         [SerializeField, Tooltip("게임 진행 시간 (초)")] private float gameTime = 0f;
         
+        // === PERFORMANCE MONITORING ===
+        private float performanceMonitorTimer = 0f;
+        
         [Header("📡 이벤트")]
         [SerializeField, Tooltip("게임 상태 변경 시 발생하는 이벤트")] private GameEvent onGameStateChanged;
         [SerializeField, Tooltip("게임 일시정지 시 발생하는 이벤트")] private GameEvent onGamePaused;
@@ -86,8 +89,13 @@ namespace AFKS.Core
                 OnGameTimeUpdated.Raise(gameTime);
             }
             
-            // 성능 모니터링
-            MonitorPerformance();
+            // 성능 모니터링 (최적화: 1초마다 실행)
+            performanceMonitorTimer += Time.unscaledDeltaTime;
+            if (performanceMonitorTimer >= 1f)
+            {
+                MonitorPerformance();
+                performanceMonitorTimer = 0f;
+            }
         }
         
         private void OnApplicationPause(bool pauseStatus)
@@ -115,7 +123,7 @@ namespace AFKS.Core
             // 화면 꺼짐 방지
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
             
-            Debug.Log("[GameManager] Game initialized successfully");
+            Debug.Log("[게임매니저] 게임 초기화 성공");
         }
         
         // === GAME STATE MANAGEMENT ===
@@ -126,7 +134,7 @@ namespace AFKS.Core
             GameState previousState = currentState;
             currentState = newState;
             
-            Debug.Log($"[GameManager] State changed: {previousState} -> {newState}");
+            Debug.Log($"[게임매니저] 상태 변경: {previousState} -> {newState}");
             
             // 이벤트 발생
             onGameStateChanged?.Raise();
@@ -170,14 +178,14 @@ namespace AFKS.Core
         {
             if (stageIndex < 0 || stageIndex >= Constants.TOTAL_STAGES)
             {
-                Debug.LogError($"[GameManager] Invalid stage index: {stageIndex}");
+                Debug.LogError($"[게임매니저] 잘못된 스테이지 인덱스: {stageIndex}");
                 return;
             }
             
             currentStageIndex = stageIndex;
             OnStageChanged.Raise(stageIndex);
             
-            Debug.Log($"[GameManager] Stage changed to: {stageIndex}");
+            Debug.Log($"[게임매니저] 스테이지 변경: {stageIndex}");
         }
         
         public void NextStage()
@@ -196,7 +204,7 @@ namespace AFKS.Core
             gameTime = 0f;
             currentStageIndex = 0;
             ChangeGameState(GameState.Playing);
-            Debug.Log("[GameManager] New game started");
+            Debug.Log("[게임매니저] 새 게임 시작");
         }
         
         public void PauseGame()
@@ -206,7 +214,7 @@ namespace AFKS.Core
                 IsPaused = true;
                 Time.timeScale = 0f;
                 onGamePaused?.Raise();
-                Debug.Log("[GameManager] Game paused");
+                Debug.Log("[게임매니저] 게임 일시정지");
             }
         }
         
@@ -217,20 +225,20 @@ namespace AFKS.Core
                 IsPaused = false;
                 Time.timeScale = 1f;
                 onGameResumed?.Raise();
-                Debug.Log("[GameManager] Game resumed");
+                Debug.Log("[게임매니저] 게임 재개");
             }
         }
         
         public void EndGame()
         {
             ChangeGameState(GameState.GameOver);
-            Debug.Log("[GameManager] Game ended");
+            Debug.Log("[게임매니저] 게임 종료");
         }
         
         public void ReturnToMainMenu()
         {
             ChangeGameState(GameState.MainMenu);
-            Debug.Log("[GameManager] Returned to main menu");
+            Debug.Log("[게임매니저] 메인 메뉴로 돌아감");
         }
         
         // === PERFORMANCE MONITORING ===
@@ -241,7 +249,7 @@ namespace AFKS.Core
             
             if (memoryUsage > Constants.MEMORY_THRESHOLD_MB)
             {
-                Debug.LogWarning($"[GameManager] High memory usage detected: {memoryUsage}MB");
+                Debug.LogWarning($"[게임매니저] 높은 메모리 사용량 감지: {memoryUsage}MB");
                 // 필요 시 가비지 컬렉션 강제 실행
                 System.GC.Collect();
             }
@@ -277,11 +285,11 @@ namespace AFKS.Core
                 gameTime = saveData.gameTime;
                 ChangeGameState(saveData.gameState);
                 
-                Debug.Log("[GameManager] Save data loaded successfully");
+                Debug.Log("[게임매니저] 저장 데이터 로드 성공");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[GameManager] Failed to load save data: {e.Message}");
+                Debug.LogError($"[게임매니저] 저장 데이터 로드 실패: {e.Message}");
             }
         }
     }

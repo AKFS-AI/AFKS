@@ -1,4 +1,13 @@
-# AFKS 완전한 씬 구성 가이드
+# 🎮 AFKS 완전한 씬 구성 가이드 (고급 스테이지 시스템)
+
+## 🆕 **업데이트된 시스템 개요**
+
+이 가이드는 **고급 스테이지 시스템**을 기반으로 합니다:
+- ✅ **픽셀 퍼펙트 상호작용**: 이미지 외곽선 정확 클릭 감지
+- ✅ **자동 스테이지 관리**: 상호작용 객체 자동 생성/제거
+- ✅ **영구 상태 저장**: 게임 재시작시에도 진행 상황 유지
+- ✅ **자유로운 네비게이션**: M키로 스테이지 선택 및 이동
+- ✅ **TextMeshPro 기본**: 한글 폰트 완벽 지원
 
 ## ⚠️ **중요: TextMeshPro 사용**
 
@@ -21,7 +30,24 @@
 ## 📋 필요한 씬 목록
 
 ### 1. MainMenu 씬 (메인 메뉴)
-### 2. GameplayScene 씬 (게임플레이)
+### 2. GameplayScene 씬 (게임플레이 + 고급 스테이지 시스템)
+
+## 🎯 **새로운 고급 스테이지 시스템 특징**
+
+### **픽셀 퍼펙트 상호작용**
+- **이미지 기반 클릭**: 십자가, 복잡한 모양도 정확한 외곽선 감지
+- **Alpha 채널 활용**: 투명한 배경은 클릭되지 않음
+- **성능 최적화**: 미리 계산된 마스크로 빠른 처리
+
+### **자동 스테이지 관리**
+- **자동 생성/제거**: 스테이지 변경시 상호작용 객체 자동 관리
+- **부드러운 전환**: CanvasGroup 기반 페이드 효과
+- **상태 저장**: 모든 클릭 진행 상황 영구 보존
+
+### **스테이지 네비게이션**
+- **M키 단축키**: 언제든 스테이지 선택 패널
+- **자유 이동**: 잠금 해제된 스테이지 자유 탐험 (1→2는 일방통행)
+- **시각적 피드백**: 색상으로 스테이지 상태 구분
 
 ---
 
@@ -33,11 +59,17 @@
 - `QuitGame()` - 게임 종료
 - `ReloadCurrentScene()` - 현재 씬 재시작
 
+**AdvancedStageManager 메서드들 (새로 추가):**
+- `ChangeStage(int stageIndex)` - 특정 스테이지로 이동
+- `GoToNextStage()` - 다음 스테이지로 이동
+- `GoToPreviousStage()` - 이전 스테이지로 이동
+- `UnlockStage(int stageIndex)` - 스테이지 잠금 해제
+
 **버튼 이벤트 연결 순서:**
 1. 버튼 선택 > Inspector > Button 컴포넌트
 2. **On Click ()** > **+** 클릭
-3. **None (Object)** 필드에 **SceneController GameObject** 드래그
-4. **No Function** 드롭다운에서 **SceneController > 원하는 메서드** 선택
+3. **None (Object)** 필드에 **SceneController** 또는 **AdvancedStageManager GameObject** 드래그
+4. **No Function** 드롭다운에서 **원하는 메서드** 선택
 
 ---
 
@@ -405,15 +437,25 @@ GameplayScene
 - **생성**: Create Empty (MANAGERS 하위)
 - **컴포넌트**: UIManager.cs
 
-##### InventoryManager
-- **생성**: Create Empty (MANAGERS 하위)
-- **컴포넌트**: InventoryManager.cs
+##### KeyItemManager (권장) ⭐
+- **생성**: Create Empty (MANAGERS 하위)  
+- **컴포넌트**: KeyItemManager.cs
 - **설정**:
   ```
-  Max Slots: 10
+  Key Items: [Key ItemData, Flashlight ItemData] (2개)
+  Auto Save: true
+  ```
+
+##### InventoryManager (레거시)
+- **생성**: Create Empty (MANAGERS 하위)
+- **컴포넌트**: InventoryManager.cs (Obsolete)
+- **설정**:
+  ```
+  Max Slots: 2 (KeyItem 시스템에 맞게 조정)
   Allow Duplicates: false
   Auto Save: true
   ```
+- **⚠️ 참고**: KeyItemManager 사용 권장
 
 ##### StageManager
 - **생성**: Create Empty (MANAGERS 하위)
@@ -695,14 +737,53 @@ Fade Transition Duration: 0.5
 Enable UI Animations: true
 ```
 
-#### StageManager 연결
+#### AdvancedStageManager 연결 ⭐ (새로운 고급 시스템)
 ```
-Background Image: BackgroundImage
-Stage Canvas: StageCanvas (CanvasGroup 아님 주의!)
-Transition Canvas: TransitionCanvas (CanvasGroup 아님 주의!)
-Transition Duration: 1.0
-Enable Preloading: true
-Max Preload Stages: 2
+📋 스테이지 데이터:
+  Stages: StageData 배열 (Stage1.asset, Stage2.asset 등)
+  Current Stage Index: 0
+
+🎨 UI 참조:
+  Background Image: BackgroundImage (Image 컴포넌트)
+  Stage Canvas: StageCanvas (CanvasGroup 컴포넌트)
+  Transition Canvas: TransitionCanvas (CanvasGroup 컴포넌트)
+  Interaction Points Parent: InteractionPoints (Transform)
+
+⚙️ 전환 설정:
+  Transition Duration: 1.0
+  Transition Curve: AnimationCurve (EaseInOut)
+  Max Preload Stages: 2
+
+🔒 스테이지 잠금 시스템:
+  One Way Transitions: 
+    - From Stage: 1, To Stage: 2 (1→2 일방통행)
+
+💾 상태 저장:
+  Enable Auto Save: true
+  Auto Save Interval: 30 (초)
+
+🎮 상호작용 프리팹:
+  Interaction Prefabs: 상호작용 타입별 프리팹 배열
+```
+
+#### StageNavigationUI 연결 ⭐ (새로 추가)
+```
+🎯 UI 요소들:
+  Stage Selection Panel: StageNavigationPanel (GameObject)
+  Stage Button Parent: StageButtonParent (Transform)
+  Stage Button Prefab: StageButtonPrefab (GameObject)
+  Current Stage Text: CurrentStageText (TextMeshProUGUI)
+
+⚙️ 네비게이션 설정:
+  Quick Nav Key: KeyCode.M
+  Animation Duration: 0.3
+  Auto Hide Time: 10.0
+
+🎨 버튼 색상 설정:
+  Locked Stage Color: Gray
+  Unlocked Stage Color: White
+  Current Stage Color: Green
+  Restricted Stage Color: Red
 ```
 
 #### HorrorEventManager 연결

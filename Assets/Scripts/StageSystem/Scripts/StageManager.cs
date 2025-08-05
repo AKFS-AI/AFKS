@@ -28,6 +28,11 @@ namespace AFKS.StageSystem
         [SerializeField, Tooltip("스테이지 미리 로드 기능 활성화 여부")] private bool enablePreloading = true;
         [SerializeField, Range(1, 5), Tooltip("미리 로드할 스테이지 개수")] private int maxPreloadStages = 2;
         
+        [Header("🔒 고급 스테이지 시스템")]
+        [SerializeField, Tooltip("잠금 해제된 스테이지들")] private HashSet<int> unlockedStages = new HashSet<int>();
+        [SerializeField, Tooltip("픽셀 퍼펙트 상호작용 지원")] private bool enablePixelPerfectInteraction = true;
+        [SerializeField, Tooltip("자동 상태 저장 간격 (초)")] private float autoSaveInterval = 30f;
+
         [Header("📡 이벤트")]
         [SerializeField, Tooltip("스테이지 변경 시 발생하는 게임 이벤트")] private GameEvent onStageChanged;
         [SerializeField, Tooltip("스테이지 전환 시작 시 발생하는 게임 이벤트")] private GameEvent onStageTransitionStarted;
@@ -37,18 +42,27 @@ namespace AFKS.StageSystem
         public static readonly GameEvent<int> OnStageChanged = new GameEvent<int>();
         public static readonly GameEvent<StageData> OnStageDataLoaded = new GameEvent<StageData>();
         public static readonly GameEvent<float> OnTransitionProgress = new GameEvent<float>();
+        public static readonly GameEvent<int> OnStageUnlocked = new GameEvent<int>();
         
         // === PROPERTIES ===
         public StageData CurrentStage => GetStageData(currentStageIndex);
+        public StageData CurrentStageData => GetStageData(currentStageIndex);
         public int CurrentStageIndex => currentStageIndex;
         public int TotalStages => stages.Count;
         public bool IsTransitioning { get; private set; }
         public string SaveID => "StageManager";
         
+        /// <summary>
+        /// 스테이지 데이터 배열 (읽기 전용 접근)
+        /// </summary>
+        public List<StageData> Stages => stages;
+        
         // === PRIVATE FIELDS ===
         private Dictionary<int, Sprite> preloadedBackgrounds = new Dictionary<int, Sprite>();
         private List<StageInteractionController> interactionControllers = new List<StageInteractionController>();
+        private Dictionary<int, List<PixelPerfectInteractionController>> stageInteractionPoints = new Dictionary<int, List<PixelPerfectInteractionController>>();
         private bool isInitialized = false;
+        private Coroutine autoSaveCoroutine;
         
         // === SINGLETON ACCESS ===
         private static StageManager instance;
@@ -90,8 +104,18 @@ namespace AFKS.StageSystem
             // 초기 검증
             ValidateStages();
             
-            // 첫 번째 스테이지 로드
+            // 잠금 해제된 스테이지 로드
+            LoadUnlockedStages();
+            
+            // 첫 번째 스테이지 잠금 해제 및 로드
+            UnlockStage(0);
             LoadStageImmediate(currentStageIndex);
+            
+            // 픽셀 퍼펙트 상호작용 시스템 초기화
+            if (enablePixelPerfectInteraction)
+            {
+                InitializePixelPerfectInteractions();
+            }
             
             // 프리로딩 시작
             if (enablePreloading)
@@ -99,8 +123,14 @@ namespace AFKS.StageSystem
                 StartCoroutine(PreloadAdjacentStages());
             }
             
+            // 자동 저장 시작
+            if (autoSaveInterval > 0)
+            {
+                autoSaveCoroutine = StartCoroutine(AutoSaveCoroutine());
+            }
+            
             isInitialized = true;
-            Debug.Log($"[StageManager] Initialized with {stages.Count} stages");
+            Debug.Log($"[스테이지매니저] {stages.Count}개 스테이지로 초기화 완료, 픽셀퍼펙트: {enablePixelPerfectInteraction}");
         }
         
         private void ValidateStages()
@@ -109,13 +139,13 @@ namespace AFKS.StageSystem
             {
                 if (stages[i] == null)
                 {
-                    Debug.LogError($"[StageManager] Stage at index {i} is null!");
+                    Debug.LogError($"[스테이지매니저] 인덱스 {i}의 스테이지가 null입니다!");
                     continue;
                 }
                 
                 if (stages[i].BackgroundImage == null)
                 {
-                    Debug.LogWarning($"[StageManager] Stage {i} ({stages[i].StageName}) has no background image!");
+                    Debug.LogWarning($"[스테이지매니저] 스테이지 {i} ({stages[i].StageName})에 배경 이미지가 없습니다!");
                 }
             }
         }
@@ -131,13 +161,13 @@ namespace AFKS.StageSystem
         {
             if (IsTransitioning)
             {
-                Debug.LogWarning("[StageManager] Already transitioning, ignoring stage change request");
+                Debug.LogWarning("[스테이지매니저] 이미 전환 중입니다. 스테이지 변경 요청을 무시합니다.");
                 return;
             }
             
             if (!IsValidStageIndex(stageIndex))
             {
-                Debug.LogError($"[StageManager] Invalid stage index: {stageIndex}");
+                Debug.LogError($"[스테이지매니저] 잘못된 스테이지 인덱스: {stageIndex}");
                 return;
             }
             
@@ -163,7 +193,7 @@ namespace AFKS.StageSystem
             }
             else
             {
-                Debug.Log("[StageManager] Already at the last stage");
+                Debug.Log("[스테이지매니저] 이미 마지막 스테이지입니다.");
             }
         }
         
@@ -179,7 +209,7 @@ namespace AFKS.StageSystem
             }
             else
             {
-                Debug.Log("[StageManager] Already at the first stage");
+                Debug.Log("[스테이지매니저] 이미 첫 번째 스테이지입니다.");
             }
         }
         
@@ -242,7 +272,7 @@ namespace AFKS.StageSystem
                 GameManager.Instance.ChangeStage(stageIndex);
             }
             
-            Debug.Log($"[StageManager] Loaded stage: {stageData.StageName}");
+            Debug.Log($"[스테이지매니저] 스테이지 로드 완료: {stageData.StageName}");
         }
         
         /// <summary>
@@ -276,7 +306,7 @@ namespace AFKS.StageSystem
             
             OnTransitionProgress.Raise(0.9f);
             
-            Debug.Log($"[StageManager] Loaded stage async: {stageData.StageName}");
+            Debug.Log($"[스테이지매니저] 스테이지 비동기 로드 완료: {stageData.StageName}");
         }
         
         /// <summary>
@@ -403,7 +433,7 @@ namespace AFKS.StageSystem
             if (stageData?.BackgroundImage != null)
             {
                 preloadedBackgrounds[stageIndex] = stageData.BackgroundImage;
-                Debug.Log($"[StageManager] Preloaded background for stage {stageIndex}");
+                Debug.Log($"[스테이지매니저] 스테이지 {stageIndex} 배경을 미리 로드했습니다.");
             }
             
             yield return null;
@@ -459,18 +489,77 @@ namespace AFKS.StageSystem
             return IsValidStageIndex(index) ? stages[index] : null;
         }
         
-        /// <summary>
-        /// 스테이지 이름으로 인덱스 찾기
-        /// </summary>
-        public int GetStageIndex(string stageName)
+            /// <summary>
+    /// 스테이지 이름으로 인덱스 찾기
+    /// </summary>
+    public int GetStageIndex(string stageName)
+    {
+        for (int i = 0; i < stages.Count; i++)
         {
-            for (int i = 0; i < stages.Count; i++)
-            {
-                if (stages[i]?.StageName == stageName)
-                    return i;
-            }
-            return -1;
+            if (stages[i]?.StageName == stageName)
+                return i;
         }
+        return -1;
+    }
+    
+    /// <summary>
+    /// 두 스테이지 간 전환 가능 여부 확인
+    /// </summary>
+    /// <param name="fromStageIndex">출발 스테이지 인덱스</param>
+    /// <param name="toStageIndex">도착 스테이지 인덱스</param>
+    /// <returns>전환 가능 여부</returns>
+    public bool CanTransitionToStage(int fromStageIndex, int toStageIndex)
+    {
+        // 기본 검증
+        if (!IsValidStageIndex(fromStageIndex) || !IsValidStageIndex(toStageIndex))
+            return false;
+            
+        // 현재 전환 중이면 불가
+        if (IsTransitioning)
+            return false;
+            
+        // 대상 스테이지가 잠금 해제되어 있는지 확인
+        if (!CanAccessStage(toStageIndex))
+            return false;
+            
+        // 자기 자신으로의 전환은 불가 (이미 그 스테이지에 있음)
+        if (fromStageIndex == toStageIndex)
+            return false;
+            
+        // 스테이지 데이터 검증
+        var fromStage = GetStageData(fromStageIndex);
+        var toStage = GetStageData(toStageIndex);
+        
+        if (fromStage == null || toStage == null)
+            return false;
+            
+        // 일방통행 제한 확인 (스테이지 데이터에 제한 정보가 있다면)
+        // 예: 특정 조건을 만족해야만 이동 가능한 스테이지
+        if (HasTransitionRestriction(fromStageIndex, toStageIndex))
+            return false;
+            
+        return true;
+    }
+    
+    /// <summary>
+    /// 스테이지 간 전환 제한 확인
+    /// </summary>
+    private bool HasTransitionRestriction(int fromStageIndex, int toStageIndex)
+    {
+        // 거리 제한: 인접한 스테이지로만 이동 가능한 경우
+        int distance = Mathf.Abs(toStageIndex - fromStageIndex);
+        
+        // 기본적으로 인접 스테이지(거리 1) 또는 첫 번째 스테이지로만 이동 가능
+        if (distance > 1 && toStageIndex != 0)
+        {
+            return true; // 제한 있음
+        }
+        
+        // 추가 제한 로직 (예: 특정 조건 미충족)
+        // 여기에 게임 특화 로직 추가 가능
+        
+        return false; // 제한 없음
+    }
         
         // === SAVE SYSTEM ===
         public string GetSaveData()
@@ -492,11 +581,165 @@ namespace AFKS.StageSystem
                 StageSaveData saveData = JsonUtility.FromJson<StageSaveData>(data);
                 ChangeStage(saveData.currentStageIndex, false);
                 
-                Debug.Log("[StageManager] Save data loaded successfully");
+                Debug.Log("[스테이지매니저] 저장 데이터를 성공적으로 로드했습니다.");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[StageManager] Failed to load save data: {e.Message}");
+                Debug.LogError($"[스테이지매니저] 저장 데이터 로드 실패: {e.Message}");
+            }
+        }
+        
+        // === 고급 스테이지 기능들 ===
+    
+    /// <summary>
+    /// 스테이지 잠금 해제
+    /// </summary>
+    public void UnlockStage(int stageIndex)
+    {
+        if (IsValidStageIndex(stageIndex) && !unlockedStages.Contains(stageIndex))
+        {
+            unlockedStages.Add(stageIndex);
+            SaveUnlockedStages();
+            OnStageUnlocked.Raise(stageIndex);
+            Debug.Log($"[스테이지매니저] 스테이지 {stageIndex} 잠금 해제!");
+        }
+    }
+    
+    /// <summary>
+    /// 스테이지 접근 가능 여부 확인
+    /// </summary>
+    public bool CanAccessStage(int stageIndex)
+    {
+        return IsValidStageIndex(stageIndex) && unlockedStages.Contains(stageIndex);
+    }
+    
+    /// <summary>
+    /// 다음 스테이지로 이동 (잠금 해제 포함)
+    /// </summary>
+    public void GoToNextStage()
+    {
+        int nextIndex = currentStageIndex + 1;
+        if (IsValidStageIndex(nextIndex))
+        {
+            UnlockStage(nextIndex);
+            ChangeStage(nextIndex);
+        }
+    }
+    
+    /// <summary>
+    /// 이전 스테이지로 이동
+    /// </summary>
+    public void GoToPreviousStage()
+    {
+        PreviousStage();
+    }
+    
+    /// <summary>
+    /// 픽셀 퍼펙트 상호작용 시스템 초기화
+    /// </summary>
+    private void InitializePixelPerfectInteractions()
+    {
+        // 각 스테이지별 픽셀 퍼펙트 상호작용 포인트 수집
+        var allPixelPerfectControllers = FindObjectsByType<PixelPerfectInteractionController>(FindObjectsSortMode.None);
+        
+        foreach (var controller in allPixelPerfectControllers)
+        {
+            // 상호작용 컨트롤러가 속한 스테이지 확인 (GameObject 이름 또는 태그로)
+            int stageIndex = GetStageIndexFromController(controller);
+            if (stageIndex >= 0)
+            {
+                if (!stageInteractionPoints.ContainsKey(stageIndex))
+                {
+                    stageInteractionPoints[stageIndex] = new List<PixelPerfectInteractionController>();
+                }
+                stageInteractionPoints[stageIndex].Add(controller);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 컨트롤러가 속한 스테이지 인덱스 확인
+    /// </summary>
+    private int GetStageIndexFromController(PixelPerfectInteractionController controller)
+    {
+        // GameObject 이름에서 스테이지 인덱스 추출 (예: "Stage0_InteractionPoints")
+        Transform parent = controller.transform.parent;
+        while (parent != null)
+        {
+            if (parent.name.StartsWith("Stage") && parent.name.Contains("_"))
+            {
+                string indexStr = parent.name.Substring(5, parent.name.IndexOf('_') - 5);
+                if (int.TryParse(indexStr, out int stageIndex))
+                {
+                    return stageIndex;
+                }
+            }
+            parent = parent.parent;
+        }
+        return -1;
+    }
+    
+    /// <summary>
+    /// 자동 저장 코루틴
+    /// </summary>
+    private IEnumerator AutoSaveCoroutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(autoSaveInterval);
+            SaveStageStates();
+        }
+    }
+    
+    /// <summary>
+    /// 스테이지 상태들 저장
+    /// </summary>
+    private void SaveStageStates()
+    {
+        foreach (var kvp in stageInteractionPoints)
+        {
+            int stageIndex = kvp.Key;
+            var controllers = kvp.Value;
+            
+            foreach (var controller in controllers)
+            {
+                if (controller != null)
+                {
+                    var state = controller.GetCurrentState();
+                    // 상태 저장 로직 (필요에 따라 PlayerPrefs 또는 SaveSystem 사용)
+                    PlayerPrefs.SetString($"PixelPerfect_{controller.InteractionId}", JsonUtility.ToJson(state));
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 잠금 해제된 스테이지들 저장
+    /// </summary>
+    private void SaveUnlockedStages()
+    {
+        string unlockedStagesStr = string.Join(",", unlockedStages);
+        PlayerPrefs.SetString("UnlockedStages", unlockedStagesStr);
+        PlayerPrefs.Save();
+    }
+    
+    /// <summary>
+    /// 잠금 해제된 스테이지들 로드
+    /// </summary>
+    private void LoadUnlockedStages()
+    {
+        string unlockedStagesStr = PlayerPrefs.GetString("UnlockedStages", "0");
+        unlockedStages.Clear();
+        
+        if (!string.IsNullOrEmpty(unlockedStagesStr))
+        {
+            string[] indices = unlockedStagesStr.Split(',');
+            foreach (string indexStr in indices)
+            {
+                if (int.TryParse(indexStr, out int index))
+                {
+                    unlockedStages.Add(index);
+                }
             }
         }
     }
@@ -506,5 +749,6 @@ namespace AFKS.StageSystem
     public class StageSaveData
     {
         public int currentStageIndex;
+    }
     }
 }

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Collections;
 using AFKS.Shared.Events;
 using AFKS.Shared.Utils;
-using AFKS.InventorySystem;
+using AFKS.ItemSystem;
 
 namespace AFKS.UISystem
 {
@@ -109,7 +109,7 @@ namespace AFKS.UISystem
             CreateInventoryUI();
             SetupOverlays();
             
-            Debug.Log("[UIManager] Initialized");
+            Debug.Log("[UI매니저] 초기화 완료");
         }
         
         /// <summary>
@@ -138,10 +138,10 @@ namespace AFKS.UISystem
             }
             inventorySlots.Clear();
             
-            // 새 슬롯들 생성
-            if (InventoryManager.Instance != null)
+            // 간단한 키 아이템 슬롯들 생성 (열쇠, 손전등)
+            if (AFKS.ItemSystem.ItemManager.Instance != null)
             {
-                int maxSlots = InventoryManager.Instance.MaxSlots;
+                int maxSlots = 2; // 열쇠, 손전등만
                 for (int i = 0; i < maxSlots; i++)
                 {
                     GameObject slotObject = Instantiate(inventorySlotPrefab, inventoryContainer);
@@ -185,9 +185,9 @@ namespace AFKS.UISystem
         /// </summary>
         private void SetupEventListeners()
         {
-            if (InventoryManager.Instance != null)
+            if (AFKS.ItemSystem.ItemManager.Instance != null)
             {
-                InventoryManager.OnInventoryChanged.AddListener(OnInventoryChanged);
+                AFKS.ItemSystem.ItemManager.OnKeyItemObtained.AddListener(OnKeyItemObtained);
             }
         }
         
@@ -196,9 +196,9 @@ namespace AFKS.UISystem
         /// </summary>
         private void RemoveEventListeners()
         {
-            if (InventoryManager.Instance != null)
+            if (AFKS.ItemSystem.ItemManager.Instance != null)
             {
-                InventoryManager.OnInventoryChanged.RemoveListener(OnInventoryChanged);
+                AFKS.ItemSystem.ItemManager.OnKeyItemObtained.RemoveListener(OnKeyItemObtained);
             }
         }
         
@@ -269,7 +269,7 @@ namespace AFKS.UISystem
             onPanelChanged?.Raise();
             OnPanelChanged.Raise(panel);
             
-            Debug.Log($"[UIManager] Showing panel: {panel}");
+            Debug.Log($"[UI매니저] 패널 표시: {panel}");
         }
         
         /// <summary>
@@ -333,7 +333,7 @@ namespace AFKS.UISystem
             onPanelChanged?.Raise();
             OnPanelChanged.Raise(targetPanel);
             
-            Debug.Log($"[UIManager] Transitioned to panel: {targetPanel}");
+            Debug.Log($"[UI매니저] 패널 전환 완료: {targetPanel}");
         }
         
         // === INVENTORY UI ===
@@ -373,33 +373,32 @@ namespace AFKS.UISystem
             onInventoryToggled?.Raise();
             OnInventoryToggled.Raise(visible);
             
-            Debug.Log($"[UIManager] Inventory {(visible ? "opened" : "closed")}");
+            Debug.Log($"[UI매니저] 인벤토리 {(visible ? "열림" : "닫힘")}");
         }
         
         /// <summary>
         /// 인벤토리 변경 이벤트 처리
         /// </summary>
-        private void OnInventoryChanged(List<InventoryItem> items)
+        private void OnKeyItemObtained(string itemId)
         {
-            UpdateInventoryDisplay(items);
+            UpdateKeyItemDisplay();
         }
         
         /// <summary>
-        /// 인벤토리 표시 업데이트
+        /// 키 아이템 표시 업데이트 (간단화)
         /// </summary>
-        private void UpdateInventoryDisplay(List<InventoryItem> items)
+        private void UpdateKeyItemDisplay()
         {
-            // 모든 슬롯 초기화
-            foreach (var slot in inventorySlots)
-            {
-                slot.SetItem(null);
-            }
+            if (AFKS.ItemSystem.ItemManager.Instance == null) return;
             
-            // 아이템들을 슬롯에 배치
-            for (int i = 0; i < items.Count && i < inventorySlots.Count; i++)
-            {
-                inventorySlots[i].SetItem(items[i]);
-            }
+            // 키 아이템 상태 업데이트
+            bool hasKey = AFKS.ItemSystem.ItemManager.Instance.HasKey;
+            bool hasFlashlight = AFKS.ItemSystem.ItemManager.Instance.HasFlashlight;
+            
+            Debug.Log($"[UI매니저] 키 아이템 업데이트 - 열쇠: {hasKey}, 손전등: {hasFlashlight}");
+            
+            // UI 업데이트 로직 (필요시 구현)
+            // 예: 키 아이템 아이콘 활성화/비활성화
         }
         
         // === DIALOG SYSTEM ===
@@ -423,7 +422,7 @@ namespace AFKS.UISystem
             StartCoroutine(ShowDialogCoroutine(duration));
             
             OnDialogShown.Raise(text);
-            Debug.Log($"[UIManager] Showing dialog: {text}");
+            Debug.Log($"[UI매니저] 대화창 표시: {text}");
         }
         
         /// <summary>

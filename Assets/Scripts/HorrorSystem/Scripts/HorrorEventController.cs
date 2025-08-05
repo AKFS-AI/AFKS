@@ -134,7 +134,7 @@ namespace AFKS.HorrorSystem
             
             isExecuting = true;
             
-            Debug.Log($"[HorrorEventController] Executing event: {eventData.eventName}");
+            Debug.Log($"[공포이벤트컨트롤러] 이벤트 실행: {eventData.eventName}");
             
             // 게임 오브젝트 활성화
             gameObject.SetActive(true);
@@ -164,7 +164,7 @@ namespace AFKS.HorrorSystem
             isExecuting = false;
             isCompleted = true;
             
-            Debug.Log($"[HorrorEventController] Completed event: {eventData.eventName}");
+            Debug.Log($"[공포이벤트컨트롤러] 이벤트 완료: {eventData.eventName}");
         }
         
         /// <summary>
@@ -184,7 +184,7 @@ namespace AFKS.HorrorSystem
             isExecuting = false;
             gameObject.SetActive(false);
             
-            Debug.Log($"[HorrorEventController] Stopped event: {eventData.eventName}");
+            Debug.Log($"[공포이벤트컨트롤러] 이벤트 중지: {eventData.eventName}");
         }
         
         // === VISUAL EFFECTS ===

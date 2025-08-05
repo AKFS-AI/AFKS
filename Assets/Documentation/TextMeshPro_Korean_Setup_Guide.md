@@ -1,9 +1,15 @@
-# TextMeshPro 한글 폰트 완벽 설정 가이드
+# TextMeshPro 한글 폰트 완벽 설정 가이드 (고급 스테이지 시스템 호환)
 
 ## 🎯 **100% 작동 보장** - 단계별 완벽 가이드
 
 ### ⚠️ **중요사항**
 이 가이드를 **정확히** 따라하면 한글이 100% 정상 작동합니다!
+
+## 🆕 **고급 스테이지 시스템과의 완벽 호환**
+- ✅ **StageNavigationUI**: M키 네비게이션 UI의 모든 텍스트
+- ✅ **PixelPerfectInteractionController**: 상호작용 메시지 표시  
+- ✅ **AdvancedStageManager**: 상태 텍스트 및 알림 메시지
+- ✅ **기존 UI 시스템**: 인벤토리, 메뉴 등 모든 기존 UI
 
 ---
 

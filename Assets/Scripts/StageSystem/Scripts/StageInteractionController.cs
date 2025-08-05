@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
+using System.Collections.Generic;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Events;
 using AFKS.Shared.Utils;
@@ -36,6 +37,10 @@ namespace AFKS.StageSystem
         private Coroutine hoverCoroutine;
         private bool isInitialized = false;
         
+        // === CLICK COUNTER SYSTEM ===
+        private static Dictionary<string, int> clickCounters = new Dictionary<string, int>();
+        private static Dictionary<string, int> requiredClickCounts = new Dictionary<string, int>();
+        
         // === INITIALIZATION ===
         
         /// <summary>
@@ -48,6 +53,9 @@ namespace AFKS.StageSystem
             SetupComponents();
             SetupVisual();
             UpdateInteractionState();
+            
+            // 클릭 카운터 초기화
+            InitializeClickCounter();
             
             isInitialized = true;
             
@@ -257,46 +265,33 @@ namespace AFKS.StageSystem
             
             var result = interactionData.result;
             
-            // 아이템 지급
-            if (result.giveItem)
+            // 클릭 카운터 업데이트 및 체크
+            if (HandleClickCounter())
             {
-                // InventoryManager.Instance.AddItem(result.itemId);
-                Debug.Log($"[StageInteractionController] Give item: {result.itemId}");
+                return; // 카운터가 처리되었으면 다른 액션은 실행하지 않음
             }
             
-            // 스테이지 변경
-            if (result.changeStage)
+            // 아이템 지급
+            if (result.itemToAdd != null)
+            {
+                // InventoryManager.Instance.AddItem(result.itemToAdd);
+                Debug.Log($"[StageInteractionController] Give item: {result.itemToAdd.name}");
+            }
+            
+            // 스테이지 변경 (resultType 2: 다음 스테이지로 이동)
+            if (result.resultType == 2 && result.nextStageIndex >= 0)
             {
                 if (StageManager.Instance != null)
                 {
-                    StageManager.Instance.ChangeStage(result.targetStageIndex);
+                    StageManager.Instance.ChangeStage(result.nextStageIndex);
                 }
             }
             
-            // 공포 이벤트 트리거
-            if (result.triggerHorrorEvent)
+            // 메시지 표시
+            if (!string.IsNullOrEmpty(result.message))
             {
-                // HorrorEventManager.Instance.TriggerEvent(result.horrorEventId);
-                Debug.Log($"[StageInteractionController] Trigger horror event: {result.horrorEventId}");
-            }
-            
-            // 대화 표시
-            if (result.showDialog)
-            {
-                // DialogManager.Instance.ShowDialog(result.dialogText);
-                Debug.Log($"[StageInteractionController] Show dialog: {result.dialogText}");
-            }
-            
-            // 오디오 재생
-            if (result.playAudio && result.audioClip != null)
-            {
-                // AudioManager.Instance.PlaySFX(result.audioClip);
-            }
-            
-            // 커스텀 액션 실행
-            if (result.executeCustomAction)
-            {
-                ExecuteCustomAction(result.customActionId);
+                // UIManager나 NotificationManager로 메시지 표시
+                Debug.Log($"[StageInteractionController] Message: {result.message}");
             }
         }
         
@@ -393,6 +388,85 @@ namespace AFKS.StageSystem
             }
             
             transform.localScale = originalScale;
+        }
+        
+        // === CLICK COUNTER METHODS ===
+        
+        /// <summary>
+        /// 클릭 카운터 초기화
+        /// </summary>
+        private void InitializeClickCounter()
+        {
+            if (interactionData == null) return;
+            
+            // entrance_door는 5번 클릭이 필요
+            if (interactionData.id == "entrance_door")
+            {
+                requiredClickCounts[interactionData.id] = 5;
+                if (!clickCounters.ContainsKey(interactionData.id))
+                {
+                    clickCounters[interactionData.id] = 0;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 클릭 카운터 처리
+        /// </summary>
+        /// <returns>카운터가 처리되었으면 true</returns>
+        private bool HandleClickCounter()
+        {
+            if (!requiredClickCounts.ContainsKey(interactionData.id))
+                return false;
+                
+            // 클릭 카운트 증가
+            clickCounters[interactionData.id]++;
+            int currentCount = clickCounters[interactionData.id];
+            int requiredCount = requiredClickCounts[interactionData.id];
+            
+            Debug.Log($"[StageInteractionController] {interactionData.id} 클릭: {currentCount}/{requiredCount}");
+            
+            // 메시지 표시 (진행 상황)
+            string progressMessage = interactionData.result.message.Replace("{0}", currentCount.ToString());
+            Debug.Log($"[StageInteractionController] {progressMessage}");
+            
+            // 필요한 클릭 수에 도달했는지 확인
+            if (currentCount >= requiredCount)
+            {
+                Debug.Log($"[StageInteractionController] {interactionData.id}: 클릭 조건 완료! 다음 스테이지로 이동");
+                
+                // 다음 스테이지로 이동
+                if (StageManager.Instance != null && interactionData.result.nextStageIndex >= 0)
+                {
+                    StageManager.Instance.ChangeStage(interactionData.result.nextStageIndex);
+                }
+                
+                // 카운터 리셋
+                clickCounters[interactionData.id] = 0;
+                return true;
+            }
+            
+            return true; // 카운터가 처리되었음을 표시
+        }
+        
+        /// <summary>
+        /// 현재 클릭 카운트 가져오기
+        /// </summary>
+        public int GetCurrentClickCount()
+        {
+            if (!clickCounters.ContainsKey(interactionData.id))
+                return 0;
+            return clickCounters[interactionData.id];
+        }
+        
+        /// <summary>
+        /// 필요한 클릭 카운트 가져오기
+        /// </summary>
+        public int GetRequiredClickCount()
+        {
+            if (!requiredClickCounts.ContainsKey(interactionData.id))
+                return 1;
+            return requiredClickCounts[interactionData.id];
         }
         
         // === UTILITY METHODS ===
