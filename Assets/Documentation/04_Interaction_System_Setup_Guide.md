@@ -64,68 +64,115 @@ ZoomController가 자동으로 배경 오버레이를 생성하지만, 수동 �
 
 ### 2.3 ZoomController Inspector 설정
 
-**ZoomController** 선택 후 Inspector에서:
+**ZoomController** 선택 후 Inspector에서 다음과 같이 설정:
 
-#### 2.3.1 줌 설정
-- **Max Zoom Scale**: 3.0 (최대 3배 확대)
-- **Zoom Duration**: 0.8 (0.8초 애니메이션)
-- **Target Image**: 런타임에 설정됨 (비워둠)
-- **Background Overlay**: 위에서 생성한 오버레이 할당
+#### 🔧 ZoomController 컴포넌트 상세 설정
+```yaml
+🔍 줌 설정:
+  Max Zoom Scale: 3.0 (1.0~5.0 범위, 최대 확대 배율)
+  Zoom Duration: 0.8 (0.1~2.0초 범위, 애니메이션 시간)
+  Target Image: [런타임에 설정됨 - 비워둠]
+  Background Overlay: [ZoomBackgroundOverlay 할당]
 
-#### 2.3.2 시각적 설정
-- **Overlay Color**: (0, 0, 0, 0.7) - 반투명 검정
-- **Zoom Curve**: EaseInOut 애니메이션 커브 설정
-  ```
-  Time 0: Value 0 (In Tangent: 0, Out Tangent: 0)
-  Time 1: Value 1 (In Tangent: 0, Out Tangent: 0)
-  ```
+🎨 시각적 설정:
+  Overlay Color: (0, 0, 0, 0.7) - 70% 투명도의 검정색
+  Zoom Curve: [EaseInOut AnimationCurve]
+    - Time 0: Value 0 (In Tangent: 0, Out Tangent: 0)
+    - Time 1: Value 1 (In Tangent: 0, Out Tangent: 0)
 
-#### 2.3.3 오디오 설정
-- **Zoom In Sound**: 확대 효과음 (예: "whoosh_in.wav")
-- **Zoom Out Sound**: 축소 효과음 (예: "whoosh_out.wav")
+🔊 오디오:
+  Zoom In Sound: [확대 효과음 클립 - 선택사항]
+  Zoom Out Sound: [축소 효과음 클립 - 선택사항]
+```
+
+> **참고**: 오디오 클립들은 선택사항이며, 할당하지 않아도 기능에는 문제없습니다.
 
 ---
 
-## 🚪 3. TwoStageInteractionController 설정
+## 🎯 3. PixelInteractionController 설정
 
 ### 3.1 컴포넌트 추가
-1. **상호작용할 메인 이미지** (예: 철문) 선택
-2. **Add Component → Scripts → StageSystem → TwoStageInteractionController**
+1. **상호작용할 이미지** 선택
+2. **Add Component → Scripts → StageSystem → PixelInteractionController**
 
 ### 3.2 Inspector 설정
 
-#### 3.2.1 1단계: 초기 상호작용 (철문)
-- **Door Image**: 메인 상호작용 이미지 (자기 자신)
-- **Door Interaction Id**: "hospital_door" (고유 ID)
-- **Door Display Name**: "병원 철문" (표시 이름)
+#### 🔧 PixelInteractionController 컴포넌트 상세 설정
+```yaml
+🎯 이미지 기반 설정:
+  Target Image: [상호작용할 Image 컴포넌트 할당]
+  Alpha Threshold: 0.1 (0.0~1.0 범위, 투명도 임계값)
+  Debug Mode: ❌ (클릭 영역 시각화 - 개발 시에만 체크)
 
-#### 3.2.2 확대 설정
-- **Zoom Scale**: 2.5 (2.5배 확대)
-- **Zoom Focus Offset**: (0, -50) (확대 중심점 오프셋)
+⚙️ 상호작용 설정:
+  Interaction Id: [고유 ID 입력]
+  Display Name: [표시될 이름]
+  Description: [설명 입력]
+  Required Click Count: 1 (필요한 클릭 횟수)
+  Target Stage Index: -1 (이동할 스테이지, -1은 이동 없음)
+  Result Message: [결과 메시지]
 
-#### 3.2.3 2단계: 쇠사슬 상호작용
-- **Chain Image**: 세부 상호작용 이미지 (쇠사슬)
-- **Chain Interaction Id**: "hospital_door_chain"
-- **Chain Display Name**: "철문의 쇠사슬"
-- **Required Chain Clicks**: 5 (5번 클릭 필요)
-- **Next Stage Index**: 1 (다음 스테이지 번호)
+🎨 시각적 피드백:
+  Hover Color: (1, 1, 0, 0.5) - 노란색 반투명
+  Hover Scale: 1.1 (호버 시 크기 배율)
+  Click Feedback Duration: 0.2 (클릭 피드백 지속시간)
 
-#### 3.2.4 시각적 피드백
-- **Hover Color**: (1, 1, 0, 0.3) - 노란색 반투명
-- **Hover Scale**: 1.05 (5% 크기 증가)
-- **Click Feedback Duration**: 0.2 (0.2초)
+🔊 오디오:
+  Hover Sound: [호버 사운드 - 선택사항]
+  Click Sound: [클릭 사운드 - 선택사항]
 
-#### 3.2.5 오디오
-- **Door Click Sound**: 철문 클릭 소리
-- **Chain Click Sound**: 쇠사슬 클릭 소리  
-- **Chain Break Sound**: 쇠사슬 끊어지는 소리
+🚀 최적화 설정:
+  Use Pre Calculated Mask: ✅ (미리 계산된 마스크 사용)
+  Mask Resolution: 128 (마스크 해상도)
+```
 
-#### 3.2.6 메시지
-- **Door Click Message**: "문을 자세히 살펴보자..."
-- **Chain Progress Message**: "쇠사슬을 부수고 있다... ({0}/{1})"
-- **Door Unlock Message**: "쇠사슬이 끊어졌다! 문이 열렸다!"
+> **참고**: PixelInteractionController는 이미지의 투명하지 않은 부분만 클릭 가능하게 만드는 정밀한 상호작용을 제공합니다.
 
-### 3.3 쇠사슬 이미지 설정
+---
+
+## 🚪 4. TwoStageInteractionController 설정
+
+### 4.1 컴포넌트 추가
+1. **상호작용할 메인 이미지** (예: 철문) 선택
+2. **Add Component → Scripts → StageSystem → TwoStageInteractionController**
+
+### 4.2 Inspector 설정
+
+#### 🔧 TwoStageInteractionController 컴포넌트 상세 설정
+```yaml
+🎯 1단계: 초기 상호작용 (철문):
+  Door Image: [메인 상호작용 이미지 할당]
+  Door Interaction Id: "hospital_door" 
+  Door Display Name: "병원 철문"
+
+🔍 확대 설정:
+  Zoom Scale: 2.5 (1.5~4.0 범위)
+  Zoom Focus Offset: (0, 0) - Vector2 좌표
+
+⛓️ 2단계: 쇠사슬 상호작용:
+  Chain Image: [세부 상호작용 이미지 할당]
+  Chain Interaction Id: "hospital_door_chain"
+  Chain Display Name: "철문의 쇠사슬"
+  Required Chain Clicks: 5
+  Next Stage Index: 1
+
+🎨 시각적 피드백:
+  Hover Color: (1, 1, 0, 0.3) - 노란색 반투명
+  Hover Scale: 1.05 (5% 크기 증가)
+  Click Feedback Duration: 0.2 (초)
+
+🔊 오디오:
+  Door Click Sound: [철문 클릭 사운드 - 선택사항]
+  Chain Click Sound: [쇠사슬 클릭 사운드 - 선택사항]
+  Chain Break Sound: [쇠사슬 해제 사운드 - 선택사항]
+
+💬 메시지:
+  Door Click Message: "문을 자세히 살펴보자..."
+  Chain Progress Message: "쇠사슬을 부수고 있다... ({0}/{1})"
+  Door Unlock Message: "쇠사슬이 끊어졌다! 문이 열렸다!"
+```
+
+### 4.3 쇠사슬 이미지 설정
 1. **메인 이미지 → 우클릭 → UI → Image**
 2. 이름을 `ChainImage`로 변경
 3. **RectTransform** 설정:

@@ -168,23 +168,13 @@ CanvasGroup:
 
 #### 🔧 GameManager 컴포넌트 상세 설정
 ```yaml
-GameManager:
-  # === 게임 상태 ===
-  Initial Game State: Playing
-  Current Game State: [런타임에 설정됨]
-  
-  # === 성능 설정 ===
-  Target Frame Rate: 60
-  Enable Performance Monitoring: ✅ 체크
-  Memory Threshold MB: 500
-  
-  # === 자동 저장 ===
-  Auto Save Interval: 30
-  Enable Auto Save: ✅ 체크
-  
-  # === 디버그 ===
-  Show Debug Info: ❌ 체크 해제 (프로덕션)
-  Debug Level: Normal
+🎮 게임 설정:
+  Game Config: [GameConfig ScriptableObject 할당]
+
+📊 현재 게임 상태:
+  Current State: MainMenu (MainMenu, Playing, Paused 등)
+  Current Stage Index: 0 (0~10 범위)
+  Game Time: 0.0 (게임 진행 시간)
 ```
 
 ### 3.3 SceneController 설정
@@ -194,19 +184,14 @@ GameManager:
 
 #### 🔧 SceneController 컴포넌트 상세 설정
 ```yaml
-SceneController:
-  # === 씬 이름 설정 ===
+🎬 씬 설정:
   Main Menu Scene Name: "MainMenu"
-  Game Scene Name: "GameplayScene"
-  
-  # === 로딩 설정 ===
-  Show Loading Screen: ✅ 체크
-  Loading Fade Duration: 1.0
-  Use Async Loading: ✅ 체크
-  
-  # === 전환 설정 ===
-  Transition Type: Fade
-  Fade Color: (0, 0, 0, 1) - 검은색
+  Game Scene Name: "Main"
+
+⏳ 로딩 설정:
+  Minimum Loading Time: 1.0 (0.5~5.0초 범위)
+  Enable Fade Transition: ✅ 체크
+  Fade Transition Duration: 0.5 (0.1~2.0초 범위)
 ```
 
 ### 3.4 StageManager 설정
@@ -216,72 +201,135 @@ SceneController:
 
 #### 🔧 StageManager 컴포넌트 상세 설정
 ```yaml
-StageManager:
-  # === 스테이지 데이터 ===
-  Stages: [Stage0_HospitalExterior, Stage1_HospitalLobby, ...]
-  Stage Canvas: [StageCanvas GameObject]
-  
-  # === 진행 설정 ===
-  Default Stage Index: 0
-  Current Stage Index: [런타임에 설정됨]
-  
-  # === 전환 설정 ===
-  Stage Transition Duration: 1.0
-  Enable Stage Validation: ✅ 체크
-  Auto Initialize: ✅ 체크
-  
-  # === 디버그 ===
-  Show Debug Info: ❌ 체크 해제
-  Debug Mode: ❌ 체크 해제
+🎭 스테이지 설정:
+  Stages: [Stage0_HospitalExterior, Stage1_HospitalLobby, ...] 
+  Current Stage Index: 0 (0~10 범위)
+
+🖼️ UI 참조:
+  Background Image: [UI/BackgroundImage 할당]
+  Stage Canvas: [GameplayCanvas 할당]
+  Transition Canvas: [UI/TransitionCanvas 할당]
+
+🌊 전환 설정:
+  Transition Duration: 1.0 (0.1~5.0초 범위)
+  Enable Preloading: ✅ 체크
+  Max Preload Stages: 2 (1~5개 범위)
+
+🔒 고급 스테이지 시스템:
+  Unlocked Stages: [시스템이 자동 관리]
+  Enable Pixel Perfect Interaction: ✅ 체크
+  Auto Save Interval: 30.0 (초)
 ```
 
 ### 3.5 AudioManager 설정
 1. **CoreManagers → 우클릭 → Create Empty**
 2. 이름을 `AudioManager`로 변경
 3. **Add Component → Scripts → AudioSystem → AudioManager**
-4. **Inspector 설정**:
-   - **Master Volume**: 1.0
-   - **BGM Volume**: 0.6
-   - **SFX Volume**: 0.8
-   - **Max BGM Sources**: 2
-   - **Max SFX Sources**: 15
-   - **BGM Crossfade Duration**: 2.0
+
+#### 🔧 AudioManager 컴포넌트 상세 설정
+```yaml
+🔊 오디오 소스:
+  BGM Source: [시스템이 자동 생성]
+  SFX Sources: [시스템이 자동 생성 배열]
+  Ambient Source: [시스템이 자동 생성]
+
+⚙️ 설정:
+  Max SFX Sources: 8 (1~16개 범위)
+  Crossfade Duration: 1.0 (0.1~5.0초 범위)
+
+🎵 볼륨 조절:
+  Master Volume: 1.0 (0.0~1.0 범위)
+  BGM Volume: 0.7 (0.0~1.0 범위)
+  SFX Volume: 0.8 (0.0~1.0 범위)
+  Ambient Volume: 0.5 (0.0~1.0 범위)
+```
 
 ### 3.6 UIManager 설정
 1. **CoreManagers → 우클릭 → Create Empty**
 2. 이름을 `UIManager`로 변경
 3. **Add Component → Scripts → UISystem → UIManager**
 4. **Inspector 설정**:
-   - **Show Debug Info**: ❌ (프로덕션에서는 체크 해제)
-   - **Transition Duration**: 0.3
-   - **Default UI Panel**: Gameplay
+
+#### 🔧 UIManager 컴포넌트 상세 설정
+```yaml
+🖼️ 메인 UI 패널:
+  Main Canvas: [GameplayCanvas 할당]
+  Gameplay Panel: [UI/GameplayPanel 할당]
+  Inventory Panel: [UI/InventoryPanel 할당]
+  Menu Panel: [UI/MenuPanel 할당]
+  Settings Panel: [UI/SettingsPanel 할당]
+  Loading Panel: [UI/LoadingPanel 할당]
+
+📱 오버레이 패널:
+  Fade Overlay: [UI/FadeOverlay 할당]
+  Dialog Panel: [UI/DialogPanel 할당]
+  Notification Panel: [UI/NotificationPanel 할당]
+
+🎒 인벤토리 UI:
+  Inventory Container: [UI/InventoryPanel/Content 할당]
+  Inventory Slot Prefab: [Prefabs/UI/InventorySlot 할당]
+  Item Name Text: [UI/ItemDetail/ItemName 할당]
+  Item Description Text: [UI/ItemDetail/Description 할당]
+  Item Detail Image: [UI/ItemDetail/Image 할당]
+
+⚙️ 설정:
+  Panel Transition Duration: 0.3 (0.1~2.0초 범위)
+  Fade Transition Duration: 0.5 (0.1~2.0초 범위)
+  Enable UI Animations: ✅ 체크
+```
 
 ### 3.7 InteractionManager 설정
 1. **CoreManagers → 우클릭 → Create Empty**
 2. 이름을 `InteractionManager`로 변경
 3. **Add Component → Scripts → InteractionSystem → InteractionManager**
-4. **Inspector 설정**:
-   - **Max Interaction Distance**: 10
-   - **Show Debug Info**: ❌
-   - **Enable Global Interactions**: ✅ 체크
+
+#### 🔧 InteractionManager 컴포넌트 상세 설정
+```yaml
+⚙️ 상호작용 설정:
+  Enable Global Interactions: ✅ 체크
+  Interaction Cooldown: 0.2 (0.1~2.0초 범위)
+  Interaction Layer: Everything (-1)
+
+🐛 디버그:
+  Show Debug Info: ❌ 체크 해제 (프로덕션)
+```
 
 ### 3.8 HorrorEventManager 설정
 1. **CoreManagers → 우클릭 → Create Empty**
 2. 이름을 `HorrorEventManager`로 변경
 3. **Add Component → Scripts → HorrorSystem → HorrorEventManager**
-4. **Inspector 설정**:
-   - **Horror Intensity**: 0.5
-   - **Enable Horror Events**: ✅ 체크
-   - **Max Concurrent Events**: 3
-   - **Event Cooldown Time**: 5.0
+
+#### 🔧 HorrorEventManager 컴포넌트 상세 설정
+```yaml
+😱 공포 설정:
+  Enable Horror Events: ✅ 체크
+  Global Cooldown: 5.0 (1.0~30.0초 범위)
+  Max Concurrent Events: 1 (1~5개 범위)
+
+🎬 컴포넌트:
+  Horror Canvas: [공포 효과 전용 Canvas 할당 - 선택사항]
+  Horror Camera: [공포 효과 전용 Camera 할당 - 선택사항]
+```
 
 ### 3.9 ItemManager 설정
 1. **CoreManagers → 우클릭 → Create Empty**
 2. 이름을 `ItemManager`로 변경
 3. **Add Component → Scripts → ItemSystem → ItemManager**
-4. **Inspector 설정**:
-   - **Auto Save**: ✅ 체크
-   - **Show Debug Info**: ❌
+
+#### 🔧 ItemManager 컴포넌트 상세 설정
+```yaml
+🔑 아이템 상태:
+  Has Key: ❌ (런타임에 변경됨)
+  Has Flashlight: ❌ (런타임에 변경됨)
+
+🎵 오디오:
+  Key Pickup Sound: [열쇠 획득 사운드 - 선택사항]
+  Flashlight Pickup Sound: [손전등 획득 사운드 - 선택사항]
+  Use Sound: [아이템 사용 사운드 - 선택사항]
+
+⚙️ 설정:
+  Auto Save: ✅ 체크
+```
 
 ---
 
@@ -302,19 +350,19 @@ RectTransform:
   Pivot: (0.5, 0.5)
 
 ZoomController:
-  # === 줌 설정 ===
-  Max Zoom Scale: 3.0
-  Zoom Duration: 0.8
-  Target Image: [런타임에 설정됨]
-  Background Overlay: [ZoomBackgroundOverlay]
+  🔍 줌 설정:
+    Max Zoom Scale: 3.0 (1.0~5.0 범위)
+    Zoom Duration: 0.8 (0.1~2.0초 범위)
+    Target Image: [런타임에 설정됨]
+    Background Overlay: [ZoomBackgroundOverlay 할당]
   
-  # === 시각적 설정 ===
-  Overlay Color: (0, 0, 0, 0.7)
-  Zoom Curve: [EaseInOut AnimationCurve]
+  🎨 시각적 설정:
+    Overlay Color: (0, 0, 0, 0.7) - 반투명 검정
+    Zoom Curve: [EaseInOut AnimationCurve]
   
-  # === 오디오 ===
-  Zoom In Sound: [줌 인 효과음]
-  Zoom Out Sound: [줌 아웃 효과음]
+  🔊 오디오:
+    Zoom In Sound: [줌 인 효과음 - 선택사항]
+    Zoom Out Sound: [줌 아웃 효과음 - 선택사항]
 ```
 
 ### 4.2 Background Overlay 생성

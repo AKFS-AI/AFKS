@@ -279,23 +279,13 @@ Transform:
   Rotation: (0, 0, 0)
   Scale: (1, 1, 1)
 
-GameManager:
-  # === 게임 상태 ===
-  Initial Game State: MainMenu
-  Current Game State: [런타임에 설정됨]
-  
-  # === 성능 설정 ===
-  Target Frame Rate: 60
-  Enable Performance Monitoring: ✅ 체크
-  Memory Threshold MB: 500
-  
-  # === 자동 저장 ===
-  Auto Save Interval: 30
-  Enable Auto Save: ✅ 체크
-  
-  # === 디버그 ===
-  Show Debug Info: ❌ 체크 해제 (프로덕션)
-  Debug Level: Normal
+🎮 게임 설정:
+  Game Config: [GameConfig ScriptableObject 할당]
+
+📊 현재 게임 상태:
+  Current State: MainMenu (MainMenu, Playing, Paused 등)
+  Current Stage Index: 0 (0~10 범위)
+  Game Time: 0.0 (게임 진행 시간)
 ```
 
 ### 4.2 SceneController 설정
@@ -310,19 +300,14 @@ Transform:
   Rotation: (0, 0, 0)
   Scale: (1, 1, 1)
 
-SceneController:
-  # === 씬 이름 설정 ===
+🎬 씬 설정:
   Main Menu Scene Name: "MainMenu"
-  Game Scene Name: "GameplayScene"
-  
-  # === 로딩 설정 ===
-  Show Loading Screen: ✅ 체크
-  Loading Fade Duration: 1.0
-  Use Async Loading: ✅ 체크
-  
-  # === 전환 설정 ===
-  Transition Type: Fade
-  Fade Color: (0, 0, 0, 1) - 검은색
+  Game Scene Name: "Main"
+
+⏳ 로딩 설정:
+  Minimum Loading Time: 1.0 (0.5~5.0초 범위)
+  Enable Fade Transition: ✅ 체크
+  Fade Transition Duration: 0.5 (0.1~2.0초 범위)
 ```
 
 ### 4.3 AudioManager 설정
@@ -337,37 +322,20 @@ Transform:
   Rotation: (0, 0, 0)
   Scale: (1, 1, 1)
 
-AudioManager:
-  # === 볼륨 설정 ===
-  Master Volume: 1.0
-  BGM Volume: 0.7
-  SFX Volume: 0.8
-  
-  # === 오디오 소스 풀링 ===
-  Max BGM Sources: 2
-  Max SFX Sources: 10
-  
-  # === BGM 전환 ===
-  BGM Crossfade Duration: 1.0
-  Play BGM On Start: ✅ 체크
-  Default BGM Clip: [메인메뉴 BGM]
-  
-  # === 최적화 ===
-  Enable Audio Pooling: ✅ 체크
-  Cleanup Interval: 60.0
+🔊 오디오 소스:
+  BGM Source: [시스템이 자동 생성]
+  SFX Sources: [시스템이 자동 생성 배열]
+  Ambient Source: [시스템이 자동 생성]
 
-AudioSource (추가 컴포넌트):
-  AudioClip: [Default BGM]
-  Output: None
-  Mute: ❌ 체크 해제
-  Bypass Effects: ❌ 체크 해제
-  Play On Awake: ✅ 체크
-  Loop: ✅ 체크
-  Priority: 0 (최고 우선순위)
-  Volume: 1.0
-  Pitch: 1.0
-  Stereo Pan: 0
-  Spatial Blend: 0 (2D)
+⚙️ 설정:
+  Max SFX Sources: 8 (1~16개 범위)
+  Crossfade Duration: 1.0 (0.1~5.0초 범위)
+
+🎵 볼륨 조절:
+  Master Volume: 1.0 (0.0~1.0 범위)
+  BGM Volume: 0.7 (0.0~1.0 범위)
+  SFX Volume: 0.8 (0.0~1.0 범위)
+  Ambient Volume: 0.5 (0.0~1.0 범위)
 ```
 
 ### 4.4 UIManager 설정
@@ -382,17 +350,30 @@ Transform:
   Rotation: (0, 0, 0)
   Scale: (1, 1, 1)
 
-UIManager:
-  # === UI 설정 ===
-  Default UI Panel: MainMenu
-  Transition Duration: 0.3
-  
-  # === 디버그 ===
-  Show Debug Info: ❌ 체크 해제 (프로덕션)
-  
-  # === 최적화 ===
-  Enable UI Pooling: ✅ 체크
-  Max Pool Size: 20
+🖼️ 메인 UI 패널:
+  Main Canvas: [MainMenuCanvas 할당]
+  Gameplay Panel: [UI/GameplayPanel 할당 - 선택사항]
+  Inventory Panel: [UI/InventoryPanel 할당 - 선택사항]
+  Menu Panel: [UI/MenuPanel 할당 - 선택사항]
+  Settings Panel: [UI/SettingsPanel 할당 - 선택사항]
+  Loading Panel: [UI/LoadingPanel 할당 - 선택사항]
+
+📱 오버레이 패널:
+  Fade Overlay: [UI/FadeOverlay 할당 - 선택사항]
+  Dialog Panel: [UI/DialogPanel 할당 - 선택사항]
+  Notification Panel: [UI/NotificationPanel 할당 - 선택사항]
+
+🎒 인벤토리 UI:
+  Inventory Container: [선택사항]
+  Inventory Slot Prefab: [선택사항]
+  Item Name Text: [선택사항]
+  Item Description Text: [선택사항]
+  Item Detail Image: [선택사항]
+
+⚙️ 설정:
+  Panel Transition Duration: 0.3 (0.1~2.0초 범위)
+  Fade Transition Duration: 0.5 (0.1~2.0초 범위)
+  Enable UI Animations: ✅ 체크
 ```
 
 ---
