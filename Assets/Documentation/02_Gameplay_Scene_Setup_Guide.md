@@ -97,20 +97,51 @@ GameplayScene (Scene)
 
 ---
 
-## 🖼️ 2. UI Canvas 설정
+## 🖼️ 2. 완전한 UI Canvas 시스템 구성
 
-### 2.1 Main Canvas 생성
+### 📋 2.1 최종 UI 구조 개요
+
+완성된 게임플레이 씬의 UI는 다음과 같은 **3계층 구조**로 구성됩니다:
+
+```
+🖼️ GameplayCanvas (최상위 메인 캔버스)
+├── 🖼️ StageCanvas (게임 콘텐츠 영역)
+│   └── 🏥 Stages (실제 스테이지들)
+│       ├── 🏗️ Stage0_HospitalExterior
+│       └── 🏗️ Stage1_HospitalLobby 
+├── 🔍 ZoomController (확대/축소 시스템)
+│   └── 🖼️ ZoomBackgroundOverlay
+└── 🎮 HUD (사용자 인터페이스)
+    ├── 🎒 InventoryPanel
+    ├── 🧭 StageNavigation
+    ├── 💬 MessagePanel
+    └── 🐛 DebugPanel
+```
+
+---
+
+### 🎨 2.2 메인 캔버스 (GameplayCanvas) 생성
+
+#### 2.2.1 기본 캔버스 생성
 1. **Hierarchy → 우클릭 → UI → Canvas**
 2. Canvas 이름을 `GameplayCanvas`로 변경
+3. **Position**: (0, 0, 0)
 
-#### 🔧 GameplayCanvas 컴포넌트 상세 설정
+#### 🔧 2.2.2 GameplayCanvas 컴포넌트 상세 설정
 ```yaml
 Canvas:
   Render Mode: Screen Space - Overlay
-  Pixel Perfect: ✅ 체크
+  Pixel Perfect: ✅ 체크 (선명한 2D 렌더링)
   Sort Order: 0
   Target Display: Display 1
   Additional Shader Channels: None
+
+CanvasScaler:
+  UI Scale Mode: Scale With Screen Size
+  Reference Resolution: 1920 x 1080 (풀HD 기준)
+  Screen Match Mode: Match Width Or Height
+  Match: 0.5 (가로/세로 균형 맞춤)
+  Reference Pixels Per Unit: 100
 
 GraphicRaycaster:
   Ignore Reversed Graphics: ✅ 체크
@@ -118,25 +149,77 @@ GraphicRaycaster:
   Blocking Mask: Everything
 ```
 
-### 2.2 Canvas Scaler 설정
-GameplayCanvas 선택 → Inspector에서 **Canvas Scaler** 컴포넌트:
+---
 
-#### 🔧 CanvasScaler 컴포넌트 상세 설정
-```yaml
-CanvasScaler:
-  UI Scale Mode: Scale With Screen Size
-  Reference Resolution: 1920 x 1080
-  Screen Match Mode: Match Width Or Height
-  Match: 0.5
-  Reference Pixels Per Unit: 100
-```
+### 🏗️ 2.3 스테이지 캔버스 (StageCanvas) 구성
 
-### 2.3 Stage Canvas 생성 (스테이지 전용)
+#### 2.3.1 StageCanvas 생성
 1. **GameplayCanvas → 우클릭 → Create Empty**
 2. 이름을 `StageCanvas`로 변경
 3. **Add Component → Canvas Group**
 
-#### 🔧 StageCanvas 컴포넌트 상세 설정
+#### 🔧 2.3.2 StageCanvas 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Stretch (전체 화면 크기)
+  Position: (0, 0, 0)
+  Left: 0, Top: 0, Right: 0, Bottom: 0
+  Anchors: (0, 0, 1, 1)
+  Pivot: (0.5, 0.5)
+
+CanvasGroup:
+  Alpha: 1 (완전 불투명)
+  Interactable: ✅ 체크 (상호작용 가능)
+  Blocks Raycasts: ✅ 체크 (레이캐스트 차단)
+  Ignore Parent Groups: ❌ 체크 해제
+```
+
+#### 2.3.3 Stages Container 생성
+1. **StageCanvas → 우클릭 → Create Empty**
+2. 이름을 `Stages`로 변경
+3. **RectTransform** 설정:
+   - **Anchor Presets**: Stretch
+   - **Left, Top, Right, Bottom**: 모두 0
+
+---
+
+### 🔍 2.4 줌 컨트롤러 (ZoomController) 구성
+
+#### 2.4.1 ZoomController 생성
+1. **GameplayCanvas → 우클릭 → Create Empty**
+2. 이름을 `ZoomController`로 변경
+3. **Add Component → Scripts → UISystem → ZoomController**
+
+#### 🔧 2.4.2 ZoomController 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Center
+  Position: (0, 0, 0)
+  Width: 100, Height: 100
+  Anchors: (0.5, 0.5, 0.5, 0.5)
+  Pivot: (0.5, 0.5)
+
+ZoomController:
+  🔍 줌 설정:
+    Max Zoom Scale: 3.0 (1.0~5.0 범위)
+    Zoom Duration: 0.8 (0.1~2.0초 범위)
+    Target Image: [런타임에 설정됨]
+    Background Overlay: [ZoomBackgroundOverlay 할당]
+  
+  🎨 시각적 설정:
+    Overlay Color: (0, 0, 0, 0.7) - 반투명 검정
+    Zoom Curve: [EaseInOut AnimationCurve]
+  
+  🔊 오디오:
+    Zoom In Sound: [줌 인 효과음 - 선택사항]
+    Zoom Out Sound: [줌 아웃 효과음 - 선택사항]
+```
+
+#### 2.4.3 ZoomBackgroundOverlay 생성
+1. **ZoomController → 우클릭 → UI → Image**
+2. 이름을 `ZoomBackgroundOverlay`로 변경
+
+#### 🔧 2.4.4 ZoomBackgroundOverlay 컴포넌트 상세 설정
 ```yaml
 RectTransform:
   Anchor: Stretch
@@ -145,12 +228,245 @@ RectTransform:
   Anchors: (0, 0, 1, 1)
   Pivot: (0.5, 0.5)
 
-CanvasGroup:
-  Alpha: 1
+Image:
+  Source Image: None
+  Color: (0, 0, 0, 0.7) - 반투명 검정 배경
+  Material: None
+  Raycast Target: ✅ 체크
+  Type: Simple
+
+Button:
   Interactable: ✅ 체크
-  Blocks Raycasts: ✅ 체크
-  Ignore Parent Groups: ❌ 체크 해제
+  Transition: None
+  Navigation: None
+  On Click(): ZoomController.ZoomOut()
+
+GameObject:
+  Active: ❌ 비활성화 (초기 상태)
 ```
+
+---
+
+### 🎮 2.5 HUD (게임 인터페이스) 구성
+
+#### 2.5.1 HUD Container 생성
+1. **GameplayCanvas → 우클릭 → Create Empty**
+2. 이름을 `HUD`로 변경
+3. **RectTransform** 설정:
+   - **Anchor Presets**: Stretch
+   - **Left, Top, Right, Bottom**: 모두 0
+
+---
+
+### 🎒 2.6 인벤토리 패널 (InventoryPanel) 구성
+
+#### 2.6.1 InventoryPanel 생성
+1. **HUD → 우클릭 → UI → Image**
+2. 이름을 `InventoryPanel`로 변경
+
+#### 🔧 2.6.2 InventoryPanel 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Top Right
+  Position: (-100, -50, 0)
+  Width: 200, Height: 100
+  Anchors: (1, 1, 1, 1)
+  Pivot: (1, 1)
+
+Image:
+  Source Image: [인벤토리 배경 이미지]
+  Color: (1, 1, 1, 0.8) - 반투명
+  Material: None
+  Raycast Target: ❌ 체크 해제 (배경)
+  Type: Sliced (9-Slice)
+```
+
+#### 2.6.3 KeySlot (열쇠 슬롯) 생성
+1. **InventoryPanel → 우클릭 → UI → Button**
+2. 이름을 `KeySlot`로 변경
+
+#### 🔧 2.6.4 KeySlot 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Center Left
+  Position: (-50, 0, 0)
+  Width: 80, Height: 80
+  Anchors: (0, 0.5, 0, 0.5)
+  Pivot: (0.5, 0.5)
+
+Image:
+  Source Image: [아이템 슬롯 배경]
+  Color: (1, 1, 1, 1)
+  Material: None
+  Raycast Target: ✅ 체크
+  Type: Sliced
+
+Button:
+  Interactable: ✅ 체크
+  Transition: Color Tint
+  Target Graphic: [자기 자신]
+  Normal Color: (1, 1, 1, 1)
+  Highlighted Color: (1, 1, 0, 1)
+  Pressed Color: (0.8, 0.8, 0.8, 1)
+  Selected Color: (1, 1, 1, 1)
+  Disabled Color: (0.5, 0.5, 0.5, 0.5)
+  Color Multiplier: 1
+  Fade Duration: 0.1
+  Navigation: None
+  On Click(): ItemManager.UseKey()
+```
+
+#### 2.6.5 FlashlightSlot (손전등 슬롯) 생성
+1. **KeySlot을 복사** (Ctrl+D)
+2. 이름을 `FlashlightSlot`로 변경
+3. **Position**: (50, 0, 0)
+4. **Button → On Click()**: ItemManager.UseFlashlight()
+
+---
+
+### 🧭 2.7 스테이지 네비게이션 (StageNavigation) 구성
+
+#### 2.7.1 StageNavigation 생성
+1. **HUD → 우클릭 → Create Empty**
+2. 이름을 `StageNavigation`로 변경
+3. **Add Component → Scripts → UISystem → StageNavigationUI**
+
+#### 🔧 2.7.2 StageNavigation 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Bottom Center
+  Position: (0, 50, 0)
+  Width: 800, Height: 100
+  Anchors: (0.5, 0, 0.5, 0)
+  Pivot: (0.5, 0)
+
+StageNavigationUI:
+  🧭 네비게이션 설정:
+    Stage Button Prefab: [StageButton 프리팹 할당]
+    Button Spacing: 120 (버튼 간격)
+    Max Visible Buttons: 5 (한 번에 보이는 버튼 수)
+  
+  🎨 시각적 설정:
+    Current Stage Color: (1, 1, 0, 1) - 노란색
+    Unlocked Stage Color: (1, 1, 1, 1) - 흰색
+    Locked Stage Color: (0.5, 0.5, 0.5, 0.5) - 회색
+  
+  🔊 오디오:
+    Button Click Sound: [버튼 클릭 사운드]
+    Stage Change Sound: [스테이지 변경 사운드]
+```
+
+---
+
+### 💬 2.8 메시지 패널 (MessagePanel) 구성
+
+#### 2.8.1 MessagePanel 생성
+1. **HUD → 우클릭 → UI → Panel**
+2. 이름을 `MessagePanel`로 변경
+
+#### 🔧 2.8.2 MessagePanel 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Bottom Center
+  Position: (0, 100, 0)
+  Width: 600, Height: 80
+  Anchors: (0.5, 0, 0.5, 0)
+  Pivot: (0.5, 0)
+
+Image:
+  Source Image: [메시지 패널 배경]
+  Color: (0, 0, 0, 0.7) - 반투명 검정
+  Material: None
+  Raycast Target: ❌ 체크 해제
+  Type: Sliced
+```
+
+#### 2.8.3 MessageText 생성
+1. **MessagePanel → 우클릭 → UI → Text - TextMeshPro**
+2. 이름을 `MessageText`로 변경
+
+#### 🔧 2.8.4 MessageText 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Stretch
+  Position: (0, 0, 0)
+  Left: 10, Top: 10, Right: 10, Bottom: 10
+  Anchors: (0, 0, 1, 1)
+  Pivot: (0.5, 0.5)
+
+TextMeshProUGUI:
+  Text: "" (비워둠)
+  Font Asset: [한글 폰트 - MaruBuri 등]
+  Font Style: Normal
+  Font Size: 24
+  Color: (1, 1, 1, 1) - 흰색
+  Alignment: Center and Middle
+  Wrapping: Enabled
+  Overflow: Ellipsis
+  Auto Size: Best Fit
+  Min Size: 12
+  Max Size: 32
+```
+
+---
+
+### 🐛 2.9 디버그 패널 (DebugPanel) 구성 [개발용]
+
+#### 2.9.1 DebugPanel 생성
+1. **HUD → 우클릭 → UI → Panel**
+2. 이름을 `DebugPanel`로 변경
+
+#### 🔧 2.9.2 DebugPanel 컴포넌트 상세 설정
+```yaml
+RectTransform:
+  Anchor: Top Left
+  Position: (10, -10, 0)
+  Width: 300, Height: 200
+  Anchors: (0, 1, 0, 1)
+  Pivot: (0, 1)
+
+Image:
+  Source Image: None
+  Color: (0, 0, 0, 0.5) - 반투명 검정
+  Material: None
+  Raycast Target: ❌ 체크 해제
+  Type: Simple
+
+GameObject:
+  Active: ❌ 비활성화 (프로덕션에서는 숨김)
+```
+
+#### 2.9.3 디버그 텍스트들 추가
+**DebugPanel** 안에 다음 TextMeshPro 텍스트들을 추가:
+
+1. **FPS Display** - 현재 프레임레이트
+2. **Stage Info** - 현재 스테이지 인덱스/이름  
+3. **Memory Usage** - 현재 메모리 사용량
+4. **Click Counter** - 현재 상호작용 진행도
+
+---
+
+### ✅ 2.10 UI 캔버스 설정 완료 확인
+
+#### 📋 필수 UI 오브젝트 체크리스트
+- [ ] **GameplayCanvas** - 메인 UI 캔버스
+- [ ] **StageCanvas** - 스테이지 전용 캔버스  
+- [ ] **ZoomController** - 확대/축소 시스템
+- [ ] **HUD** - 사용자 인터페이스 그룹
+  - [ ] **InventoryPanel** - 인벤토리 UI
+    - [ ] **KeySlot** - 열쇠 슬롯
+    - [ ] **FlashlightSlot** - 손전등 슬롯
+  - [ ] **StageNavigation** - 스테이지 네비게이션
+  - [ ] **MessagePanel** - 메시지 표시
+    - [ ] **MessageText** - 메시지 텍스트
+  - [ ] **DebugPanel** - 디버그 정보 (개발용)
+
+#### 🔧 컴포넌트 설정 확인
+- [ ] **GameplayCanvas** → Canvas, CanvasScaler, GraphicRaycaster 모두 설정됨
+- [ ] **StageCanvas** → CanvasGroup 설정됨  
+- [ ] **ZoomController** → ZoomController 스크립트와 BackgroundOverlay 설정됨
+- [ ] **모든 UI 요소** → RectTransform 앵커와 포지션 정확히 설정됨
+- [ ] **Button 컴포넌트들** → OnClick 이벤트 연결됨
 
 ---
 
