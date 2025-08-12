@@ -9,6 +9,11 @@ namespace AFKS.Shared.Utils
     /// </summary>
     public static class Extensions
     {
+        // === MATH HELPERS ===
+        public static float Max(this float a, float b)
+        {
+            return a > b ? a : b;
+        }
         // === TRANSFORM EXTENSIONS ===
         
         /// <summary>

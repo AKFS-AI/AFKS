@@ -2,6 +2,7 @@ using UnityEngine;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Core;
+using AFKS.Shared.Utils;
 
 namespace AFKS.ItemSystem
 {
@@ -9,6 +10,7 @@ namespace AFKS.ItemSystem
     /// 오직 열쇠와 손전등만 관리하는 간단한 아이템 매니저
     /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
+    [DisallowMultipleComponent]
     public class ItemManager : BaseSingleton<ItemManager>, ISaveable
     {
         [Header("🔑 아이템 상태")]
@@ -40,7 +42,14 @@ namespace AFKS.ItemSystem
         // === UNITY LIFECYCLE ===
         protected override void OnSingletonAwake()
         {
-            LoadSavedState();
+            if (SaveManager.HasInstance)
+            {
+                SaveManager.Instance.Register(this);
+            }
+            else
+            {
+                LoadSavedState();
+            }
             Debug.Log("[아이템매니저] 초기화 완료 - 열쇠: " + hasKey + ", 손전등: " + hasFlashlight);
         }
         
@@ -63,12 +72,14 @@ namespace AFKS.ItemSystem
             Debug.Log("[아이템매니저] 열쇠 획득!");
             
             // 이벤트 발생
-            OnKeyItemObtained.Raise("key");
+            OnKeyItemObtained.Raise(Constants.ItemIds.Key);
             OnInventoryChanged.Raise();
+            AFKS.Shared.Events.EventBus.KeyItemObtained.Raise(Constants.ItemIds.Key);
+            AFKS.Shared.Events.EventBus.InventoryChanged.Raise();
             
-            // 자동 저장
-            if (autoSave)
-                SaveState();
+            // 자동 저장 -> SaveManager 경유
+            if (autoSave && SaveManager.HasInstance)
+                SaveManager.Instance.SaveAll();
         }
         
         /// <summary>
@@ -88,12 +99,14 @@ namespace AFKS.ItemSystem
             Debug.Log("[아이템매니저] 손전등 획득!");
             
             // 이벤트 발생
-            OnKeyItemObtained.Raise("flashlight");
+            OnKeyItemObtained.Raise(Constants.ItemIds.Flashlight);
             OnInventoryChanged.Raise();
+            AFKS.Shared.Events.EventBus.KeyItemObtained.Raise(Constants.ItemIds.Flashlight);
+            AFKS.Shared.Events.EventBus.InventoryChanged.Raise();
             
-            // 자동 저장
-            if (autoSave)
-                SaveState();
+            // 자동 저장 -> SaveManager 경유
+            if (autoSave && SaveManager.HasInstance)
+                SaveManager.Instance.SaveAll();
         }
         
         /// <summary>
@@ -103,11 +116,11 @@ namespace AFKS.ItemSystem
         {
             switch (itemId.ToLower())
             {
-                case "key":
+                case Constants.ItemIds.Key:
                 case "열쇠":
                     ObtainKey();
                     break;
-                case "flashlight":
+                case Constants.ItemIds.Flashlight:
                 case "손전등":
                     ObtainFlashlight();
                     break;
@@ -131,7 +144,8 @@ namespace AFKS.ItemSystem
             PlayUseSound();
             Debug.Log("[아이템매니저] 열쇠 사용");
             
-            OnKeyItemUsed.Raise("key");
+            OnKeyItemUsed.Raise(Constants.ItemIds.Key);
+            AFKS.Shared.Events.EventBus.KeyItemUsed.Raise(Constants.ItemIds.Key);
             return true;
         }
         
@@ -149,7 +163,8 @@ namespace AFKS.ItemSystem
             PlayUseSound();
             Debug.Log("[아이템매니저] 손전등 사용");
             
-            OnKeyItemUsed.Raise("flashlight");
+            OnKeyItemUsed.Raise(Constants.ItemIds.Flashlight);
+            AFKS.Shared.Events.EventBus.KeyItemUsed.Raise(Constants.ItemIds.Flashlight);
             return true;
         }
         
@@ -160,10 +175,10 @@ namespace AFKS.ItemSystem
         {
             switch (itemId.ToLower())
             {
-                case "key":
+                case Constants.ItemIds.Key:
                 case "열쇠":
                     return hasKey;
-                case "flashlight":
+                case Constants.ItemIds.Flashlight:
                 case "손전등":
                     return hasFlashlight;
                 default:
@@ -179,10 +194,10 @@ namespace AFKS.ItemSystem
         {
             switch (itemId.ToLower())
             {
-                case "key":
+                case Constants.ItemIds.Key:
                 case "열쇠":
                     return UseKey();
-                case "flashlight":
+                case Constants.ItemIds.Flashlight:
                 case "손전등":
                     return UseFlashlight();
                 default:
@@ -225,9 +240,9 @@ namespace AFKS.ItemSystem
             hasFlashlight = false;
             
             OnInventoryChanged.Raise();
-            
-            if (autoSave)
-                SaveState();
+            AFKS.Shared.Events.EventBus.InventoryChanged.Raise();
+            if (autoSave && SaveManager.HasInstance)
+                SaveManager.Instance.SaveAll();
                 
             Debug.Log("[아이템매니저] 모든 아이템 리셋 완료");
         }
@@ -242,9 +257,9 @@ namespace AFKS.ItemSystem
             hasFlashlight = true;
             
             OnInventoryChanged.Raise();
-            
-            if (autoSave)
-                SaveState();
+            AFKS.Shared.Events.EventBus.InventoryChanged.Raise();
+            if (autoSave && SaveManager.HasInstance)
+                SaveManager.Instance.SaveAll();
                 
             Debug.Log("[아이템매니저] 모든 아이템 획득 완료");
         }
@@ -294,23 +309,9 @@ namespace AFKS.ItemSystem
             }
         }
         
-        /// <summary>
-        /// 기존 PlayerPrefs 방식 저장 (호환성)
-        /// </summary>
-        public void SaveState()
-        {
-            PlayerPrefs.SetInt("ItemManager_HasKey", hasKey ? 1 : 0);
-            PlayerPrefs.SetInt("ItemManager_HasFlashlight", hasFlashlight ? 1 : 0);
-            PlayerPrefs.Save();
-        }
-        
-        /// <summary>
-        /// 기존 PlayerPrefs 방식 로드 (호환성)
-        /// </summary>
-        public void LoadState()
-        {
-            LoadSavedState();
-        }
+        // 구 방식 PlayerPrefs 저장/로드는 SaveManager 도입으로 사용 중단(호환 경로는 유지 가능)
+        public void SaveState() => SaveManager.Instance?.SaveAll();
+        public void LoadState() => LoadSavedState();
         
         private void LoadSavedState()
         {

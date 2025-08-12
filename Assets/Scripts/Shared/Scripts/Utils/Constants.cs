@@ -48,5 +48,21 @@ namespace AFKS.Shared.Utils
         public const string PLAYER_TAG = "Player";
         public const string INTERACTABLE_TAG = "Interactable";
         public const string HORROR_TRIGGER_TAG = "HorrorTrigger";
+
+        // === INTERACTION IDS (중앙 관리) ===
+        public static class InteractionIds
+        {
+            public const string HospitalDoor = "hospital_door";
+            public const string HospitalDoorChain = "hospital_door_chain";
+            public const string CrossPickup = "cross_pickup";
+            public const string CctvMonitor = "cctv_monitor";
+        }
+
+        // === KEY ITEM IDS (중앙 관리) ===
+        public static class ItemIds
+        {
+            public const string Key = "key";
+            public const string Flashlight = "flashlight";
+        }
     }
 }

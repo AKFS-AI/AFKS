@@ -244,8 +244,15 @@ namespace AFKS.StageSystem
             // 클릭 피드백 효과
             yield return StartCoroutine(ClickFeedback());
             
-            // 상호작용 결과 처리
-            ProcessInteractionResult();
+            // 상호작용 결과 처리 - 단일 소스(InteractionResult.ExecuteResult)로 위임
+            if (interactionData?.result != null)
+            {
+                // 클릭 카운터 처리 먼저 수행 (조건형 진행 시 조기 반환될 수 있음)
+                if (!HandleClickCounter())
+                {
+                    interactionData.result.ExecuteResult();
+                }
+            }
             
             // 이벤트 발생
             OnInteractionTriggered.Raise(interactionData.id);
@@ -256,44 +263,7 @@ namespace AFKS.StageSystem
             IsInteracting = false;
         }
         
-        /// <summary>
-        /// 상호작용 결과 처리
-        /// </summary>
-        private void ProcessInteractionResult()
-        {
-            if (interactionData?.result == null) return;
-            
-            var result = interactionData.result;
-            
-            // 클릭 카운터 업데이트 및 체크
-            if (HandleClickCounter())
-            {
-                return; // 카운터가 처리되었으면 다른 액션은 실행하지 않음
-            }
-            
-            // 아이템 지급
-            if (result.itemToAdd != null)
-            {
-                // InventoryManager.Instance.AddItem(result.itemToAdd);
-                Debug.Log($"[StageInteractionController] Give item: {result.itemToAdd.name}");
-            }
-            
-            // 스테이지 변경 (resultType 2: 다음 스테이지로 이동)
-            if (result.resultType == 2 && result.nextStageIndex >= 0)
-            {
-                if (StageManager.Instance != null)
-                {
-                    StageManager.Instance.ChangeStage(result.nextStageIndex);
-                }
-            }
-            
-            // 메시지 표시
-            if (!string.IsNullOrEmpty(result.message))
-            {
-                // UIManager나 NotificationManager로 메시지 표시
-                Debug.Log($"[StageInteractionController] Message: {result.message}");
-            }
-        }
+        // 결과 처리는 InteractionResult.ExecuteResult로 일원화됨
         
         /// <summary>
         /// 커스텀 액션 실행
@@ -436,7 +406,7 @@ namespace AFKS.StageSystem
                 Debug.Log($"[StageInteractionController] {interactionData.id}: 클릭 조건 완료! 다음 스테이지로 이동");
                 
                 // 다음 스테이지로 이동
-                if (StageManager.Instance != null && interactionData.result.nextStageIndex >= 0)
+                if (StageManager.Instance != null && interactionData.result != null && interactionData.result.nextStageIndex >= 0)
                 {
                     StageManager.Instance.ChangeStage(interactionData.result.nextStageIndex);
                 }
@@ -447,6 +417,17 @@ namespace AFKS.StageSystem
             }
             
             return true; // 카운터가 처리되었음을 표시
+        }
+
+        // === STATIC CLEANUP ===
+        /// <summary>
+        /// 모든 static 클릭 카운터 정리 (씬 전환 시 호출 권장)
+        /// </summary>
+        public static void ClearAllStaticData()
+        {
+            clickCounters.Clear();
+            requiredClickCounts.Clear();
+            Debug.Log("[StageInteractionController] 모든 static 클릭 카운터가 정리되었습니다.");
         }
         
         /// <summary>

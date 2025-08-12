@@ -3,6 +3,7 @@ using AFKS.Shared.Utils;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Core;
+using UnityEngine.SceneManagement;
 
 namespace AFKS.Core
 {
@@ -10,6 +11,7 @@ namespace AFKS.Core
     /// 게임 전체를 관리하는 핵심 매니저
     /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
+    [DisallowMultipleComponent]
     public class GameManager : BaseSingleton<GameManager>, ISaveable
     {
         // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
@@ -26,15 +28,10 @@ namespace AFKS.Core
         // === PERFORMANCE MONITORING ===
         private float performanceMonitorTimer = 0f;
         
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("게임 상태 변경 시 발생하는 이벤트")] private GameEvent onGameStateChanged;
-        [SerializeField, Tooltip("게임 일시정지 시 발생하는 이벤트")] private GameEvent onGamePaused;
-        [SerializeField, Tooltip("게임 재개 시 발생하는 이벤트")] private GameEvent onGameResumed;
-        
-        // === RUNTIME EVENTS ===
-        public static readonly GameEvent<GameState> OnGameStateChanged = new GameEvent<GameState>();
-        public static readonly GameEvent<int> OnStageChanged = new GameEvent<int>();
-        public static readonly GameEvent<float> OnGameTimeUpdated = new GameEvent<float>();
+        // === RUNTIME EVENTS === (정적 런타임 이벤트 + 전역 EventBus 사용)
+        [System.Obsolete("Use EventBus.GameStateChanged instead")] public static readonly GameEvent<GameState> OnGameStateChanged = new GameEvent<GameState>();
+        [System.Obsolete("Use EventBus.StageChanged instead")] public static readonly GameEvent<int> OnStageChanged = new GameEvent<int>();
+        [System.Obsolete("Use EventBus.GameTimeUpdated instead")] public static readonly GameEvent<float> OnGameTimeUpdated = new GameEvent<float>();
         
         // === PROPERTIES ===
         public GameState CurrentState => currentState;
@@ -42,17 +39,25 @@ namespace AFKS.Core
         public float GameTime => gameTime;
         public bool IsPaused { get; private set; }
         public string SaveID => "GameManager";
+        public GameConfig Config => gameConfig;
         
         // === UNITY LIFECYCLE ===
         protected override void OnSingletonAwake()
         {
             InitializeGame();
+            // 저장 시스템 등록
+            if (SaveManager.HasInstance)
+            {
+                SaveManager.Instance.Register(this);
+            }
         }
         
         private void Start()
         {
             // 초기 상태 설정
             ChangeGameState(GameState.MainMenu);
+            // 씬 전환 시 전역 EventBus 리스너 정리
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
         }
         
         private void Update()
@@ -61,6 +66,7 @@ namespace AFKS.Core
             {
                 gameTime += Time.deltaTime;
                 OnGameTimeUpdated.Raise(gameTime);
+                AFKS.Shared.Events.EventBus.GameTimeUpdated.Raise(gameTime);
             }
             
             // 성능 모니터링 (최적화: 3초마다 실행으로 부하 감소)
@@ -75,7 +81,14 @@ namespace AFKS.Core
         private void OnApplicationPause(bool pauseStatus)
         {
             if (pauseStatus)
+            {
                 PauseGame();
+                // 자동 저장 트리거
+                if (SaveManager.HasInstance)
+                {
+                    SaveManager.Instance.SaveAll();
+                }
+            }
             else
                 ResumeGame();
         }
@@ -83,7 +96,13 @@ namespace AFKS.Core
         private void OnApplicationFocus(bool hasFocus)
         {
             if (!hasFocus && currentState == GameState.Playing)
+            {
                 PauseGame();
+                if (SaveManager.HasInstance)
+                {
+                    SaveManager.Instance.SaveAll();
+                }
+            }
             else if (hasFocus && IsPaused)
                 ResumeGame();
         }
@@ -91,9 +110,10 @@ namespace AFKS.Core
         // === INITIALIZATION ===
         private void InitializeGame()
         {
-            // 프레임레이트 설정
-            Application.targetFrameRate = Constants.TARGET_FRAME_RATE;
-            
+            // GameConfig 우선 적용, 없으면 Constants로 폴백
+            int targetFps = gameConfig != null ? gameConfig.TargetFrameRate : Constants.TARGET_FRAME_RATE;
+            Application.targetFrameRate = targetFps;
+
             // 화면 꺼짐 방지
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
             
@@ -110,9 +130,9 @@ namespace AFKS.Core
             
             Debug.Log($"[게임매니저] 상태 변경: {previousState} -> {newState}");
             
-            // 이벤트 발생
-            onGameStateChanged?.Raise();
+            // 이벤트 발생 (로컬 정적 + 전역 EventBus)
             OnGameStateChanged.Raise(newState);
+            AFKS.Shared.Events.EventBus.GameStateChanged.Raise(newState);
             
             // 상태별 처리
             HandleStateChange(previousState, newState);
@@ -158,6 +178,7 @@ namespace AFKS.Core
             
             currentStageIndex = stageIndex;
             OnStageChanged.Raise(stageIndex);
+            AFKS.Shared.Events.EventBus.StageChanged.Raise(stageIndex);
             
             Debug.Log($"[게임매니저] 스테이지 변경: {stageIndex}");
         }
@@ -187,7 +208,6 @@ namespace AFKS.Core
             {
                 IsPaused = true;
                 Time.timeScale = 0f;
-                onGamePaused?.Raise();
                 Debug.Log("[게임매니저] 게임 일시정지");
             }
         }
@@ -198,7 +218,6 @@ namespace AFKS.Core
             {
                 IsPaused = false;
                 Time.timeScale = 1f;
-                onGameResumed?.Raise();
                 Debug.Log("[게임매니저] 게임 재개");
             }
         }
@@ -221,23 +240,27 @@ namespace AFKS.Core
             // 메모리 사용량 체크 (최적화: 임계값 초과 시에만 GC 실행)
             long memoryUsage = System.GC.GetTotalMemory(false) / (1024 * 1024); // MB 단위
             
-            if (memoryUsage > Constants.MEMORY_THRESHOLD_MB)
+            float thresholdMb = gameConfig != null ? gameConfig.MemoryThresholdMB : Constants.MEMORY_THRESHOLD_MB;
+            if (memoryUsage > thresholdMb)
             {
-                Debug.LogWarning($"[게임매니저] 높은 메모리 사용량 감지: {memoryUsage}MB / {Constants.MEMORY_THRESHOLD_MB}MB");
+                Debug.LogWarning($"[게임매니저] 높은 메모리 사용량 감지: {memoryUsage}MB / {thresholdMb}MB");
                 
                 // 임계값을 크게 초과한 경우에만 강제 GC 실행 (성능 영향 최소화)
-                if (memoryUsage > Constants.MEMORY_THRESHOLD_MB * 1.5f)
+                if (memoryUsage > thresholdMb * 1.5f)
                 {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                     System.GC.Collect();
                     Debug.Log($"[게임매니저] 가비지 컬렉션 실행됨. 이전: {memoryUsage}MB");
+#endif
                 }
             }
             
             // 프레임레이트 체크 (변경된 경우에만 재설정)
-            if (Application.targetFrameRate != Constants.TARGET_FRAME_RATE)
+            int desiredFps = gameConfig != null ? gameConfig.TargetFrameRate : Constants.TARGET_FRAME_RATE;
+            if (Application.targetFrameRate != desiredFps)
             {
-                Application.targetFrameRate = Constants.TARGET_FRAME_RATE;
-                Debug.Log($"[게임매니저] 프레임레이트 재설정: {Constants.TARGET_FRAME_RATE}FPS");
+                Application.targetFrameRate = desiredFps;
+                Debug.Log($"[게임매니저] 프레임레이트 재설정: {desiredFps}FPS");
             }
         }
         
@@ -271,6 +294,22 @@ namespace AFKS.Core
             {
                 Debug.LogError($"[게임매니저] 저장 데이터 로드 실패: {e.Message}");
             }
+        }
+
+        // === CLEANUP ===
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+            // 정적 이벤트 리스너 정리 (씬 전환 누수 방지)
+            OnGameStateChanged.RemoveAllListeners();
+            OnStageChanged.RemoveAllListeners();
+            OnGameTimeUpdated.RemoveAllListeners();
+        }
+
+        private void OnActiveSceneChanged(Scene arg0, Scene arg1)
+        {
+            AFKS.Shared.Events.EventBus.Reset();
         }
     }
     

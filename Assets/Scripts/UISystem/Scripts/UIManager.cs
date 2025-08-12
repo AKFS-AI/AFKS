@@ -12,7 +12,8 @@ namespace AFKS.UISystem
     /// <summary>
     /// UI 시스템을 관리하는 매니저
     /// </summary>
-    public class UIManager : MonoBehaviour
+    [DisallowMultipleComponent]
+    public class UIManager : AFKS.Shared.Core.BaseSingleton<UIManager>
     {
         [Header("🖼️ 메인 UI 패널")]
         [SerializeField, Tooltip("메인 UI Canvas (모든 UI의 부모)")] private Canvas mainCanvas;
@@ -39,13 +40,11 @@ namespace AFKS.UISystem
         [SerializeField, Range(0.1f, 2f), Tooltip("페이드 전환 애니메이션 시간 (초)")] private float fadeTransitionDuration = 0.5f;
         [SerializeField, Tooltip("UI 애니메이션 활성화 여부")] private bool enableUIAnimations = true;
         
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("패널 변경 시 발생하는 게임 이벤트")] private GameEvent onPanelChanged;
-        [SerializeField, Tooltip("인벤토리 토글 시 발생하는 게임 이벤트")] private GameEvent onInventoryToggled;
+        // 이벤트는 전역 EventBus 또는 정적 GameEvent<T>를 사용
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<UIPanel> OnPanelChanged = new GameEvent<UIPanel>();
-        public static readonly GameEvent<bool> OnInventoryToggled = new GameEvent<bool>();
+        [System.Obsolete("Use EventBus.GlobalInteraction with ui.panel events")] public static readonly GameEvent<UIPanel> OnPanelChanged = new GameEvent<UIPanel>();
+        [System.Obsolete("Use EventBus.GlobalInteraction with ui.inventory events")] public static readonly GameEvent<bool> OnInventoryToggled = new GameEvent<bool>();
         public static readonly GameEvent<string> OnDialogShown = new GameEvent<string>();
         
         // === PROPERTIES ===
@@ -59,37 +58,10 @@ namespace AFKS.UISystem
         private List<InventorySlotUI> inventorySlots = new List<InventorySlotUI>();
         private Coroutine currentTransition;
         
-        // === SINGLETON ACCESS ===
-        private static UIManager instance;
-        public static UIManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<UIManager>();
-                return instance;
-            }
-        }
-        
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                
-                // 루트 GameObject로 설정하여 DontDestroyOnLoad 경고 방지
-                if (transform.parent != null)
-                {
-                    transform.SetParent(null);
-                }
-                DontDestroyOnLoad(gameObject);
-                InitializeUIManager();
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            InitializeUIManager();
         }
         
         private void Start()
@@ -114,6 +86,14 @@ namespace AFKS.UISystem
             SetupPanelMap();
             CreateInventoryUI();
             SetupOverlays();
+            // GameConfig 반영 (애니메이션 토글/시간)
+            var gm = AFKS.Core.GameManager.Instance;
+            if (gm != null && gm.Config != null)
+            {
+                enableUIAnimations = gm.Config.EnableUIAnimations;
+                panelTransitionDuration = gm.Config.UIAnimationDuration;
+                fadeTransitionDuration = gm.Config.UIAnimationDuration;
+            }
             
             Debug.Log("[UI매니저] 초기화 완료");
         }
@@ -212,7 +192,7 @@ namespace AFKS.UISystem
         private void HandleInput()
         {
             // ESC 키로 메뉴 토글
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (AFKS.Shared.Utils.InputHelper.WasEscapePressedThisFrame())
             {
                 if (CurrentPanel == UIPanel.Gameplay)
                     ShowPanel(UIPanel.Menu);
@@ -221,7 +201,7 @@ namespace AFKS.UISystem
             }
             
             // Tab 키로 인벤토리 토글
-            if (Input.GetKeyDown(KeyCode.Tab))
+            if (AFKS.Shared.Utils.InputHelper.WasTabPressedThisFrame())
             {
                 ToggleInventory();
             }
@@ -272,8 +252,8 @@ namespace AFKS.UISystem
             
             CurrentPanel = panel;
             
-            onPanelChanged?.Raise();
             OnPanelChanged.Raise(panel);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"ui.panel:{panel}");
             
             Debug.Log($"[UI매니저] 패널 표시: {panel}");
         }
@@ -336,8 +316,8 @@ namespace AFKS.UISystem
             CurrentPanel = targetPanel;
             IsTransitioning = false;
             
-            onPanelChanged?.Raise();
             OnPanelChanged.Raise(targetPanel);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"ui.panel:{targetPanel}");
             
             Debug.Log($"[UI매니저] 패널 전환 완료: {targetPanel}");
         }
@@ -376,8 +356,8 @@ namespace AFKS.UISystem
                 }
             }
             
-            onInventoryToggled?.Raise();
             OnInventoryToggled.Raise(visible);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"ui.inventory:{(visible ? "open" : "close")}");
             
             Debug.Log($"[UI매니저] 인벤토리 {(visible ? "열림" : "닫힘")}");
         }
@@ -419,7 +399,7 @@ namespace AFKS.UISystem
             if (dialogPanel == null) return;
             
             // 대화창 텍스트 설정
-            Text dialogText = dialogPanel.GetComponentInChildren<Text>();
+            var dialogText = dialogPanel.GetComponentInChildren<TMPro.TextMeshProUGUI>();
             if (dialogText != null)
             {
                 dialogText.text = text;
@@ -495,7 +475,7 @@ namespace AFKS.UISystem
         {
             if (notificationPanel == null) return;
             
-            Text notificationText = notificationPanel.GetComponentInChildren<Text>();
+            var notificationText = notificationPanel.GetComponentInChildren<TMPro.TextMeshProUGUI>();
             if (notificationText != null)
             {
                 notificationText.text = message;

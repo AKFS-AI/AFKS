@@ -14,6 +14,7 @@ namespace AFKS.StageSystem
     /// 스테이지 관리 및 전환을 담당하는 매니저
     /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
+    [DisallowMultipleComponent]
     public class StageManager : BaseSingleton<StageManager>, ISaveable
     {
         [Header("🎭 스테이지 설정")]
@@ -31,20 +32,19 @@ namespace AFKS.StageSystem
         [SerializeField, Range(1, 5), Tooltip("미리 로드할 스테이지 개수")] private int maxPreloadStages = 2;
         
         [Header("🔒 고급 스테이지 시스템")]
-        [SerializeField, Tooltip("잠금 해제된 스테이지들")] private HashSet<int> unlockedStages = new HashSet<int>();
+        // HashSet은 Unity 직렬화가 되지 않으므로, 런타임에는 HashSet으로 운용하고 저장/인스펙터 노출은 List로 처리
+        [SerializeField, Tooltip("잠금 해제된 스테이지들 (저장용)")] private List<int> unlockedStagesSerialized = new List<int>();
+        private HashSet<int> unlockedStages = new HashSet<int>();
         [SerializeField, Tooltip("픽셀 퍼펙트 상호작용 지원")] private bool enablePixelPerfectInteraction = true;
         [SerializeField, Tooltip("자동 상태 저장 간격 (초)")] private float autoSaveInterval = 30f;
 
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("스테이지 변경 시 발생하는 게임 이벤트")] private GameEvent onStageChanged;
-        [SerializeField, Tooltip("스테이지 전환 시작 시 발생하는 게임 이벤트")] private GameEvent onStageTransitionStarted;
-        [SerializeField, Tooltip("스테이지 전환 완료 시 발생하는 게임 이벤트")] private GameEvent onStageTransitionCompleted;
+        // 이벤트는 전역 EventBus 또는 정적 GameEvent<T>를 사용
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<int> OnStageChanged = new GameEvent<int>();
+        [System.Obsolete("Use EventBus.StageChanged instead")] public static readonly GameEvent<int> OnStageChanged = new GameEvent<int>();
         public static readonly GameEvent<StageData> OnStageDataLoaded = new GameEvent<StageData>();
         public static readonly GameEvent<float> OnTransitionProgress = new GameEvent<float>();
-        public static readonly GameEvent<int> OnStageUnlocked = new GameEvent<int>();
+        [System.Obsolete("Use EventBus.StageChanged + unlock message instead")] public static readonly GameEvent<int> OnStageUnlocked = new GameEvent<int>();
         
         // === PROPERTIES ===
         public StageData CurrentStage => GetStageData(currentStageIndex);
@@ -70,6 +70,11 @@ namespace AFKS.StageSystem
         // === UNITY LIFECYCLE ===
         protected override void OnSingletonAwake()
         {
+            // 저장 시스템 등록
+            if (AFKS.Shared.Core.SaveManager.HasInstance)
+            {
+                AFKS.Shared.Core.SaveManager.Instance.Register(this);
+            }
             // 초기화는 Start에서 처리
         }
         
@@ -86,6 +91,9 @@ namespace AFKS.StageSystem
             // 초기 검증
             ValidateStages();
             
+            // 직렬화된 리스트 → 런타임 HashSet 복원
+            SyncUnlockedStagesFromSerialized();
+
             // 잠금 해제된 스테이지 로드
             LoadUnlockedStages();
             
@@ -102,6 +110,13 @@ namespace AFKS.StageSystem
             // 프리로딩 시작
             if (enablePreloading)
             {
+                // GameConfig가 있으면 설정 반영
+                var gm = AFKS.Core.GameManager.Instance;
+                if (gm != null && gm.Config != null)
+                {
+                    transitionDuration = gm.Config.StageTransitionDuration;
+                    maxPreloadStages = gm.Config.MaxPreloadStages;
+                }
                 StartCoroutine(PreloadAdjacentStages());
             }
             
@@ -211,7 +226,7 @@ namespace AFKS.StageSystem
         private IEnumerator TransitionToStage(int stageIndex)
         {
             IsTransitioning = true;
-            onStageTransitionStarted?.Raise();
+            // 전환 시작 알림은 필요 시 별도 이벤트로 분리 권장
             
             // 페이드 아웃
             yield return StartCoroutine(FadeOut());
@@ -223,7 +238,6 @@ namespace AFKS.StageSystem
             yield return StartCoroutine(FadeIn());
             
             IsTransitioning = false;
-            onStageTransitionCompleted?.Raise();
             OnTransitionProgress.Raise(1f);
         }
         
@@ -244,8 +258,8 @@ namespace AFKS.StageSystem
             SetupInteractionPoints(stageData);
             
             // 이벤트 발생
-            onStageChanged?.Raise();
             OnStageChanged.Raise(stageIndex);
+            AFKS.Shared.Events.EventBus.StageChanged.Raise(stageIndex);
             OnStageDataLoaded.Raise(stageData);
             
             // GameManager에 알림
@@ -276,8 +290,8 @@ namespace AFKS.StageSystem
             OnTransitionProgress.Raise(0.7f);
             
             // 이벤트 발생
-            onStageChanged?.Raise();
             OnStageChanged.Raise(stageIndex);
+            AFKS.Shared.Events.EventBus.StageChanged.Raise(stageIndex);
             OnStageDataLoaded.Raise(stageData);
             
             // GameManager에 알림
@@ -365,16 +379,11 @@ namespace AFKS.StageSystem
         /// </summary>
         private void CreateInteractionPoint(InteractionPoint interactionPoint)
         {
-            // Canvas 자동 찾기 (null인 경우)
+            // Canvas 필수 의존성: 인스펙터에서 지정되지 않으면 생성 중단 (배치 오류 방지)
             if (stageCanvas == null)
             {
-                stageCanvas = FindFirstObjectByType<CanvasGroup>();
-                if (stageCanvas == null)
-                {
-                    Debug.LogWarning("[StageManager] CanvasGroup을 찾을 수 없습니다. 상호작용 포인트 생성을 건너뜁니다.");
-                    return;
-                }
-                Debug.Log($"[StageManager] CanvasGroup을 자동으로 찾았습니다: {stageCanvas.name}");
+                Debug.LogError("[StageManager] stageCanvas가 설정되지 않았습니다. 상호작용 포인트 생성을 중단합니다.");
+                return;
             }
             
             // GameObject 생성
@@ -383,6 +392,10 @@ namespace AFKS.StageSystem
             
             // RectTransform 설정
             RectTransform rectTransform = pointObject.AddComponent<RectTransform>();
+            // 안전한 앵커/피벗 설정
+            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            rectTransform.pivot = new Vector2(0.5f, 0.5f);
             rectTransform.anchoredPosition = interactionPoint.position;
             rectTransform.sizeDelta = interactionPoint.size;
             
@@ -560,7 +573,8 @@ namespace AFKS.StageSystem
         {
             StageSaveData saveData = new StageSaveData
             {
-                currentStageIndex = this.currentStageIndex
+                currentStageIndex = this.currentStageIndex,
+                unlockedStageIndices = new List<int>(unlockedStages)
             };
             
             return JsonUtility.ToJson(saveData);
@@ -574,6 +588,7 @@ namespace AFKS.StageSystem
             {
                 StageSaveData saveData = JsonUtility.FromJson<StageSaveData>(data);
                 ChangeStage(saveData.currentStageIndex, false);
+                unlockedStages = new HashSet<int>(saveData.unlockedStageIndices ?? new List<int> { 0 });
                 
                 Debug.Log("[스테이지매니저] 저장 데이터를 성공적으로 로드했습니다.");
             }
@@ -593,6 +608,11 @@ namespace AFKS.StageSystem
         if (IsValidStageIndex(stageIndex) && !unlockedStages.Contains(stageIndex))
         {
             unlockedStages.Add(stageIndex);
+                // 직렬화 리스트에 반영
+                if (!unlockedStagesSerialized.Contains(stageIndex))
+                {
+                    unlockedStagesSerialized.Add(stageIndex);
+                }
             SaveUnlockedStages();
             OnStageUnlocked.Raise(stageIndex);
             Debug.Log($"[스테이지매니저] 스테이지 {stageIndex} 잠금 해제!");
@@ -700,8 +720,7 @@ namespace AFKS.StageSystem
                 if (controller != null)
                 {
                     var state = controller.GetCurrentState();
-                    // 상태 저장 로직 (필요에 따라 PlayerPrefs 또는 SaveSystem 사용)
-                    PlayerPrefs.SetString($"PixelPerfect_{controller.InteractionId}", JsonUtility.ToJson(state));
+                    // TODO: 픽셀 퍼펙트 상호작용 상태를 전용 ISaveable로 승격하여 SaveManager 번들에 포함
                 }
             }
         }
@@ -710,32 +729,29 @@ namespace AFKS.StageSystem
     /// <summary>
     /// 잠금 해제된 스테이지들 저장
     /// </summary>
-    private void SaveUnlockedStages()
+        private void SaveUnlockedStages()
     {
-        string unlockedStagesStr = string.Join(",", unlockedStages);
-        PlayerPrefs.SetString("UnlockedStages", unlockedStagesStr);
-        PlayerPrefs.Save();
+            // 직렬화 동기화 보장
+            SyncSerializedFromUnlockedStages();
+            // SaveManager 번들에 함께 저장되도록 GameManager/StageManager 저장과 함께 처리됨
+            if (AFKS.Shared.Core.SaveManager.HasInstance)
+            {
+                AFKS.Shared.Core.SaveManager.Instance.SaveAll();
+            }
     }
     
     /// <summary>
     /// 잠금 해제된 스테이지들 로드
     /// </summary>
-    private void LoadUnlockedStages()
+        private void LoadUnlockedStages()
     {
-        string unlockedStagesStr = PlayerPrefs.GetString("UnlockedStages", "0");
-        unlockedStages.Clear();
-        
-        if (!string.IsNullOrEmpty(unlockedStagesStr))
-        {
-            string[] indices = unlockedStagesStr.Split(',');
-            foreach (string indexStr in indices)
+            // SaveManager 경유 로드. 별도 PlayerPrefs 직접 접근 제거.
+            // Stage 저장 데이터에는 현재 스테이지 인덱스만 있으므로, 초기 잠금은 기본값으로 시작.
+            if (unlockedStages.Count == 0)
             {
-                if (int.TryParse(indexStr, out int index))
-                {
-                    unlockedStages.Add(index);
-                }
+                unlockedStages.Add(0);
             }
-        }
+            SyncSerializedFromUnlockedStages();
     }
     
     // === SAVE DATA ===
@@ -743,6 +759,30 @@ namespace AFKS.StageSystem
     public class StageSaveData
     {
         public int currentStageIndex;
+        public List<int> unlockedStageIndices;
+    }
+
+    // === SERIALIZATION HELPERS ===
+    private void SyncUnlockedStagesFromSerialized()
+    {
+        unlockedStages.Clear();
+        if (unlockedStagesSerialized != null)
+        {
+            foreach (var idx in unlockedStagesSerialized)
+            {
+                unlockedStages.Add(idx);
+            }
+        }
+    }
+
+    private void SyncSerializedFromUnlockedStages()
+    {
+        if (unlockedStagesSerialized == null)
+        {
+            unlockedStagesSerialized = new List<int>();
+        }
+        unlockedStagesSerialized.Clear();
+        unlockedStagesSerialized.AddRange(unlockedStages);
     }
     }
 }

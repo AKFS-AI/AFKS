@@ -116,9 +116,14 @@ namespace AFKS.StageSystem
                 Debug.LogWarning("[StageCondition] 변수 조건에서 대상 ID가 비어있습니다.");
                 return false;
             }
-            
-            string savedValue = PlayerPrefs.GetString($"GameVar_{targetId}", "");
-            return savedValue == requiredValue;
+
+            // SaveManager 변수 번들에서 조회하여 비교 (PlayerPrefs 직접 접근 제거)
+            string value;
+            if (AFKS.Shared.Core.SaveManager.HasInstance && AFKS.Shared.Core.SaveManager.Instance.TryGetVariable(targetId, out value))
+            {
+                return value == requiredValue;
+            }
+            return false;
         }
         
         /// <summary>

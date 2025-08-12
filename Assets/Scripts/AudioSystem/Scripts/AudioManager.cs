@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
-using System.Linq;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Utils;
@@ -13,6 +12,7 @@ namespace AFKS.AudioSystem
     /// 오디오 시스템을 관리하는 매니저
     /// BaseSingleton을 상속받아 싱글톤 패턴 구현
     /// </summary>
+    [DisallowMultipleComponent]
     public class AudioManager : BaseSingleton<AudioManager>, ISaveable
     {
                 [Header("🔊 오디오 소스")]
@@ -30,14 +30,12 @@ namespace AFKS.AudioSystem
         [SerializeField, Range(0f, 1f), Tooltip("효과음 볼륨")] private float sfxVolume = 0.8f;
         [SerializeField, Range(0f, 1f), Tooltip("환경음 볼륨")] private float ambientVolume = 0.5f;
         
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("BGM 변경 시 발생하는 게임 이벤트")] private GameEvent onBGMChanged;
-        [SerializeField, Tooltip("볼륨 변경 시 발생하는 게임 이벤트")] private GameEvent onVolumeChanged;
+        // 이벤트는 전역 EventBus 또는 정적 GameEvent<T>를 사용
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<AudioClip> OnBGMChanged = new GameEvent<AudioClip>();
-        public static readonly GameEvent<string> OnSFXPlayed = new GameEvent<string>();
-        public static readonly GameEvent<float> OnVolumeChanged = new GameEvent<float>();
+        [System.Obsolete("Use EventBus.BGMChanged instead")] public static readonly GameEvent<AudioClip> OnBGMChanged = new GameEvent<AudioClip>();
+        [System.Obsolete("Use EventBus.SFXPlayed instead")] public static readonly GameEvent<string> OnSFXPlayed = new GameEvent<string>();
+        [System.Obsolete("Use EventBus.VolumeChanged instead")] public static readonly GameEvent<float> OnVolumeChanged = new GameEvent<float>();
         
         // === PROPERTIES ===
         public float MasterVolume 
@@ -70,18 +68,23 @@ namespace AFKS.AudioSystem
         
         // === PRIVATE FIELDS ===
         private Dictionary<string, AudioClip> audioCache = new Dictionary<string, AudioClip>();
+        private readonly Queue<string> audioCacheKeys = new Queue<string>();
         private Queue<AudioSource> availableSfxSources = new Queue<AudioSource>();
         private List<AudioSource> activeSfxSources = new List<AudioSource>();
         private Coroutine bgmFadeCoroutine;
         
         // === CACHE MANAGEMENT ===
-        private const int MAX_AUDIO_CACHE_SIZE = 50; // 최대 캐시 크기 제한
+        private int MAX_AUDIO_CACHE_SIZE = 50; // 최대 캐시 크기 제한 (GameConfig로 덮어쓰기 가능)
         
         // === SINGLETON - BaseSingleton<T>에서 자동 관리됨 ===
         
         // === UNITY LIFECYCLE ===
         protected override void OnSingletonAwake()
         {
+            if (SaveManager.HasInstance)
+            {
+                SaveManager.Instance.Register(this);
+            }
             InitializeAudioManager();
         }
         
@@ -94,7 +97,20 @@ namespace AFKS.AudioSystem
         private void InitializeAudioManager()
         {
             CreateAudioSources();
-            LoadAudioSettings();
+            // 저장 데이터가 등록 과정에서 로드되었으므로 현재 값으로 볼륨 적용
+            ApplyDefaultsFromConfigIfUnset();
+            // GameConfig 반영(가능한 항목)
+            var gm = AFKS.Core.GameManager.Instance;
+            if (gm != null && gm.Config != null)
+            {
+                MAX_AUDIO_CACHE_SIZE = gm.Config.MaxAudioCacheSize;
+                // crossfadeDuration은 Config에 별도 필드가 없으므로 Constants로 보정
+                if (Mathf.Approximately(crossfadeDuration, 1f))
+                {
+                    crossfadeDuration = AFKS.Shared.Utils.Constants.AUDIO_FADE_DURATION;
+                }
+            }
+            UpdateAllVolumes();
             Debug.Log("[오디오매니저] 초기화 완료");
         }
         
@@ -148,19 +164,7 @@ namespace AFKS.AudioSystem
             }
         }
         
-        /// <summary>
-        /// 오디오 설정 로드
-        /// </summary>
-        private void LoadAudioSettings()
-        {
-            // PlayerPrefs에서 볼륨 설정 로드
-            masterVolume = PlayerPrefs.GetFloat("Audio_MasterVolume", 1f);
-            bgmVolume = PlayerPrefs.GetFloat("Audio_BGMVolume", 0.7f);
-            sfxVolume = PlayerPrefs.GetFloat("Audio_SFXVolume", 0.8f);
-            ambientVolume = PlayerPrefs.GetFloat("Audio_AmbientVolume", 0.5f);
-            
-            UpdateAllVolumes();
-        }
+        
         
         // === BGM CONTROL ===
         
@@ -203,8 +207,8 @@ namespace AFKS.AudioSystem
             bgmSource.volume = bgmVolume * masterVolume;
             bgmSource.Play();
             
-            onBGMChanged?.Raise();
             OnBGMChanged.Raise(clip);
+            AFKS.Shared.Events.EventBus.BGMChanged.Raise(clip);
             
             Debug.Log($"[오디오매니저] BGM 재생: {clip.name}");
         }
@@ -242,8 +246,8 @@ namespace AFKS.AudioSystem
             
             bgmSource.volume = targetVolume;
             
-            onBGMChanged?.Raise();
             OnBGMChanged.Raise(newClip);
+            AFKS.Shared.Events.EventBus.BGMChanged.Raise(newClip);
             
             Debug.Log($"[오디오매니저] BGM 크로스페이드: {newClip.name}");
         }
@@ -319,6 +323,7 @@ namespace AFKS.AudioSystem
             activeSfxSources.Add(source);
             
             OnSFXPlayed.Raise(clip.name);
+            AFKS.Shared.Events.EventBus.SFXPlayed.Raise(clip.name);
             
             Debug.Log($"[오디오매니저] SFX 재생: {clip.name}");
             return source;
@@ -336,6 +341,7 @@ namespace AFKS.AudioSystem
             
             AudioSource.PlayClipAtPoint(clip, position, volume * sfxVolume * masterVolume);
             OnSFXPlayed.Raise(clip.name);
+            AFKS.Shared.Events.EventBus.SFXPlayed.Raise(clip.name);
         }
         
         /// <summary>
@@ -507,16 +513,32 @@ namespace AFKS.AudioSystem
         /// <summary>
         /// 모든 볼륨 업데이트
         /// </summary>
+        private float pendingSaveTimer = -1f;
+        private const float SAVE_DEBOUNCE_SECONDS = 0.3f;
+
         private void UpdateAllVolumes()
         {
             UpdateBGMVolume();
             UpdateSFXVolume();
             UpdateAmbientVolume();
             
-            onVolumeChanged?.Raise();
             OnVolumeChanged.Raise(masterVolume);
+            AFKS.Shared.Events.EventBus.VolumeChanged.Raise(masterVolume);
             
-            SaveAudioSettings();
+            // 빈번한 저장을 디바운스하여 부하 감소
+            pendingSaveTimer = SAVE_DEBOUNCE_SECONDS;
+        }
+
+        private void LateUpdate()
+        {
+            if (pendingSaveTimer >= 0f)
+            {
+                pendingSaveTimer -= Time.unscaledDeltaTime;
+                if (pendingSaveTimer < 0f && AFKS.Shared.Core.SaveManager.HasInstance)
+                {
+                    AFKS.Shared.Core.SaveManager.Instance.SaveAll();
+                }
+            }
         }
         
         private void UpdateBGMVolume()
@@ -544,17 +566,7 @@ namespace AFKS.AudioSystem
                 ambientSource.volume = ambientVolume * masterVolume;
         }
         
-        /// <summary>
-        /// 오디오 설정 저장
-        /// </summary>
-        private void SaveAudioSettings()
-        {
-            PlayerPrefs.SetFloat("Audio_MasterVolume", masterVolume);
-            PlayerPrefs.SetFloat("Audio_BGMVolume", bgmVolume);
-            PlayerPrefs.SetFloat("Audio_SFXVolume", sfxVolume);
-            PlayerPrefs.SetFloat("Audio_AmbientVolume", ambientVolume);
-            PlayerPrefs.Save();
-        }
+        
         
         /// <summary>
         /// 오디오 캐시에 클립 추가 (메모리 누수 방지)
@@ -566,13 +578,17 @@ namespace AFKS.AudioSystem
             // 캐시 크기 제한 확인
             if (audioCache.Count >= MAX_AUDIO_CACHE_SIZE)
             {
-                // 가장 오래된 캐시 항목 제거 (간단한 FIFO 방식)
-                var firstKey = System.Linq.Enumerable.First(audioCache.Keys);
-                audioCache.Remove(firstKey);
-                Debug.Log($"[오디오매니저] 캐시 한계 도달, 제거: {firstKey}");
+                // 가장 오래된 캐시 항목 제거 (FIFO)
+                if (audioCacheKeys.Count > 0)
+                {
+                    var oldestKey = audioCacheKeys.Dequeue();
+                    audioCache.Remove(oldestKey);
+                    Debug.Log($"[오디오매니저] 캐시 한계 도달, 제거: {oldestKey}");
+                }
             }
             
             audioCache[key] = clip;
+            audioCacheKeys.Enqueue(key);
             Debug.Log($"[오디오매니저] 캐시에 추가: {key}");
         }
         
@@ -582,7 +598,18 @@ namespace AFKS.AudioSystem
         public void ClearAudioCache()
         {
             audioCache.Clear();
+            audioCacheKeys.Clear();
             Debug.Log("[오디오매니저] 오디오 캐시 청소 완료");
+        }
+
+        // === CLEANUP ===
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            // 정적 이벤트 리스너 정리
+            OnBGMChanged.RemoveAllListeners();
+            OnSFXPlayed.RemoveAllListeners();
+            OnVolumeChanged.RemoveAllListeners();
         }
         
         // === SAVE SYSTEM ===
@@ -621,6 +648,20 @@ namespace AFKS.AudioSystem
             {
                 Debug.LogError($"[오디오매니저] 저장 데이터 로드 실패: {e.Message}");
             }
+        }
+
+        // GameConfig 적용(선택): 초기 기본 볼륨 세팅을 GameConfig에서 가져오도록 확장 가능
+        private void ApplyDefaultsFromConfigIfUnset()
+        {
+            // 저장 데이터가 없을 때만 기본값을 GameConfig에서 가져와 초기화
+            if (!AFKS.Shared.Core.SaveManager.HasInstance) return;
+            // 간단 기준: 볼륨들이 기본 초기값(1/0.7/0.8/0.5)과 동일할 때만 Config 덮어쓰기
+            var gm = AFKS.Core.GameManager.Instance;
+            if (gm == null || gm.Config == null) return;
+            var cfg = gm.Config;
+            // 마스터는 1 기본, 나머지는 Config 기본 적용
+            if (Mathf.Approximately(bgmVolume, 0.7f)) bgmVolume = cfg.DefaultBGMVolume;
+            if (Mathf.Approximately(sfxVolume, 0.8f)) sfxVolume = cfg.DefaultSFXVolume;
         }
     }
     

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 9db26eb71a6524d4da5d803925cca886
+guid: 5367a867d0b1c5c408f9924b96b0f8a1
 TextureImporter:
   internalIDToNameTable:
   - first:
@@ -103,10 +103,10 @@ TextureImporter:
       name: Stage1_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1536
-        height: 1024
+        x: 609
+        y: 181
+        width: 313
+        height: 363
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}

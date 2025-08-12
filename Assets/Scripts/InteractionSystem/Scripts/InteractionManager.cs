@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using AFKS.Shared.Events;
 using AFKS.Shared.Interfaces;
 using AFKS.StageSystem;
+using AFKS.Shared.Core;
+using AFKS.Shared.Utils;
 
 namespace AFKS.InteractionSystem
 {
     /// <summary>
     /// 게임 전체 상호작용을 관리하는 매니저
     /// </summary>
-    public class InteractionManager : MonoBehaviour
+    [DisallowMultipleComponent]
+    public class InteractionManager : BaseSingleton<InteractionManager>
     {
         [Header("⚙️ 상호작용 설정")]
         [SerializeField, Tooltip("전역 상호작용 시스템 활성화 여부")] private bool enableGlobalInteractions = true;
@@ -20,8 +23,8 @@ namespace AFKS.InteractionSystem
         [SerializeField, Tooltip("상호작용 디버그 정보 표시 여부")] private bool showDebugInfo = false;
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<string> OnGlobalInteraction = new GameEvent<string>();
-        public static readonly GameEvent<InteractionType> OnInteractionTypeChanged = new GameEvent<InteractionType>();
+        [System.Obsolete("Use EventBus.GlobalInteraction instead")] public static readonly GameEvent<string> OnGlobalInteraction = new GameEvent<string>();
+        [System.Obsolete("Use EventBus.InteractionTypeChanged instead")] public static readonly GameEvent<InteractionType> OnInteractionTypeChanged = new GameEvent<InteractionType>();
         
         // === PROPERTIES ===
         public bool EnableGlobalInteractions 
@@ -37,37 +40,10 @@ namespace AFKS.InteractionSystem
         private Dictionary<string, IInteractable> registeredInteractables = new Dictionary<string, IInteractable>();
         private List<string> disabledInteractions = new List<string>();
         
-        // === SINGLETON ACCESS ===
-        private static InteractionManager instance;
-        public static InteractionManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<InteractionManager>();
-                return instance;
-            }
-        }
-        
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                
-                // 루트 GameObject로 설정하여 DontDestroyOnLoad 경고 방지
-                if (transform.parent != null)
-                {
-                    transform.SetParent(null);
-                }
-                DontDestroyOnLoad(gameObject);
-                InitializeManager();
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            InitializeManager();
         }
         
         private void Start()
@@ -79,9 +55,15 @@ namespace AFKS.InteractionSystem
         
         private void OnDestroy()
         {
+            // BaseSingleton 정리
+            base.OnDestroy();
             // 이벤트 리스너 해제
             StageInteractionController.OnInteractionTriggered.RemoveListener(OnInteractionTriggered);
             StageInteractionController.OnInteractionHover.RemoveListener(OnInteractionHover);
+
+            // 정적 이벤트 리스너 정리 (씬 전환 누수 방지)
+            OnGlobalInteraction.RemoveAllListeners();
+            OnInteractionTypeChanged.RemoveAllListeners();
         }
         
         // === INITIALIZATION ===
@@ -227,6 +209,7 @@ namespace AFKS.InteractionSystem
                     interactable.OnInteract();
                     
                     OnGlobalInteraction.Raise(id);
+                    AFKS.Shared.Events.EventBus.GlobalInteraction.Raise(id);
                     
                     if (showDebugInfo)
                     {
@@ -297,17 +280,17 @@ namespace AFKS.InteractionSystem
         {
             switch (interactionId)
             {
-                case "hospital_door":
+                case Constants.InteractionIds.HospitalDoor:
                     // 병원 문 상호작용 특수 처리
                     ProcessHospitalDoorInteraction();
                     break;
                     
-                case "cross_pickup":
+                case Constants.InteractionIds.CrossPickup:
                     // 십자가 수집 특수 처리
                     ProcessCrossPickupInteraction();
                     break;
                     
-                case "cctv_monitor":
+                case Constants.InteractionIds.CctvMonitor:
                     // CCTV 모니터 특수 처리
                     ProcessCCTVInteraction();
                     break;

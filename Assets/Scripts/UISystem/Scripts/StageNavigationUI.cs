@@ -59,6 +59,14 @@ namespace AFKS.UISystem
             SubscribeToEvents();
             UpdateUI();
             
+            // GameConfig 반영(애니메이션 시간/자동 숨김)
+            var gm = AFKS.Core.GameManager.Instance;
+            if (gm != null && gm.Config != null)
+            {
+                animationDuration = gm.Config.UIAnimationDuration;
+                autoHideTime = Mathf.Max(autoHideTime, 0f); // Config에 별도 값이 없으면 기존 유지
+            }
+
             // 초기에는 숨김
             SetPanelVisibility(false, false);
             

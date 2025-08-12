@@ -12,7 +12,8 @@ namespace AFKS.HorrorSystem
     /// <summary>
     /// 공포 이벤트를 관리하는 매니저
     /// </summary>
-    public class HorrorEventManager : MonoBehaviour
+    [DisallowMultipleComponent]
+    public class HorrorEventManager : AFKS.Shared.Core.BaseSingleton<HorrorEventManager>
     {
         [Header("😱 공포 설정")]
         [SerializeField, Tooltip("공포 이벤트 시스템 활성화 여부")] private bool enableHorrorEvents = true;
@@ -23,13 +24,11 @@ namespace AFKS.HorrorSystem
         [SerializeField, Tooltip("공포 효과 전용 Canvas (최상위 레이어)")] private Canvas horrorCanvas;
         [SerializeField, Tooltip("공포 효과 전용 Camera (필요시)")] private Camera horrorCamera;
         
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("공포 이벤트 시작 시 발생하는 게임 이벤트")] private GameEvent onHorrorEventTriggered;
-        [SerializeField, Tooltip("공포 이벤트 완료 시 발생하는 게임 이벤트")] private GameEvent onHorrorEventCompleted;
+        // 이벤트는 전역 EventBus 또는 정적 GameEvent<T>를 사용
         
         // === RUNTIME EVENTS ===
-        public static readonly GameEvent<string> OnHorrorEventTriggered = new GameEvent<string>();
-        public static readonly GameEvent<string> OnHorrorEventCompleted = new GameEvent<string>();
+        [System.Obsolete("Use EventBus.GlobalInteraction for trigger/complete")] public static readonly GameEvent<string> OnHorrorEventTriggered = new GameEvent<string>();
+        [System.Obsolete("Use EventBus.GlobalInteraction for trigger/complete")] public static readonly GameEvent<string> OnHorrorEventCompleted = new GameEvent<string>();
         public static readonly GameEvent<float> OnHorrorIntensityChanged = new GameEvent<float>();
         
         // === PROPERTIES ===
@@ -49,37 +48,10 @@ namespace AFKS.HorrorSystem
         private Dictionary<string, HorrorEventData> registeredEvents = new Dictionary<string, HorrorEventData>();
         private Dictionary<string, float> eventCooldowns = new Dictionary<string, float>();
         
-        // === SINGLETON ACCESS ===
-        private static HorrorEventManager instance;
-        public static HorrorEventManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                    instance = FindFirstObjectByType<HorrorEventManager>();
-                return instance;
-            }
-        }
-        
         // === UNITY LIFECYCLE ===
-        private void Awake()
+        protected override void OnSingletonAwake()
         {
-            if (instance == null)
-            {
-                instance = this;
-                
-                // 루트 GameObject로 설정하여 DontDestroyOnLoad 경고 방지
-                if (transform.parent != null)
-                {
-                    transform.SetParent(null);
-                }
-                DontDestroyOnLoad(gameObject);
-                InitializeManager();
-            }
-            else if (instance != this)
-            {
-                Destroy(gameObject);
-            }
+            InitializeManager();
         }
         
         private void Start()
@@ -106,6 +78,14 @@ namespace AFKS.HorrorSystem
             if (horrorCanvas == null)
             {
                 CreateHorrorCanvas();
+            }
+
+            // GameConfig 반영
+            var gm = AFKS.Core.GameManager.Instance;
+            if (gm != null && gm.Config != null)
+            {
+                globalCooldown = gm.Config.HorrorCooldown;
+                maxConcurrentEvents = gm.Config.MaxConcurrentHorrorEvents;
             }
             
             Debug.Log("[공포이벤트매니저] 초기화 완료");
@@ -192,8 +172,8 @@ namespace AFKS.HorrorSystem
             activeEvents.Add(controller);
             
             // 이벤트 알림
-            onHorrorEventTriggered?.Raise();
             OnHorrorEventTriggered.Raise(eventData.eventId);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"horror.trigger:{eventData.eventId}");
             
             // 트리거 딜레이
             if (eventData.triggerDelay > 0)
@@ -216,8 +196,8 @@ namespace AFKS.HorrorSystem
             }
             
             // 완료 알림
-            onHorrorEventCompleted?.Raise();
             OnHorrorEventCompleted.Raise(eventData.eventId);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"horror.complete:{eventData.eventId}");
             
             Debug.Log($"[공포이벤트매니저] 공포 이벤트 완료: {eventData.eventName}");
         }

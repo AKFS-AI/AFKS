@@ -22,10 +22,7 @@ namespace AFKS.Core
         [SerializeField, Tooltip("페이드 전환 효과 활성화 여부")] private bool enableFadeTransition = true;
         [SerializeField, Range(0.1f, 2f), Tooltip("페이드 전환 시간 (초)")] private float fadeTransitionDuration = 0.5f;
         
-        [Header("📡 이벤트")]
-        [SerializeField, Tooltip("씬 로드 시작 시 발생하는 이벤트")] private GameEvent onSceneLoadStarted;
-        [SerializeField, Tooltip("씬 로드 완료 시 발생하는 이벤트")] private GameEvent onSceneLoadCompleted;
-        [SerializeField, Tooltip("씬 로드 실패 시 발생하는 이벤트")] private GameEvent onSceneLoadFailed;
+        // 이벤트는 전역 EventBus 또는 정적 GameEvent<T>를 사용
         
         // === RUNTIME EVENTS ===
         public static readonly GameEvent<string> OnSceneLoadStarted = new GameEvent<string>();
@@ -111,8 +108,8 @@ namespace AFKS.Core
             LoadingProgress = 0f;
             
             // 이벤트 발생
-            onSceneLoadStarted?.Raise();
             OnSceneLoadStarted.Raise(sceneName);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"scene.load.start:{sceneName}");
             
             Debug.Log($"[SceneController] Starting to load scene: {sceneName}");
             
@@ -159,9 +156,13 @@ namespace AFKS.Core
             
             // 로딩 완료
             IsLoading = false;
-            onSceneLoadCompleted?.Raise();
             OnSceneLoadCompleted.Raise(sceneName);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"scene.load.done:{sceneName}");
             
+            // 씬 로딩 완료 후 static 상호작용 카운터 정리로 누수 방지
+            AFKS.StageSystem.StageInteractionController.ClearAllStaticData();
+            AFKS.StageSystem.PixelInteractionController.ClearAllStaticData();
+
             Debug.Log($"[SceneController] Scene loaded successfully: {sceneName}");
         }
         

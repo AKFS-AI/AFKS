@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using AFKS.Shared.Interfaces;
 using AFKS.Shared.Events;
 using AFKS.UISystem;
+using AFKS.Shared.Utils;
 
 namespace AFKS.StageSystem
 {
@@ -14,11 +15,12 @@ namespace AFKS.StageSystem
     /// 1단계: 철문 클릭 → 확대
     /// 2단계: 확대된 상태에서 쇠사슬 멀티 클릭 → 스테이지 전환
     /// </summary>
+    [RequireComponent(typeof(Image))]
     public class TwoStageInteractionController : MonoBehaviour, IInteractable, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
     {
         [Header("🎯 1단계: 초기 상호작용 (철문)")]
         [SerializeField, Tooltip("1단계 상호작용할 이미지 (철문)")] private Image doorImage;
-        [SerializeField, Tooltip("1단계 상호작용 ID")] private string doorInteractionId = "hospital_door";
+        [SerializeField, Tooltip("1단계 상호작용 ID")] private string doorInteractionId = Constants.InteractionIds.HospitalDoor;
         [SerializeField, Tooltip("1단계 표시 이름")] private string doorDisplayName = "병원 철문";
         
         [Header("🔍 확대 설정")]
@@ -27,7 +29,7 @@ namespace AFKS.StageSystem
         
         [Header("⛓️ 2단계: 쇠사슬 상호작용")]
         [SerializeField, Tooltip("2단계 상호작용할 이미지 (쇠사슬)")] private Image chainImage;
-        [SerializeField, Tooltip("쇠사슬 상호작용 ID")] private string chainInteractionId = "hospital_door_chain";
+        [SerializeField, Tooltip("쇠사슬 상호작용 ID")] private string chainInteractionId = Constants.InteractionIds.HospitalDoorChain;
         [SerializeField, Tooltip("쇠사슬 표시 이름")] private string chainDisplayName = "철문의 쇠사슬";
         [SerializeField, Tooltip("쇠사슬 해제에 필요한 클릭 횟수")] private int requiredChainClicks = 5;
         [SerializeField, Tooltip("다음 스테이지 인덱스")] private int nextStageIndex = 1;
@@ -96,7 +98,7 @@ namespace AFKS.StageSystem
         private void Update()
         {
             // 2단계에서 ESC 키로 줌 해제 및 1단계로 복귀
-            if (currentStage == InteractionStage.Stage2 && Input.GetKeyDown(KeyCode.Escape))
+            if (currentStage == InteractionStage.Stage2 && AFKS.Shared.Utils.InputHelper.WasEscapePressedThisFrame())
             {
                 ReturnToStage1();
             }
@@ -264,6 +266,7 @@ namespace AFKS.StageSystem
             
             // 이벤트 발생
             OnDoorClicked.Raise(doorInteractionId);
+            AFKS.Shared.Events.EventBus.DoorClicked.Raise(doorInteractionId);
         }
         
         /// <summary>
@@ -292,6 +295,7 @@ namespace AFKS.StageSystem
             
             // 이벤트 발생
             OnChainClicked.Raise(chainInteractionId);
+            AFKS.Shared.Events.EventBus.ChainClicked.Raise(chainInteractionId);
             
             // 필요한 클릭 수에 도달했는지 확인
             if (currentChainClicks >= requiredChainClicks)
@@ -324,6 +328,7 @@ namespace AFKS.StageSystem
             
             // 이벤트 발생
             OnDoorUnlocked.Raise(doorInteractionId);
+            AFKS.Shared.Events.EventBus.DoorUnlocked.Raise(doorInteractionId);
             
             // 잠시 대기
             yield return new WaitForSeconds(1.5f);
@@ -335,9 +340,10 @@ namespace AFKS.StageSystem
                 yield return new WaitForSeconds(0.8f);
             }
             
-            // 다음 스테이지로 이동
+            // 다음 스테이지로 이동 (잠금 해제 포함)
             if (nextStageIndex >= 0 && StageManager.Instance != null)
             {
+                StageManager.Instance.UnlockStage(nextStageIndex);
                 StageManager.Instance.ChangeStage(nextStageIndex);
             }
         }

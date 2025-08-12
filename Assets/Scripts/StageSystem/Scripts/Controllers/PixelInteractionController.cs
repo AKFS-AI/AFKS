@@ -188,12 +188,12 @@ namespace AFKS.StageSystem
         /// <summary>
         /// 픽셀 퍼펙트 클릭 감지
         /// </summary>
-        private bool IsPixelClickable(Vector2 screenPosition)
+        private bool IsPixelClickable(Vector2 screenPosition, Camera eventCamera)
         {
             // Screen 좌표를 로컬 좌표로 변환
             Vector2 localPoint;
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                targetImage.rectTransform, screenPosition, Camera.main, out localPoint))
+                targetImage.rectTransform, screenPosition, eventCamera, out localPoint))
             {
                 return false;
             }
@@ -261,7 +261,7 @@ namespace AFKS.StageSystem
         {
             if (!CanInteract()) return;
             
-            if (IsPixelClickable(eventData.position))
+            if (IsPixelClickable(eventData.position, eventData.enterEventCamera))
             {
                 IsHovered = true;
                 
@@ -308,7 +308,7 @@ namespace AFKS.StageSystem
         {
             if (!CanInteract()) return;
             
-            if (IsPixelClickable(eventData.position))
+            if (IsPixelClickable(eventData.position, eventData.pressEventCamera))
             {
                 OnInteract();
             }
@@ -342,6 +342,7 @@ namespace AFKS.StageSystem
             
             // 이벤트 발생
             OnPixelInteractionTriggered.Raise(interactionId);
+            AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"pixel.trigger:{interactionId}");
             
             // 짧은 딜레이 후 상호작용 완료
             yield return new WaitForSeconds(0.1f);
@@ -375,10 +376,11 @@ namespace AFKS.StageSystem
             {
                 Debug.Log($"[픽셀상호작용] {interactionId}: 클릭 조건 완료!");
                 
-                // 다음 스테이지로 이동
-                if (targetStageIndex >= 0 && StageManager.Instance != null)
+                // 다음 스테이지로 이동 이벤트만 발행 (정책 레이어에서 처리)
+                AFKS.Shared.Events.EventBus.GlobalInteraction.Raise($"pixel.complete:{interactionId}");
+                if (targetStageIndex >= 0)
                 {
-                    StageManager.Instance.ChangeStage(targetStageIndex);
+                    AFKS.Shared.Events.EventBus.StageChanged.Raise(targetStageIndex);
                 }
             }
         }
