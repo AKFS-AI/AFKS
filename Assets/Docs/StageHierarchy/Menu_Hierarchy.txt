@@ -1,0 +1,65 @@
+Title: Stage_Menu - Hierarchy & Wiring Guide
+SceneName: Stage_Menu
+Purpose: 메인 메뉴(새 게임/계속/설정/종료)
+
+Hierarchy (추천)
+- Canvas (Screen Space - Overlay)
+  - Panel_BG (Image)
+  - MainMenu (empty, MainMenuUI)
+    - Buttons
+      - Button_New
+      - Button_Continue
+      - Button_Settings
+      - Button_Quit
+  - Panel_Settings (inactive, SettingsPanel)
+
+Components & Wiring
+- Canvas: CanvasScaler(Scale With Screen Size)
+- Panel_BG: Image(color=#000000, a=0.65)
+- MainMenu(MainMenuUI):
+  - defaultStartStageId = Stage_Front
+  - continueButton = Buttons/Button_Continue
+  - settingsPanel = Panel_Settings
+- Buttons/Button_New: OnClick → MainMenuUI.OnClickNewGame()
+- Buttons/Button_Continue: OnClick → MainMenuUI.OnClickContinue()
+- Buttons/Button_Settings: OnClick → MainMenuUI.OnClickSettings()
+- Buttons/Button_Quit: OnClick → MainMenuUI.OnClickQuit()
+- Panel_Settings(SettingsPanel): 슬라이더/토글 배선(선택), 기본 비활성
+
+Notes
+- Build Settings에 Stage_Menu 추가(엔트리로 사용 시 Core→Menu 흐름 고려)
+- Save/Audio 미구현 시 Continue/Settings는 비활성/간소화 가능
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- Canvas: [Canvas, CanvasScaler, GraphicRaycaster]
+- MainMenu(MainMenuUI): [MainMenuUI]
+- Panel_Settings: [SettingsPanel]
+
+[Serialized Fields / Values]
+- MainMenuUI.defaultStartStageId = "Stage_Front"
+- MainMenuUI.continueButton = (Buttons/Button_Continue)
+- MainMenuUI.settingsPanel = (Panel_Settings)
+
+[Events / Bindings]
+- Button_New.OnClick → MainMenuUI.OnClickNewGame()
+- Button_Continue.OnClick → MainMenuUI.OnClickContinue()
+- Button_Settings.OnClick → MainMenuUI.OnClickSettings()
+- Button_Quit.OnClick → MainMenuUI.OnClickQuit()
+
+[Data / IDs]
+- StageIds.Stage_Front, Save.CurrentStageId (옵션)
+
+[Global Integration]
+- Input Lock: Modal(Settings) 시 On
+- Audio: UI 클릭 SFX(옵션)
+
+[Exceptions / Safety]
+- 세이브 미존재 시 Continue 비활성
+
+[Performance / Memory]
+- UI 배치/드로우콜 최소화
+
+[Tests]
+- 버튼 4종 동작, 설정 열기/닫기 확인
+

@@ -2,6 +2,41 @@ Title: 수수께끼 괴담 - 전체 마스터 플랜 (Core 상주 + 스테이지
 Version: v1.1 (Consolidated)
 Owner: 기획/개발 공용 문서
 
+0. 프로덕션 필수(MVP) — 이 섹션만 따르면 제작 가능
+0.1 필수 씬(3개)
+- Core(상주), Stage_Front(병원 앞), Stage_Office(관리실)
+
+0.2 필수 스크립트(8개)
+- GameEvents: StageChangeRequested(string)
+- SceneService: 페이드(스텁) → Additive Load → Activate → 이전 Unload
+- FadeCanvas: CanvasGroup 알파로 페이드/입력차단
+- StartupLoader: 시작 시 Stage_Front 요청
+- StageRoot: Initialize/Teardown 훅(비워둠)
+- HotspotMove: 클릭→StageChangeRequested(targetStageId)
+- StageIds: Stage_Front, Stage_Office
+- Log: Info/Warn/Error 래퍼
+
+0.3 에디터 배선(5단계)
+1) Build Settings: Core, Stage_Front, Stage_Office 등록(순서 맨 위 Core)
+2) Core 씬: SceneService 오브젝트 추가, Canvas+Black Image+FadeCanvas 추가, StartupLoader 추가(initialStageId=Stage_Front)
+3) Stage_Front: BG 배치, 정문 오브젝트에 HotspotMove(target=Stage_Office), StageRoot 추가
+4) Stage_Office: BG 배치, 되돌아가기 오브젝트에 HotspotMove(target=Stage_Front), StageRoot 추가
+5) 재생: Front↔Office 전환 확인(페이드/언로드 정상)
+
+0.4 리소스 최소 수량
+- BG 2컷(Front/Office), 클릭 SFX 1종, 앰비언스 1종(옵션)
+
+0.5 필수 테스트
+- 전환 50회 왕복(Front↔Office): 페이드/언로드/예외 0, 입력 차단 유지
+- 빠른 연타/연속 클릭: 중복 처리/충돌 없음
+
+0.6 성능/품질 최소 기준
+- 전환 < 1.5s, GC/Frame 0B(전환 중 포함), 로그 에러 0
+- 핫패스 무할당·무LINQ·무박싱, 구독/해제 누수 없음
+
+0.7 다음 확장(필수 아님)
+- Save(JSON v1: currentStageId/옵션), Audio(BGM/SFX), Input(잠금/포인터), SettingsPanel
+
 목차
 1. 개요(비전·원칙·범위)
 2. 아키텍처(씬 전략·폴더·스크립트 구조·전환 FSM·지속성 정책)
@@ -9,9 +44,8 @@ Owner: 기획/개발 공용 문서
 4. 시스템·피처(Core 서비스·상호작용·인벤토리·클로즈업·점프스케어·컷신·메뉴)
 5. UX·UI·메뉴/설정(UI 레이어·설정 옵션·예외/안전)
 6. 품질·성능(체크리스트·성능 예산·프로파일링·에러/로그·코드 최적화)
-7. 테스트·마일스톤(테스트 계획·마일스톤·완료 기준·리스크/대응)
-8. 공모전 제출(패키지 구성·빌드 가이드·심사 편의·체크리스트)
-9. 스테이지1→2 구현 체크리스트(최소 실행 경로)
+7. 테스트 계획
+8. 스크립트 구조/구현 계획(최종)
 부록 A. 2D 파이프라인 필수 체크리스트
 부록 B. 핵심 인터페이스 시그니처(비구현)
 부록 C. 전환 상태머신(FSM) 개요
@@ -25,12 +59,19 @@ Owner: 기획/개발 공용 문서
 - 성능 목표: 60FPS, 프레임당 GC 0, 전환 < 1.5s
 - 입력: New Input System 단일 액션맵, 게임 코드는 IInputService만 참조
 - 저장: JSON + 버전 필드, 마이그레이션 함수 유지(손상 시 롤백)
-- 범위: 공모전 제출 목적(판매/유통 없음)
+
+
+
+
+1.1 제작 원칙/스코프 가드
+- 스테이지 수: 5~6(축소 필요 시 Front∪Lobby 병합). 목표 러닝타임 20분
+- 연출 예산: 점프스케어 5, 클로즈업 아이템 10
+- 반복 가능한 전환 파이프라인/입력잠금/세이브 안전성 우선
 
 2. 아키텍처(씬 전략·폴더·스크립트 구조·전환 FSM·지속성 정책)
 2.1 씬 전략 및 목록
 - Core(상주)
-- Stage_Menu(메인 메뉴), Stage_Lobby(병원 앞), Stage_Office(로비), Stage_Delivery(분만실), Stage_Nursery(신생아실), Stage_Chapel(기도실)
+- Stage_Menu(메인 메뉴), Stage_Front(병원 앞), Stage_Lobby(병원 로비), Stage_Office(관리실), Stage_Delivery(분만실), Stage_Nursery(신생아실), Stage_Chapel(기도실)
 - 전환 순서: 입력잠금 → 페이드아웃 → 다음 스테이지 애디티브 로드(프리로드 옵션) → 활성화/초기화 → 이전 스테이지 언로드 → BGM 크로스페이드 → 페이드인 → 입력해제
 - 실패 시 롤백: 이전 유지 + 사용자 피드백 + 로그
 
@@ -67,17 +108,37 @@ Owner: 기획/개발 공용 문서
 - JumpScareClip: id, sfx, spriteSequence, cameraShake(amp,dur), monoDownMs, lockInputMs
 - Save(JSON): version, currentStageId, inventory[], flags[], audio{master,bgm,sfx,dynamicRange}, accessibility{reduceFlicker,reduceShake}, migrationNotes
 
-3.2 스테이지별 리소스 계획(요약)
+3.2 스테이지별 설계(리소스·기믹·아이템·연출)
 - Stage_Menu: BG 1컷, 메뉴 UI, 앰비언스
-- Stage_Lobby: BG 1컷, Hotspot FrontDoor(Move→Stage_Office), 튜토리얼 힌트, 클릭 SFX, 앰비언스
-- Stage_Office: BG, 문(관리실/분만실), 십자가/허가증/사고편지, 점프스케어(카운터), 실내 앰비언스
-- Stage_Delivery: BG, 심전도 퍼즐, 침대 반복 연출, 초음파 사진, 실루엣/시체 드롭
-- Stage_Nursery: BG, 오르골/인큐베이터 시퀀스, 혈액검사/쪽지, 아기 얼굴 점프스케어
-- Stage_Chapel: BG, 제단 3슬롯(십자가/열쇠/오르골), 기도문/개원 사진, 병원장 점프스케어
+- Stage_1 / Stage_Front(병원 앞)
+  - 기믹: 정문 클릭 → Stage_Lobby
+  - 아이템: 없음
+  - 리소스: BG 1컷, 클릭 SFX, 앰비언스
+- Stage_2 / Stage_Lobby(병원 로비)
+  - 기믹: 관리실 문, 분만실 문(초반 잠금→관리실 이후 해제), 카운터 점프스케어(직원 귀신)
+  - 아이템: 휴대용 십자가, 병원 개설 허가증, 바닥의 사고 편지(클로즈업)
+  - 리소스: BG, 문 오브젝트, 하이라이트, 클릭 SFX, 실내 앰비언스
+- Stage_3 / Stage_Office(관리실)
+  - 기믹: CCTV 불켜짐 + 귀신 갑툭튀, 문서 열람, 열쇠 꾸러미 획득→Delivery 해금 플래그
+  - 아이템: 사건사고 서류, 병원 단면도(클로즈업), 열쇠 꾸러미(들고가는 아이템)
+  - 리소스: BG, CCTV 모니터, 문서/단면도 클로즈업, 점프스케어 SFX
+- Stage_4 / Stage_Delivery(분만실)
+  - 기믹: 실루엣 등장, 천장 시체 낙하(점프스케어), 심전도 알람, 초음파 사진 혈흔, 침대 반복 클릭 시 출혈 연출 강화
+  - 아이템: 초음파 사진(클로즈업)
+  - 리소스: BG, 심전도/침대/초음파 소품, 비명/아기 울음 SFX
+- Stage_5 / Stage_Nursery(신생아실)
+  - 기믹: 인큐베이터 다수 중 1개만 열림, 아기 귀신 얼굴 점프스케어
+  - 아이템: 오르골, 혈액 검사 자료(클로즈업), 쪽지(양심 고백, 클로즈업)
+  - 리소스: BG, 인큐베이터 상호작용, 오르골 SFX
+- Stage_6 / Stage_Chapel(기도실)
+  - 기믹: 제단에서 의식 연출, 아이 실루엣, 병원장 시체 점프스케어
+  - 아이템: 기도문(클로즈업), 병원 개원 사진(클로즈업)
+  - 리소스: BG, 제단 3슬롯(십자가/열쇠/오르골)
 
-3.3 아트/오디오 가이드
-- 아트: 흑백 톤, 고대비, 포인트 레드 제한; 1920x1080 기준, 스프라이트 아틀라스, POT 권장, 2D Sprite 임포트
-- 오디오: BGM 1트랙/씬, -12dBFS 헤드룸; 점프스케어 200ms 모노 다운→복원; 오르골 60BPM 3음 패턴
+
+
+3.3 핵심 소지 아이템
+- 병원 열쇠 꾸러미: Stage_Office에서 획득 → Stage_Delivery 해금 플래그
 
 4. 시스템·피처(Core·Interaction·Inventory·CloseUp·JumpScare·Cutscene·Menu)
 - Core: ServiceLocator, Input/Scene/Audio/Save, Tick, GameEvents
@@ -95,11 +156,7 @@ Owner: 기획/개발 공용 문서
 - 커서: 기본/인터랙트/금지 3종, 하이라이트 시 커서·핫스팟 글로우
 - 힌트/토스트: 전환 실패/조건 미충족 피드백
 
-5.2 메뉴/설정 동작
-- Pause(Esc): PauseMenu 토글(전환/컷신/클로즈업 중 잠금)
-- Main Menu: New(세이브 초기화→Stage_Lobby), Continue(세이브 없으면 비활성), Settings, Quit(확인)
-- Pause Menu: Resume, Settings, Main Menu(확인), Quit(확인); BGM -3dB 덕킹(정지샷, 타임스케일 1)
-- Settings: Audio(Master/BGM/SFX, Dynamic Range), Accessibility(Reduce Flicker/Shake), Display/Controls(옵션); 실시간 반영+세이브 커밋
+ 
 
 6. 품질·성능(체크리스트·성능 예산·프로파일링·에러/로그·코드 최적화)
 6.1 품질/성능 체크리스트
@@ -108,59 +165,91 @@ Owner: 기획/개발 공용 문서
 - 로그: Log.Info/Warn/Error 유틸만, 예외는 상위에서 집계/보고
 - 전환 후 UnloadUnusedAssets는 페이드 중 수행, 왕복 50회 스트레스에서 GC/누수 0
 
-6.2 성능 예산·프로파일링
-- 예산: 프레임 <16.6ms, 드로우콜 <200, 전환 <1.5s, 동시 오디오 <8, GC/Frame 0B
-- 절차: 전환 10회 캡처, 메모리 스냅샷 전/후 비교, 점프스케어 CPU/오디오 피크/라우드니스 확인
+ 
 
-6.3 에러 처리·로그 정책
+6.2 에러 처리·로그 정책
 - Info: 상태 전환/사용자 행동, Warn: 비치명 결손, Error: 전환 실패/데이터 손상
 - 사용자 피드백: 실패/조건 미충족 시 토스트와 재시도 안내
 - 수집: 빌드 버전/스테이지 ID/최근 이벤트 로그 파일화(경로는 Readme에 표기)
 
-6.4 코드 정확성/최적화 가이드
+6.3 코드 정확성/최적화 가이드
 - 가드 우선(널/범위)·조기 반환; try/catch 최소, 빈 catch 금지
 - 전역 상태는 Core 서비스로만; 스테이지 static 금지
 - 데이터는 SO로 분리, 런타임 생성 최소, 포스트/오디오/카메라 파라미터 캐시 적용
 
-7. 테스트·마일스톤
+7. 테스트 계획
 7.1 테스트 계획
+- 전환: Stage_Front ↔ Stage_Lobby 50회, 실패 롤백·입력잠금 검증
 - 전환: Stage_Lobby ↔ Stage_Office 50회, 실패 롤백·입력잠금 검증
 - 입력: UI 오버 시 클릭 무시, 빠른 연타 중복 처리 없음
 - 메뉴/설정: Volume 실시간 반영, Continue 조건
 - 접근성: Reduce Flicker/Shake ON 반영
 - 세이브: 손상 파일 롤백/백업, 진행/설정 보존
 
-7.2 마일스톤(진행 순)
-- M0(Menu/Settings): Stage_Menu, MainMenuUI, SettingsPanel(오디오/접근성), Quit 확인
-- M1(Core): ServiceLocator, Input/Scene/Audio/Save, Fade UI, GameEvents
-- M2(Stage1): Stage_Lobby BG/FrontDoor, 튜토리얼 힌트, 전환→Stage_Office
-- M3(Stage2): 로비 문/아이템/점프스케어 1
-- M4(Stage3): 분만실 퍼즐(EKG), 단계연출
-- M5(Stage4): 신생아실 오르골-시퀀스, 데이터 완료
-- M6(Stage5): 기도실 제단 3슬롯, 엔딩
-- M7(QA): 스트레스/리그레션/밸런스, 빌드 안정화
+ 
 
-7.3 완료 기준(DoD)
-- 전환 중 입력 차단·실패 롤백 정상, 씬 왕복 50회 예외/누수 0
-- 각 스테이지: BG/핫스팟/점프스케어(해당 시)/BGM/SFX/힌트 완비
-- 데이터: SO/JSON 버전 관리, 마이그레이션 함수 포함
 
-7.4 리스크/대응
-- 상태 유실: Core 보관(서비스/런타임 데이터), 스테이지에 상태 미보관
-- 이벤트 누수: Enable/Disable 또는 Initialize/Teardown에서 구독/해제
-- 입력 경쟁: 전환 전후 이중 잠금
-- 메모리 증가: 언로드 후 스냅샷 점검, 참조 해제 철저
 
-8. 공모전 제출(판매/유통 없음)
-- 패키지 권장 구성: AFKS_Build_Win64/, Readme_KR.txt, Screenshots/, Trailer(Optional)/, License_Assets.txt, SaveSamples(Optional)/
-- 빌드: Win x64 포터블, 엔트리 Stage_Menu, 네트워크 없음, 종료 Pause/Quit 또는 Alt+F4
-- 심사 편의: F1 힌트 토글, F2 스킵 토글(옵션), 접근성 기본 ON, 라우드니스 기본값
-- 체크리스트: 세이브 위치 안내/삭제 옵션, 크래시 로그 경로, 라이선스 표기/개인정보 수집 없음 명시
 
-9. 스테이지1→2 구현 체크리스트(최소 실행 경로)
-- Stage_Lobby: FrontDoor(HotspotMove→Stage_Office), 힌트 1회, 클릭 SFX
-- 전환 파이프: 페이드/애디티브 로드/언로드/크로스페이드/입력잠금
-- Stage_Office: 최소 BG, 되돌아오기 테스트(디버그)
+
+8. 스크립트 구조/구현 계획(최종)
+8.1 디렉터리
+- Assets/Scripts/Core/{Services|Systems|Events|UI|Utils}
+- Assets/Scripts/Features/{Stage|Interaction|Inventory|CloseUp|JumpScare|Cutscene|Menu}
+- Assets/Scripts/Configs/{Stage|Hotspot|Item|JumpScare}
+
+8.2 인터페이스/서비스(코어)
+- IInputService / InputService
+  - 책임: 포인터 좌표/클릭, UI 오버 판정, 입력 잠금(우선순위: Transition > Modal > CloseUp > World)
+  - API: IsLocked, PointerPosition, event Clicked, Lock(bool), IsPointerOverUI()
+- ISceneService / SceneService
+  - 책임: 스테이지 전환(애디티브 Load/Activate/Unload) + 페이드 훅 + 입력잠금 제어
+  - API: LoadStageAdditiveAsync(id, preload), ActivateLoadedStageAsync(id), UnloadStageAsync(id), FadeOutAsync(sec), FadeInAsync(sec)
+- IAudioService / AudioService
+  - 책임: BGM 2채널 크로스페이드, SFX OneShot, 볼륨/DR 적용(추후 Mixer 파라미터)
+  - API: PlayBGM(clip), CrossFadeBGMAsync(clip,sec), PlaySFX(clip,vol), SetVolume(master,bgm,sfx), SetDynamicRange(bool)
+- ISaveService / SaveService(JSON v1)
+  - 책임: 저장/로드(+버전/백업), 진행(currentStageId)/오디오/접근성/플래그/인벤토리
+  - 스키마: version, currentStageId, inventory[], flags[], audio{}, accessibility{}
+- ServiceLocator
+  - 책임: Register/Unregister/Get/TryGet 단일 진입점
+
+8.3 시스템/이벤트/UI(코어)
+- TickService(+ITickable): 단일 Update 허브(핫패스 최소화)
+- GameStateMachine: Boot→Menu→InGame→Transition 상태 전환
+- GameEvents: StageChangeRequested/Loaded/Unloaded (+ ItemPicked/JumpScareTriggered 확장 여지)
+- UI: FadeCanvas(CanvasGroup), SettingsPanel, PauseMenu
+
+8.4 피처 스크립트
+- StageIds: Stage_Front/Lobby/Office/Delivery/Nursery/Chapel/Menu
+- StageRoot: Initialize()/Teardown() 훅, 진입/종료 정리
+- StageConfig(SO): stageId, sceneName, bgm, initialHotspotIds[]
+- HotspotConfig(SO): hotspotId, type{Move|Inspect|Use}, targetStageId?, requiredFlag?, setFlagOnSuccess?, itemId?, tooltip
+- ItemConfig(SO): itemId, displayName, closeUpSprite?, usableTargets[]
+- InteractionController: 레이캐스트→IInteractable, 하이라이트/커서, 클릭 전달
+- IInteractable / InteractableBase: CanInteract(), OnInteract()
+- HotspotMove/Inspect/Use: 이동/클로즈업/사용(플래그·아이템 가드)
+- InventoryService / InventoryUI: 6슬롯, 드래그-투-유즈, ItemPicked 이벤트
+- CloseUpController: Open/Close, Modal 잠금
+- JumpScarePlayer: 시퀀스, 입력잠금 윈도우, 오디오 모노 다운/복원
+- TimelineTrigger: 스테이지 한정 연출
+
+8.5 작동 플로우(요약)
+- 스테이지 전환: HotspotMove/MainMenuUI → GameEvents.StageChangeRequested →
+  SceneService: Input.Lock(Transition) → Fade.Out → LoadAdditive(next) → Activate → StageRoot.Initialize →
+  Unload(prev) → Audio.CrossFade → Fade.In → Input.Unlock
+- 인터랙션: InteractionController Raycast → IInteractable.CanInteract → OnInteract
+  - Inspect: CloseUp.Open → Modal Lock → Close 시 복원
+  - Use: Inventory 검사 → 성공 시 플래그/상태 변경
+- 점프스케어: Trigger → JumpScarePlayer.Play → Input.Lock(window) → Audio 모노 다운 → 시퀀스 → 복원
+
+8.6 구현 순서(코드)
+- Step1(Core): ServiceLocator, GameEvents, FadeCanvas, SceneService(스텁), InputService(스텁), SaveService(JSON v1), AudioService(간이)
+- Step2(Stage 1→2): Stage_Front/Stage_Lobby 씬 + StageRoot + HotspotMove + InteractionController(간소)
+- Step3(Stage 2→3): Lobby 아이템/플래그(십자가/허가증/편지) + Office CCTV 점프스케어 + 열쇠 꾸러미→DeliveryUnlocked
+- Step4(Stage 4~6): Delivery/Nursery/Chapel 연출, CloseUp/Inventory/JumpScare 확장, Save 스키마 확장
+
+ 
 
 부록 A. 2D 파이프라인 필수 체크리스트
 - URP 2D(Renderer2D), Global Volume, Ortho 카메라, Pixel Perfect(필요 시), Sorting Layers(BG/Hotspot/FX/UI)

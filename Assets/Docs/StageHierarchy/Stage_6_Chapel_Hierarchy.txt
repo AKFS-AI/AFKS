@@ -1,0 +1,60 @@
+Title: Stage_Chapel - Hierarchy & Wiring Guide
+SceneName: Stage_Chapel
+Purpose: 기도실(제단 3슬롯, 의식, 병원장 점프스케어)
+
+Hierarchy (추천)
+- StageRoot (StageRoot)
+- BG (SpriteRenderer/Image)
+- Altar
+  - Slot_Cross (HotspotUse → requires item_cross)
+  - Slot_Key (HotspotUse → requires item_keyring)
+  - Slot_MusicBox (HotspotUse → requires item_musicbox)
+- Props
+  - Prayer (HotspotInspect → item_prayer)
+  - OpeningPhoto (HotspotInspect → item_opening_photo)
+- Jumpscare
+  - HeadMaster (Trigger)
+- BackDoor (HotspotMove → Stage_Lobby)
+
+Components & Wiring
+- StageRoot: 기본
+- Altar/Slots: Use 성공 시 슬롯 비주얼 변경 및 플래그 세팅
+- Props/*: Inspect → CloseUpController
+- Jumpscare/HeadMaster: Trigger → JumpScarePlayer.Play
+- BackDoor: targetStageId = Stage_Lobby
+
+Notes
+- 3슬롯 완료 조건으로 엔딩 트리거를 제어
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- StageRoot: [StageRoot]
+- Altar/Slots: [HotspotUse*3]
+- Prayer/OpeningPhoto: [HotspotInspect]
+- HeadMaster: [Trigger, JumpScarePlayer]
+- BackDoor: [HotspotMove]
+
+[Serialized Fields / Values]
+- Slot_Cross.requiredItemId = "item_cross"
+- Slot_Key.requiredItemId = "item_keyring"
+- Slot_MusicBox.requiredItemId = "item_musicbox"
+- BackDoor.targetStageId = "Stage_Lobby"
+
+[Events / Bindings]
+- 3슬롯 사용 완료 → 엔딩 연출 트리거
+
+[Data / IDs]
+- item_prayer, item_opening_photo
+
+[Global Integration]
+- Audio: 엔딩 BGM/효과
+
+[Exceptions / Safety]
+- 슬롯 중복 사용 가드
+
+[Performance / Memory]
+- 슬롯 표시 비주얼 최소 업데이트
+
+[Tests]
+- 3슬롯 충족 시 엔딩 트리거 확인
+

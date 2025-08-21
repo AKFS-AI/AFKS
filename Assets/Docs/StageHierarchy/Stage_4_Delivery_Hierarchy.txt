@@ -1,0 +1,55 @@
+Title: Stage_Delivery - Hierarchy & Wiring Guide
+SceneName: Stage_Delivery
+Purpose: 분만실(실루엣/시체 낙하, EKG, 초음파)
+
+Hierarchy (추천)
+- StageRoot (StageRoot)
+- BG (SpriteRenderer/Image)
+- Props
+  - EKG (HotspotUse)
+  - Bed (HotspotInspect/Use, 반복 클릭 강화)
+  - Ultrasound (HotspotInspect → item_ultrasound_photo)
+- Jumpscare
+  - Silhouette (Trigger)
+  - BodyDrop (Trigger)
+- BackDoor (HotspotMove → Stage_Lobby)
+
+Components & Wiring
+- StageRoot: 기본
+- Props/EKG: Use 시 알람 SFX 트리거(추후)
+- Props/Ultrasound: Inspect → CloseUpController
+- Jumpscare/*: Trigger → JumpScarePlayer.Play
+- BackDoor: targetStageId = Stage_Lobby
+
+Notes
+- 효과음/연출은 이후 단계에서 AudioService/Timeline 연동
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- StageRoot: [StageRoot]
+- EKG/Bed/Ultrasound: [HotspotUse/HotspotInspect]
+- Silhouette/BodyDrop: [Trigger, JumpScarePlayer]
+- BackDoor: [HotspotMove]
+
+[Serialized Fields / Values]
+- Ultrasound.itemId = "item_ultrasound_photo"
+- BackDoor.targetStageId = "Stage_Lobby"
+
+[Events / Bindings]
+- Trigger → JumpScarePlayer.Play(clip)
+
+[Data / IDs]
+- N/A
+
+[Global Integration]
+- Audio: 비명/아기 울음 SFX
+
+[Exceptions / Safety]
+- 반복 클릭 강화 로직의 쿨다운/상태 가드
+
+[Performance / Memory]
+- 애니/이펙트의 풀링 고려(후속)
+
+[Tests]
+- Ultrasound 클로즈업 획득
+

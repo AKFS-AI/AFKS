@@ -1,0 +1,81 @@
+Title: Core - Hierarchy & Wiring Guide
+SceneName: Core
+Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 전환의 기반
+
+Hierarchy (추천)
+- Core (empty)
+  - SceneService (SceneService)
+  - FadeCanvas (Canvas + Image + CanvasGroup)
+  - StartupLoader (StartupLoader)
+  - [Optional] EventSystem (EventSystem + InputModule)
+  - [Optional] AudioService (AudioService)
+  - [Optional] SaveServiceBootstrap (초기 로드/저장 트리거용 빈 오브젝트)
+
+Components & Wiring
+- SceneService
+  - 역할: StageChangeRequested 구독 → Fade.Out → LoadAdditive(next) → Activate → Unload(prev) → Fade.In
+  - 필드: defaultFadeSeconds = 0.6 (권장)
+- FadeCanvas
+  - Canvas: Screen Space - Overlay, Sorting Order 가장 위
+  - Image: Black(#000), Stretch(Full)
+  - CanvasGroup: alpha=0, blocksRaycasts=false, interactable=false
+  - 사용: 전환 중 alpha 1.0, blocksRaycasts true로 입력 차단
+- StartupLoader
+  - initialStageId = Stage_Front (또는 Stage_Menu)
+  - autoLoadOnStart = true
+- [Optional] EventSystem
+  - UI 상호작용 안전 장치(메뉴/모달 대비)
+- [Optional] AudioService
+  - BGM/SFX 최소 재생 및 크로스페이드(후속 단계 연결)
+- [Optional] SaveServiceBootstrap
+  - 게임 시작 시 세이브 로드 → 옵션/볼륨 반영(후속 단계 연결)
+
+Build Settings
+- Core.unity를 목록 최상단에 배치(항상 상주)
+- Stage_* / Stage_Menu 씬은 애디티브 로드 대상
+
+Notes
+- Core는 한 번만 초기화되며 전환 내내 유지됩니다.
+- DontDestroyOnLoad를 별도 사용하지 않아도 Core 씬이 언로드되지 않도록 구성합니다.
+- 전환 실패 시 이전 스테이지 유지 + 페이드 해제 + 로그로 처리합니다.
+
+Quick Test (MVP)
+1) Core 열기 → Play → StartupLoader가 Stage_Front 요청
+2) Stage_Front에서 HotspotMove로 Stage_Office 이동
+3) 왕복 전환 5회: 페이드/언로드/입력차단 정상 여부 확인
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- Core/SceneService: [SceneService]
+- Core/FadeCanvas: [Canvas, Image, CanvasGroup]
+- Core/StartupLoader: [StartupLoader]
+- Core/EventSystem: [EventSystem, InputSystemUIInputModule]
+- Core/AudioService: [AudioService]
+
+[Serialized Fields / Values]
+- SceneService.defaultFadeSeconds = 0.6s
+- StartupLoader.initialStageId = "Stage_Front"
+- CanvasGroup.alpha = 0, blocksRaycasts=false, interactable=false
+
+[Events / Bindings]
+- GameEvents.StageChangeRequested → SceneService.OnStageChangeRequested
+- FadeCanvas API: Fade(in/out) 호출 지점
+
+[Data / IDs]
+- N/A (Core는 전역 서비스 및 UI만 보관)
+
+[Global Integration]
+- Input Lock Level: Transition
+- Fade: out/in = 0.6s, 타이밍 = Load/Unload 전후
+- Audio: 전환 시 CrossFade(옵션)
+
+[Exceptions / Safety]
+- 중복 등록 방지, 구독/해제 위치 명시
+- 전환 실패 시 롤백 처리 플로우
+
+[Performance / Memory]
+- 프레임당 할당 없음, 로그 최소화
+
+[Tests]
+- 왕복 전환 50회, 실패/예외/누수 0 확인
+

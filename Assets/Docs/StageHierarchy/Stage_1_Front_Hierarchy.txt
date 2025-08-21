@@ -1,0 +1,46 @@
+Title: Stage_Front - Hierarchy & Wiring Guide
+SceneName: Stage_Front
+Purpose: 병원 앞(정문 클릭 → Lobby)
+
+Hierarchy (추천)
+- StageRoot (StageRoot)
+- BG (SpriteRenderer/Image)
+- Hotspots
+  - FrontDoor (HotspotMove)
+
+Components & Wiring
+- StageRoot: stageId 비워두면 자동으로 씬명 사용
+- BG: 1920x1080 정면 컷
+- Hotspots/FrontDoor(HotspotMove): targetStageId = Stage_Lobby
+- (선택) FrontDoor: Collider2D + OnMouseUpAsButton 사용 또는 UI Button
+
+Notes
+- Audio/BGM/SFX는 추후 연결(초기 MVP 제외 가능)
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- StageRoot: [StageRoot]
+- BG: [SpriteRenderer/Image]
+- FrontDoor: [Collider2D(optional), HotspotMove]
+
+[Serialized Fields / Values]
+- HotspotMove.targetStageId = "Stage_Lobby"
+
+[Events / Bindings]
+- OnMouseUpAsButton → HotspotMove.TriggerMove()
+
+[Data / IDs]
+- stageId = "Stage_Front"
+
+[Global Integration]
+- Fade: Core.FadeCanvas 사용
+
+[Exceptions / Safety]
+- 콜라이더 미배선 시 UI Button로 대체
+
+[Performance / Memory]
+- 텍스처 임포트 설정(압축/MaxSize) 확인
+
+[Tests]
+- 정문 클릭 → Stage_Lobby 로드
+

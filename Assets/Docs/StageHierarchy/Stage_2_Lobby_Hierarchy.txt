@@ -1,0 +1,58 @@
+Title: Stage_Lobby - Hierarchy & Wiring Guide
+SceneName: Stage_Lobby
+Purpose: 병원 로비(문/아이템/점프스케어)
+
+Hierarchy (추천)
+- StageRoot (StageRoot)
+- BG (SpriteRenderer/Image)
+- Doors
+  - Door_Office (HotspotMove → Stage_Office)
+  - Door_Delivery (HotspotMove → Stage_Delivery, requiredFlag=DeliveryUnlocked)
+- Items
+  - Cross (HotspotInspect → item_cross)
+  - Permit (HotspotInspect → item_permit)
+  - Letter (HotspotInspect → item_letter, setFlag=ReadAccidentLetter)
+- Jumpscare
+  - CounterGhost (Trigger → JumpScarePlayer.Play)
+
+Components & Wiring
+- StageRoot: 기본
+- Doors/Door_Office(HotspotMove): targetStageId = Stage_Office
+- Doors/Door_Delivery(HotspotMove): targetStageId = Stage_Delivery (플래그 가드 필요)
+- Items/*(HotspotInspect): itemId 설정, CloseUpController로 연결(추후)
+- Jumpscare/CounterGhost: 트리거 충돌 시 JumpScarePlayer 호출(추후)
+
+Notes
+- 초기 MVP에서는 Inspect/JumpScare를 비활성화하고 Move만 우선 구현 가능
+
+--- 세부 스펙 템플릿 (추후 채움) ---
+[Objects & Components]
+- StageRoot: [StageRoot]
+- Doors: [HotspotMove*2]
+- Items: [HotspotInspect*3]
+- CounterGhost: [Trigger, JumpScarePlayer]
+
+[Serialized Fields / Values]
+- Door_Office.targetStageId = "Stage_Office"
+- Door_Delivery.targetStageId = "Stage_Delivery"
+- Door_Delivery.requiredFlag = "DeliveryUnlocked"
+- Letter.setFlagOnSuccess = "ReadAccidentLetter"
+
+[Events / Bindings]
+- Trigger(CounterGhost) → JumpScarePlayer.Play(clip)
+
+[Data / IDs]
+- item_cross, item_permit, item_letter
+
+[Global Integration]
+- Input Lock: JumpScare 윈도우 동안 On
+
+[Exceptions / Safety]
+- 문/아이템 중복 클릭 레이스 가드
+
+[Performance / Memory]
+- 레이캐스트 대상 최소화(레이어/마스크)
+
+[Tests]
+- Door_Office 이동, Key 획득 전 Door_Delivery 차단
+
