@@ -2,45 +2,49 @@ Title: Stage_Front - Hierarchy & Wiring Guide
 SceneName: Stage_Front
 Purpose: 병원 앞(정문 클릭 → Lobby)
 
-Hierarchy (추천)
-- StageRoot (StageRoot)
-- BG (SpriteRenderer/Image)
-- Hotspots
-  - FrontDoor (HotspotMove)
+1) 하이라키어 최종 구조도
+1. StageRoot (Empty) [Components: StageRoot]
+2. BG (2D/Sprite or UI/Image) [Components: SpriteRenderer or Image]
+3. Hotspots (Empty) [Components: -]
+  3.1 FrontDoor (Empty) [Components: HotspotMove, BoxCollider2D]
 
-Components & Wiring
-- StageRoot: stageId 비워두면 자동으로 씬명 사용
-- BG: 1920x1080 정면 컷
-- Hotspots/FrontDoor(HotspotMove): targetStageId = Stage_Lobby
-- (선택) FrontDoor: Collider2D + OnMouseUpAsButton 사용 또는 UI Button
+2) 하이라키어 제작 절차(생성 경로 포함)
+2.1 (1) StageRoot
+  - 생성 경로: GameObject > Create Empty (이름: StageRoot)
+  - Add Component: StageRoot
+2.2 (2) BG
+  - 생성 경로: GameObject > 2D Object > Sprite (이름: BG)  |  (대안) Canvas 하위 UI > Image
+  - Add Component: SpriteRenderer(2D) 또는 Image(UI)
+2.3 (3) Hotspots
+  - 생성 경로: GameObject > Create Empty (이름: Hotspots)
+2.4 (3.1) FrontDoor
+  - 생성 경로: Hotspots 하위, GameObject > Create Empty (이름: FrontDoor)
+  - Add Component: HotspotMove, BoxCollider2D
 
-Notes
-- Audio/BGM/SFX는 추후 연결(초기 MVP 제외 가능)
+3) 인스펙터 설정
+- StageRoot: 기본값
+- BG(SpriteRenderer): Sprite 할당, 권장 해상도 1920x1080
+- FrontDoor(HotspotMove): Target Stage Id = "Stage_Lobby"
+- FrontDoor(Collider2D): 클릭 영역에 맞게 Size 조정, Is Trigger 해제(기본)
 
---- 세부 스펙 템플릿 (추후 채움) ---
-[Objects & Components]
-- StageRoot: [StageRoot]
-- BG: [SpriteRenderer/Image]
-- FrontDoor: [Collider2D(optional), HotspotMove]
+4) Components & Wiring(참조/이벤트 배선)
+- FrontDoor 클릭 → HotspotMove가 StageChangeRequested("Stage_Lobby") 발행
+- (UI 대체) UI Button OnClick → GameEvents.RaiseStageChangeRequested("Stage_Lobby")
 
-[Serialized Fields / Values]
-- HotspotMove.targetStageId = "Stage_Lobby"
+5) Build Settings(Scenes In Build)
+- Core(최상단), Stage_Menu, Stage_Front 등록
 
-[Events / Bindings]
-- OnMouseUpAsButton → HotspotMove.TriggerMove()
+6) Tests(기능 검증)
+- 정문 클릭 → Stage_Lobby 전환 요청
 
-[Data / IDs]
-- stageId = "Stage_Front"
+7) 체크리스트
+- [ ] HotspotMove.targetStageId = "Stage_Lobby"
+- [ ] Collider2D 또는 UI Button으로 클릭 입력 확보
+- [ ] StageRoot 존재
 
-[Global Integration]
-- Fade: Core.FadeCanvas 사용
+8) FAQ(문제 해결)
+- 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인
+- 전환 실패: Build Settings 등록/ID 오타 확인
 
-[Exceptions / Safety]
-- 콜라이더 미배선 시 UI Button로 대체
-
-[Performance / Memory]
-- 텍스처 임포트 설정(압축/MaxSize) 확인
-
-[Tests]
-- 정문 클릭 → Stage_Lobby 로드
-
+9) 변경 이력(Change Log)
+- v1.1: 표준 섹션(최종 구조도→제작 절차→인스펙터)로 재구성

@@ -1,0 +1,227 @@
+Title: StageHierarchy - 폴더 구성 및 문서 작성 가이드
+Version: v1.0
+Owner: 기획/개발 공용
+
+0) 목적
+- 초보자도 텍스트만 보고 씬을 제작/배선할 수 있도록, 문서 구조/작성 규칙/검수 체크리스트를 표준화한다.
+
+1) 폴더 구조(권장)
+- Core_Hierarchy.txt               : 코어 씬(전역 서비스/페이드/초기 로더)
+- Menu_Hierarchy.txt               : 메인 메뉴 씬
+- Stage_1_Front_Hierarchy.txt      : 스테이지 1(병원 앞)
+- Stage_2_Lobby_Hierarchy.txt      : 스테이지 2(로비)
+- Stage_3_Office_Hierarchy.txt     : 스테이지 3(관리실)
+- Stage_4_Delivery_Hierarchy.txt   : 스테이지 4(분만실)
+- Stage_5_Nursery_Hierarchy.txt    : 스테이지 5(신생아실)
+- Stage_6_Chapel_Hierarchy.txt     : 스테이지 6(기도실)
+- StageHierarchy_Guide.txt         : 본 가이드(이 파일)
+
+2) 파일 네이밍 규칙
+- 씬별 문서: Stage_<Index>_<Name>_Hierarchy.txt
+  예) Stage_1_Front_Hierarchy.txt, Stage_2_Lobby_Hierarchy.txt
+- 공통/특수: Core_Hierarchy.txt, Menu_Hierarchy.txt
+- 메타 파일(.meta)은 Unity가 자동 관리한다.
+
+3) 문서 본문 섹션 표준(순서 고정)
+1. 하이라키어 최종 구조도
+2. 하이라키어 제작 절차(생성 경로 포함)
+3. 인스펙터 설정
+4. Components & Wiring(참조/이벤트 배선)
+5. Build Settings(Scenes In Build)
+6. Tests(기능 검증)
+7. 체크리스트
+8. FAQ(문제 해결)
+9. 변경 이력
+
+4) 오브젝트 카드 템플릿(반복 사용)
+- 이름:
+- 생성 경로: (예: GameObject > UI > Canvas)
+- 필요한 컴포넌트: (예: Canvas, CanvasScaler, CanvasGroup, FadeCanvas)
+- 인스펙터 기본값: (핵심 수치/플래그)
+- 배선/참조: (예: SceneService.FadeCanvas ← FadeCanvas 드래그 연결)
+- 확인 포인트: (씬 재생 전/후 체크)
+
+5) 작성 규칙
+- ‘무엇을 만든다 → 어떻게 만든다(생성 경로) → 인스펙터 값 → 연결(배선) → 확인’ 순서로 쓴다.
+- 초보자 기준으로 모든 생성 경로를 메뉴 풀 경로로 표기한다.
+- 수치/토글은 기본값과 권장값을 함께 명시한다.
+- Stage ID, 씬 이름, 버튼 메서드 등 ‘문자열/식별자’는 정확히 표기한다.
+
+5.1) 표기 규칙(Notation)
+- 부모/자식 관계: 들여쓰기로 표현한다(‘-’ 하이픈 트리).
+- 오브젝트 유형 표기: 이름 뒤 괄호에 표기한다. 예) MainMenu (Empty), Panel_BG (UI/Image), BG (2D/Sprite)
+  - Empty: GameObject > Create Empty로 만든 빈 오브젝트
+  - UI/<Control>: UI 메뉴에서 생성한 UI 오브젝트(Button, Image 등)
+  - 2D/Sprite: 2D Object > Sprite로 생성한 스프라이트 오브젝트
+- 컴포넌트 표기: 대괄호로 명시한다. 예) [Components: Canvas, CanvasScaler, GraphicRaycaster]
+- 번호 매김: 최종 구조도에는 생성/설정 순서를 알기 쉽게 번호를 붙인다.
+  - 예) 1. Canvas (...), 1.1 Panel_BG (...), 1.2 MainMenu (...), 1.2.1 Buttons (...)
+- 1:1 대응: ‘2) 하이라키어 제작 절차’의 각 단계는 ‘1) 최종 구조도’의 번호와 정확히 매칭된다.
+
+6) 검수 체크리스트(공통)
+- [ ] 하이라키 트리와 실제 오브젝트 구성이 일치한다.
+- [ ] 필수 컴포넌트가 누락되지 않았다(CanvasGroup, Collider2D 등).
+- [ ] 배선이 연결됐다(Button.OnClick, SceneService.FadeCanvas 참조 등).
+- [ ] Build Settings에 씬이 등록되고 순서가 맞다(Core 맨 위).
+- [ ] 실행 검증 시 전환/페이드/입력이 정상 동작한다.
+
+7) 링크/참조(코드 개념)
+- 전환 이벤트 허브: GameEvents.StageChangeRequested(string)
+- 전환 서비스: SceneService(Fade.Out → LoadAdditive → Activate → Unload → Fade.In)
+- 페이드 UI: FadeCanvas(CanvasGroup 알파/입력 차단)
+- 입력: InputService(IInputService, Lock/Pointer/UI 오버 판정)
+- 스테이지 루트: StageRoot(Initialize/Teardown 훅)
+- 스테이지 ID: StageIds(Menu/Front/Lobby/Office/Delivery/Nursery/Chapel)
+
+8) 변경 시 원칙
+- 변경 시 해당 씬 문서의 관련 섹션을 즉시 업데이트한다.
+- 새 오브젝트/기능 추가 시 ‘오브젝트 카드’로 항목을 추가한다.
+- 큰 변경은 문서 상단 Version을 올리고 변경 요약을 3줄 이내로 기록한다.
+
+9) 예시(간단 샘플)
+예) Core_Hierarchy.txt의 FadeCanvas 카드 요약
+- 생성 경로: UI/Canvas 생성 → 하위에 UI/Image 추가 → CanvasGroup, FadeCanvas 추가
+- 인스펙터: Canvas RenderMode=Overlay, SortingOrder=1000 / CanvasGroup Alpha=0
+- 배선: SceneService.FadeCanvas ← FadeCanvas 드래그
+- 확인: 플레이 중 전환 시 화면이 검게 페이드되며 입력이 차단된다.
+
+10) 유지 보수
+- 문서와 씬/코드가 어긋나면 문서 우선 업데이트 후, 씬/코드를 맞춘다.
+- 정기 점검(스프린트 말): 모든 씬 문서의 체크리스트 통과 스크린샷/로그를 첨부한다.
+
+
+11) 범위·대상(Scope & Audience)
+- 대상: Unity 초보~중급 실무자. 텍스트만으로 씬 제작·배선을 완료할 수 있어야 한다.
+- 범위: Core/Menu/Stage_* 씬의 하이라키/인스펙터/배선/빌드/검증 규칙. 아트·오디오 상세는 별도 가이드 참조.
+
+12) 용어(Glossary)
+- 씬(Scene): Unity의 로드 단위. Core는 상주, Stage_*는 애디티브 로드/언로드.
+- 오브젝트 카드(Object Card): 개별 오브젝트의 생성 경로/컴포넌트/인스펙터/배선/확인을 표준화한 블록.
+- 배선(Wiring): 컴포넌트 간 참조 연결 및 이벤트(OnClick 등) 바인딩.
+- ID: 씬 이름 또는 StageIds 상수와 동일한 문자열 식별자.
+
+13) 표준 규칙(Standard Rules)
+- MUST: 문서 섹션 순서를 유지하고 누락 없이 작성한다.
+- MUST: 생성 경로를 메뉴 풀 경로로 표기한다(예: GameObject > UI > Canvas).
+- MUST: 중요한 수치(해상도, Alpha, Sorting Order)는 값과 의미를 함께 적는다.
+- MUST: Build Settings 등록/순서를 명시하고 검증 체크리스트에 포함한다.
+- SHOULD: 이름은 의도를 드러내며 UpperCamelCase(오브젝트), SNAKE_CASE(상수)를 따른다.
+- SHOULD: 공통 UI 스케일(1920x1080, Match 0.5)을 유지한다.
+
+14) 식별자·네이밍 정책(IDs & Naming)
+- 씬 이름: Core, Stage_Menu, Stage_<Name> (예: Stage_Front, Stage_Lobby)
+- 스테이지 상수: StageIds.Menu/Front/Lobby/Office/Delivery/Nursery/Chapel
+- 오브젝트: 기능 기반 UpperCamelCase (예: FadeCanvas, SceneService, StartupLoader)
+- 파일: Stage_<Index>_<Name>_Hierarchy.txt, Core_Hierarchy.txt, Menu_Hierarchy.txt
+
+15) 씬 분류·수명주기(Scene Taxonomy & Lifecycle)
+- Core: 상주. 서비스 등록/전환/페이드/입력락 유지.
+- Stage_Menu: 진입 UI. 버튼 → GameEvents.StageChangeRequested 발행.
+- Stage_*: 애디티브 로드/활성/이전 언로드. StageRoot로 진입/종료 훅 제공.
+- 전환 순서: Input.Lock → Fade.Out → LoadAdditive(next) → Activate → Unload(prev) → Fade.In → Input.Unlock
+
+16) 제작 워크플로우(Authoring Workflow)
+- 작성: 오브젝트 카드를 우선 작성 → 씬에 반영 → 체크리스트 통과.
+- 변경: 문서 먼저 수정 후 씬/코드 정합화. 변경 요약(3줄) 기록.
+- 리뷰: 문서와 씬 캡처, Build Settings 스크린샷 첨부. 체크리스트 결과 포함.
+
+17) 품질 게이트(Definition of Done)
+- [ ] 문서 섹션 표준을 모두 채웠다.
+- [ ] 오브젝트 카드가 누락 없이 유효하다.
+- [ ] Build Settings 등록/순서 스샷 첨부.
+- [ ] 실행 검증: 메뉴→Front 전환이 페이드와 입력락을 동반해 3회 이상 성공.
+- [ ] 콘솔 Error 0, Warning 허용 범위 내(설명 기재).
+
+18) 검증 매트릭스(Validation Matrix)
+- 정상: 메뉴 버튼 3종(New/Continue/Quit) 동작, FrontDoor 클릭 전환.
+- 엣지: 빠른 연타, UI 위 클릭 무시, 씬 미등록 시 실패 로그.
+- 예외: 잘못된 Stage ID → 이전 상태 유지 + 페이드 해제 + 로그.
+- 성능: 전환 < 1.5s, 전환 중 GC/에러 0(기본 리소스 기준).
+
+19) 샘플 오브젝트 카드(채워진 예)
+- 이름: FadeCanvas
+- 생성 경로: GameObject > UI > Canvas (하위 Image 추가), Add Component: CanvasGroup, FadeCanvas
+- 필요한 컴포넌트: Canvas, CanvasScaler, GraphicRaycaster, Image, CanvasGroup, FadeCanvas
+- 인스펙터 기본값: Canvas(Render Mode=Overlay, Sorting Order=1000), CanvasScaler(1920x1080, Match 0.5), Image(Color #000,A=1), CanvasGroup(Alpha 0, Interactable Off, Blocks Off)
+- 배선/참조: SceneService.FadeCanvas ← FadeCanvas 드래그 연결
+- 확인 포인트: 전환 시 화면이 검게 페이드되고 입력이 차단됨
+
+20) 부록: 통합 체크리스트(요약)
+- [ ] 하이라키 트리 일치
+- [ ] 컴포넌트/인스펙터 수치 일치
+- [ ] 이벤트/참조 배선 완료
+- [ ] Build Settings 등록/순서 OK
+- [ ] 전환·페이드·입력락 동작 OK
+
+
+21) 씬 문서 템플릿(복사-붙여넣기용)
+------------------------------------------------------------
+1) 하이라키어 최종 구조도
+1. <Root_Object> (Empty) [Components: <Comp_1>, <Comp_2>]
+  1.1 <Child_A> (Empty/UI/<Control>/2D/Sprite) [Components: <...>]
+    1.1.1 <GrandChild_A1> (Empty/UI/<Control>/2D/Sprite) [Components: <...>]
+  1.2 <Child_B> (Empty/UI/<Control>/2D/Sprite) [Components: <...>]
+    1.2.1 <GrandChild_B1> (Empty/UI/<Control>/2D/Sprite) [Components: <...>]
+    1.2.2 <GrandChild_B2> (Empty/UI/<Control>/2D/Sprite) [Components: <...>]
+
+2) 하이라키어 제작 절차(생성 경로 포함)
+2.1 (1) <Root_Object>
+  - 생성 경로: GameObject > Create Empty (이름: <Root_Object>)
+  - Add Component: <Comp_1>, <Comp_2>
+2.2 (1.1) <Child_A>
+  - 생성 경로: GameObject > Create Empty | UI > <Control> | 2D Object > Sprite (부모: <Root_Object>)
+  - Add Component: <...>
+2.3 (1.1.1) <GrandChild_A1>
+  - 생성 경로: 위와 동일, (부모: <Child_A>)
+  - Add Component: <...>
+2.4 (1.2) <Child_B>
+  - 생성 경로: UI > <Control> 또는 2D Object > Sprite (부모: <Root_Object>)
+  - Add Component: <...>
+2.5 (1.2.1) <GrandChild_B1>
+  - 생성 경로: (부모: <Child_B>)
+  - Add Component: <...>
+2.6 (1.2.2) <GrandChild_B2>
+  - 생성 경로: (부모: <Child_B>)
+  - Add Component: <...>
+
+3) 인스펙터 설정(오브젝트별 핵심 값)
+- <Root_Object>
+  - <Component_1>.
+    - <Property_A>: <Value>  ; 의미: <왜 이 값인지 간단 설명>
+    - <Property_B>: <Value>
+  - <Component_2>.
+    - <Property_C>: <Value>
+- <Child_A>
+  - <Component_X>.
+    - <Property_Y>: <Value>
+- <Child_B>
+  - <Component_Z>.
+    - <Property_P>: <Value>
+
+4) Components & Wiring(참조/이벤트 배선)
+- 참조 연결: <Consumer_Component>.<Field> ← <Provider_Object>
+- 이벤트 바인딩: <Button>.OnClick → <ReceiverScript>.<Method>()
+- ID/이름 일치: StageIds.<Name> ↔ SceneName=<Exact_Scene_Name>
+
+5) Build Settings(Scenes In Build)
+- 순서: 1) Core  2) Stage_Menu  3) <This_Scene>  (필요 씬 모두 추가)
+
+6) Tests(기능 검증)
+- 정상 동작: <버튼/핫스팟> 동작 시 <결과> 확인
+- 전환 플로우: Fade.Out → LoadAdditive → Activate → Unload(prev) → Fade.In
+
+7) 체크리스트
+- [ ] 하이라키어 트리가 ‘최종 구조도’와 일치한다
+- [ ] 인스펙터 수치/토글이 문서와 동일하다
+- [ ] 참조/이벤트 배선이 누락 없이 연결됐다
+- [ ] Build Settings에 등록·순서 확인
+
+8) FAQ(문제 해결)
+- 클릭 불가: EventSystem 유무, Collider2D/GraphicRaycaster 확인
+- 페이드 무효: SceneService.FadeCanvas 참조, Image Stretch 여부 확인
+- 전환 실패: 씬 미등록/ID 오타 로그 확인
+
+9) 변경 이력(Change Log)
+- v1.0: 최초 작성 (<작성자/날짜>)
+------------------------------------------------------------
+

@@ -2,64 +2,60 @@ Title: Stage_Menu - Hierarchy & Wiring Guide
 SceneName: Stage_Menu
 Purpose: 메인 메뉴(새 게임/계속/설정/종료)
 
-Hierarchy (추천)
-- Canvas (Screen Space - Overlay)
-  - Panel_BG (Image)
-  - MainMenu (empty, MainMenuUI)
-    - Buttons
-      - Button_New
-      - Button_Continue
-      - Button_Settings
-      - Button_Quit
-  - Panel_Settings (inactive, SettingsPanel)
+1) 하이라키어 최종 구조도
+1. Canvas (UI/Canvas) [Components: Canvas, CanvasScaler, GraphicRaycaster]
+  1.1 Panel_BG (UI/Image) [Components: Image]
+  1.2 MainMenu (Empty) [Components: MainMenuUI]
+    1.2.1 Buttons (Empty) [Components: -]
+      1.2.1.1 Button_New (UI/Button) [Components: Button]
+      1.2.1.2 Button_Continue (UI/Button) [Components: Button]
+      1.2.1.3 Button_Settings (UI/Button) [Components: Button]
+      1.2.1.4 Button_Quit (UI/Button) [Components: Button]
+  1.3 Panel_Settings (Empty) [Components: SettingsPanel(optional), Set Inactive]
 
-Components & Wiring
-- Canvas: CanvasScaler(Scale With Screen Size)
-- Panel_BG: Image(color=#000000, a=0.65)
-- MainMenu(MainMenuUI):
-  - defaultStartStageId = Stage_Front
-  - continueButton = Buttons/Button_Continue
-  - settingsPanel = Panel_Settings
-- Buttons/Button_New: OnClick → MainMenuUI.OnClickNewGame()
-- Buttons/Button_Continue: OnClick → MainMenuUI.OnClickContinue()
-- Buttons/Button_Settings: OnClick → MainMenuUI.OnClickSettings()
-- Buttons/Button_Quit: OnClick → MainMenuUI.OnClickQuit()
-- Panel_Settings(SettingsPanel): 슬라이더/토글 배선(선택), 기본 비활성
+2) 하이라키어 제작 절차(생성 경로 포함)
+2.1 (1) Canvas
+  - 생성 경로: GameObject > UI > Canvas
+  - 자동 포함: CanvasScaler, GraphicRaycaster
+2.2 (1.1) Panel_BG
+  - 생성 경로: Canvas 하위, GameObject > UI > Image
+2.3 (1.2) MainMenu
+  - 생성 경로: Canvas 하위, GameObject > Create Empty (이름: MainMenu)
+  - Add Component: MainMenuUI
+2.4 (1.2.1) Buttons
+  - 생성 경로: MainMenu 하위, GameObject > Create Empty (이름: Buttons)
+2.5 (1.2.1.1~1.2.1.4) 버튼 4개
+  - 생성 경로: Buttons 하위, GameObject > UI > Button (이름: Button_New/Continue/Settings/Quit)
+2.6 (1.3) Panel_Settings
+  - 생성 경로: Canvas 하위, GameObject > Create Empty (이름: Panel_Settings)
+  - Add Component: SettingsPanel(optional), SetActive(false)
 
-Notes
-- Build Settings에 Stage_Menu 추가(엔트리로 사용 시 Core→Menu 흐름 고려)
-- Save/Audio 미구현 시 Continue/Settings는 비활성/간소화 가능
+3) 인스펙터 설정(오브젝트별 핵심 값)
+- CanvasScaler: UI Scale Mode=Scale With Screen Size, Reference=1920x1080, Match=0.5
+- Panel_BG(Image): Color #000000, Alpha=0.65, RectTransform Stretch(모두 0)
+- Buttons OnClick:
+  - Button_New → MainMenuUI.OnClickNewGame()
+  - Button_Continue → MainMenuUI.OnClickContinue()
+  - Button_Settings → (후속) MainMenuUI.OnClickSettings() 또는 비활성화
+  - Button_Quit → MainMenuUI.OnClickQuit()
 
---- 세부 스펙 템플릿 (추후 채움) ---
-[Objects & Components]
-- Canvas: [Canvas, CanvasScaler, GraphicRaycaster]
-- MainMenu(MainMenuUI): [MainMenuUI]
-- Panel_Settings: [SettingsPanel]
+4) Components & Wiring(참조/이벤트 배선)
+- MainMenuUI가 OnClick 이벤트를 수신해 StageChangeRequested 발행
+- Panel_Settings는 SettingsPanel 구현 시 연결
 
-[Serialized Fields / Values]
-- MainMenuUI.defaultStartStageId = "Stage_Front"
-- MainMenuUI.continueButton = (Buttons/Button_Continue)
-- MainMenuUI.settingsPanel = (Panel_Settings)
+5) Build Settings(Scenes In Build)
+- Core(최상단), Stage_Menu, Stage_Front 등록
 
-[Events / Bindings]
-- Button_New.OnClick → MainMenuUI.OnClickNewGame()
-- Button_Continue.OnClick → MainMenuUI.OnClickContinue()
-- Button_Settings.OnClick → MainMenuUI.OnClickSettings()
-- Button_Quit.OnClick → MainMenuUI.OnClickQuit()
+6) Tests(기능 검증)
+- 메뉴 표시, 버튼 3종 동작, New 클릭 시 Front 전환(페이드)
 
-[Data / IDs]
-- StageIds.Stage_Front, Save.CurrentStageId (옵션)
+7) 체크리스트
+- [ ] OnClick 연결 완료
+- [ ] Build Settings 등록 완료(Core/Stage_Menu/Stage_Front)
 
-[Global Integration]
-- Input Lock: Modal(Settings) 시 On
-- Audio: UI 클릭 SFX(옵션)
+8) FAQ(문제 해결)
+- 클릭 불가: EventSystem 유무, OnClick 누락 확인
+- 전환 실패: 씬 미등록/ID 오타
 
-[Exceptions / Safety]
-- 세이브 미존재 시 Continue 비활성
-
-[Performance / Memory]
-- UI 배치/드로우콜 최소화
-
-[Tests]
-- 버튼 4종 동작, 설정 열기/닫기 확인
-
+9) 변경 이력(Change Log)
+- v1.2: 초보자 표준(번호/유형/(Empty)/[Components] 및 1:1 절차) 적용
