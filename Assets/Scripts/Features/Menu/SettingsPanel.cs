@@ -6,7 +6,7 @@ namespace AFKS.Features.Menu
 	/// 메인 메뉴의 설정 패널을 표시/숨김하는 단순 컨트롤러입니다.
 	/// 패널 루트를 지정하지 않으면 자기 자신을 루트로 사용합니다.
 	/// </summary>
-	[AddComponentMenu("Project/Menu/Settings Panel")]
+	[AddComponentMenu("AFKS/Menu/Settings Panel")]
 	public sealed class SettingsPanel : MonoBehaviour
 	{
 		#region 필드

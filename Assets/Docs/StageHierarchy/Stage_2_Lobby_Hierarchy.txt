@@ -2,57 +2,77 @@ Title: Stage_Lobby - Hierarchy & Wiring Guide
 SceneName: Stage_Lobby
 Purpose: 병원 로비(문/아이템/점프스케어)
 
-Hierarchy (추천)
-- StageRoot (StageRoot)
-- BG (SpriteRenderer/Image)
-- Doors
-  - Door_Office (HotspotMove → Stage_Office)
-  - Door_Delivery (HotspotMove → Stage_Delivery, requiredFlag=DeliveryUnlocked)
-- Items
-  - Cross (HotspotInspect → item_cross)
-  - Permit (HotspotInspect → item_permit)
-  - Letter (HotspotInspect → item_letter, setFlag=ReadAccidentLetter)
-- Jumpscare
-  - CounterGhost (Trigger → JumpScarePlayer.Play)
+1) 하이라키어 최종 구조도
+- World (Empty)
+  - BG (2D/Sprite or UI/Image) [Components: SpriteRenderer or Image]
+- Interaction (Empty)
+  - Doors (Empty)
+    - Door_Office (Empty) [Components: BoxCollider2D, HotspotMove]
+    - Door_Delivery (Empty) [Components: BoxCollider2D, DoorLocked, HotspotMove]
+  - Items (Empty)
+    - Cross (Empty) [Components: BoxCollider2D, PickupItem(ItemIds.Cross)]
+    - Permit (Empty) [Components: BoxCollider2D, PickupItem(ItemIds.License)]
+    - Letter (Empty) [Components: BoxCollider2D, DocumentCloseup(ItemIds.AccidentLetter)]
+  - Jumpscare (Empty)
+    - CounterGhost (Empty) [Components: BoxCollider2D, JumpscareTrigger]
+- Services (Empty)
+  - StageRoot (Empty) [Components: StageRoot]
 
-Components & Wiring
-- StageRoot: 기본
-- Doors/Door_Office(HotspotMove): targetStageId = Stage_Office
-- Doors/Door_Delivery(HotspotMove): targetStageId = Stage_Delivery (플래그 가드 필요)
-- Items/*(HotspotInspect): itemId 설정, CloseUpController로 연결(추후)
-- Jumpscare/CounterGhost: 트리거 충돌 시 JumpScarePlayer 호출(추후)
+2) 하이라키어 제작 절차(생성 경로 포함)
+- 컨테이너 생성: World, Interaction, Services
+- World/BG: 2D Sprite 또는 UI Image 구성
+- Interaction/Doors
+  - Door_Office: Create Empty → Add Component: BoxCollider2D, HotspotMove
+  - Door_Delivery: Create Empty → Add Component: BoxCollider2D, DoorLocked, HotspotMove
+- Interaction/Items
+  - Cross/Permit: Create Empty → Add Component: BoxCollider2D, PickupItem
+  - Letter: Create Empty → Add Component: BoxCollider2D, DocumentCloseup
+- Interaction/Jumpscare
+  - CounterGhost: Create Empty → Add Component: BoxCollider2D, JumpscareTrigger
+- Services/StageRoot: Create Empty → Add Component: StageRoot
 
-Notes
-- 초기 MVP에서는 Inspect/JumpScare를 비활성화하고 Move만 우선 구현 가능
+3) 인스펙터 설정(핵심 값)
+- Doors/Door_Office
+  - BoxCollider2D: 크기=문 영역
+  - HotspotMove.targetStageId = "Stage_Office"
+- Doors/Door_Delivery
+  - BoxCollider2D: 크기=문 영역
+  - DoorLocked.requiredItemId = ItemIds.KeyBundle
+  - HotspotMove.targetStageId = "Stage_Delivery"
+- Items/Cross
+  - PickupItem.itemData = (Cross)
+- Items/Permit
+  - PickupItem.itemData = (License)
+- Items/Letter
+  - DocumentCloseup.documentItem = (AccidentLetter)
+- Jumpscare/CounterGhost
+  - JumpscareTrigger.triggerOnClick = true
+  - JumpscareTrigger.sfx = (점프스케어 사운드)
 
---- 세부 스펙 템플릿 (추후 채움) ---
-[Objects & Components]
-- StageRoot: [StageRoot]
-- Doors: [HotspotMove*2]
-- Items: [HotspotInspect*3]
-- CounterGhost: [Trigger, JumpScarePlayer]
+4) Components & Wiring(참조/이벤트 배선)
+- Door_Office: HotspotMove → Stage_Office
+- Door_Delivery: DoorLocked(ItemIds.KeyBundle) → HotspotMove(Stage_Delivery)
+- Items/*: PickupItem 또는 DocumentCloseup → CloseupViewer(옵션)
+- Jumpscare/CounterGhost: 클릭 시 JumpscareTrigger.Fire()
 
-[Serialized Fields / Values]
-- Door_Office.targetStageId = "Stage_Office"
-- Door_Delivery.targetStageId = "Stage_Delivery"
-- Door_Delivery.requiredFlag = "DeliveryUnlocked"
-- Letter.setFlagOnSuccess = "ReadAccidentLetter"
+5) Build Settings(Scenes In Build)
+- Core, Stage_Menu, Stage_Front, Stage_Lobby, Stage_Office, Stage_Delivery 등록
 
-[Events / Bindings]
-- Trigger(CounterGhost) → JumpScarePlayer.Play(clip)
+6) Tests(기능 검증)
+- Door_Office 이동 OK
+- 키 획득 전 Door_Delivery 차단 → 키 획득 후 통과
+- 문서 클로즈업 노출 OK, 점프스케어 사운드/비주얼 1회 발동
 
-[Data / IDs]
-- item_cross, item_permit, item_letter
+7) 체크리스트
+- [ ] DoorLocked.requiredItemId = ItemIds.KeyBundle
+- [ ] PickupItem.ItemData 연결(Cross/License)
+- [ ] DocumentCloseup.ItemData 연결(AccidentLetter)
+- [ ] Build Settings 등록
 
-[Global Integration]
-- Input Lock: JumpScare 윈도우 동안 On
+8) FAQ(문제 해결)
+- 클릭 불가: Collider2D/레이어/카메라, UI 위 클릭 여부 확인
+- 진행 불가: 키 아이템 미획득 여부 확인
 
-[Exceptions / Safety]
-- 문/아이템 중복 클릭 레이스 가드
-
-[Performance / Memory]
-- 레이캐스트 대상 최소화(레이어/마스크)
-
-[Tests]
-- Door_Office 이동, Key 획득 전 Door_Delivery 차단
+9) 변경 이력(Change Log)
+- v1.2: DoorLocked/PickupItem/DocumentCloseup/JumpscareTrigger 반영
 

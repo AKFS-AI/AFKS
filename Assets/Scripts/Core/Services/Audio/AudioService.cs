@@ -7,7 +7,7 @@ namespace AFKS.Core.Services.Audio
     /// 간단한 BGM 크로스페이드와 SFX 재생을 제공하는 오디오 서비스.
     /// 실프로덕션에서는 AudioMixer 파라미터 연동/풀링 등을 확장하세요.
     /// </summary>
-    [AddComponentMenu("Project/Audio/Audio Service")]
+    [AddComponentMenu("AFKS/Audio/Audio Service")]
     public sealed class AudioService : MonoBehaviour, IAudioService
     {
         #region 필드
@@ -26,6 +26,7 @@ namespace AFKS.Core.Services.Audio
             if (sfx == null) sfx = gameObject.AddComponent<AudioSource>();
 
             bgmA.loop = true; bgmB.loop = true;
+            AFKS.Core.Services.ServiceLocator.Register<IAudioService>(this, overwriteExisting: true);
         }
         #endregion
 
@@ -76,6 +77,13 @@ namespace AFKS.Core.Services.Audio
             bgmA.volume = Mathf.Clamp01(bgm);
             bgmB.volume = Mathf.Clamp01(bgm);
             sfx.volume = Mathf.Clamp01(sfxVolume);
+        }
+        #endregion
+
+        #region 유니티 수명주기(종료)
+        private void OnDestroy()
+        {
+            AFKS.Core.Services.ServiceLocator.Unregister<IAudioService>();
         }
         #endregion
     }

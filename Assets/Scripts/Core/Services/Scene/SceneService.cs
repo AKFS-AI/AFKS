@@ -4,6 +4,9 @@ using UnityEngine.SceneManagement;
 using AFKS.Core.Services.Input;
 using AFKS.Core.UI;
 using AFKS.Core.Events;
+using AFKS.Core.Services;
+using AFKS.Core.Utils;
+using AFKS.Features.Stage;
 
 namespace AFKS.Core.Services.Scene
 {
@@ -27,6 +30,8 @@ namespace AFKS.Core.Services.Scene
 
         private IInputService inputService;
         private bool lastLoadSucceeded;
+        private bool isTransitioning;
+        private string currentStageId;
         #endregion
 
         #region 유니티 수명주기
@@ -45,11 +50,21 @@ namespace AFKS.Core.Services.Scene
         {
             GameEvents.StageChangeRequested -= OnStageChangeRequested;
         }
+
+        private void OnDestroy()
+        {
+            ServiceLocator.Unregister<ISceneService>();
+        }
         #endregion
 
         #region 이벤트 핸들러
         private void OnStageChangeRequested(string targetStageId)
         {
+            if (isTransitioning)
+            {
+                Log.Warn($"[SceneService] 전환 진행 중 중복 요청 무시: '{targetStageId}'");
+                return;
+            }
             StartCoroutine(TransitionToStageCoroutine(targetStageId));
         }
         #endregion
@@ -57,30 +72,39 @@ namespace AFKS.Core.Services.Scene
         #region 코루틴
         private IEnumerator TransitionToStageCoroutine(string targetStageId)
         {
-            if (inputService != null) inputService.Lock(true);
-            yield return FadeOutAsync(defaultFadeSeconds);
-
-            string currentStage = GetActiveStageName();
-            if (!string.IsNullOrEmpty(targetStageId))
+            isTransitioning = true;
+            try
             {
-                yield return LoadStageAdditiveAsync(targetStageId, activateOnLoad: true);
-                if (!lastLoadSucceeded)
+                if (inputService != null) inputService.Lock(true);
+                yield return FadeOutAsync(defaultFadeSeconds);
+
+                string prevStage = string.IsNullOrEmpty(currentStageId) ? GetActiveStageName() : currentStageId;
+                if (!string.IsNullOrEmpty(targetStageId))
                 {
-                    Debug.LogError($"[SceneService] 스테이지 로드 실패: '{targetStageId}'. Build Settings 또는 Assets/Scenes 등록을 확인하세요.");
-                    // 실패 시 기존 스테이지 유지, 즉시 페이드 인 후 해제
-                    yield return FadeInAsync(defaultFadeSeconds);
-                    if (inputService != null) inputService.Lock(false);
-                    yield break;
+                    yield return LoadStageAdditiveAsync(targetStageId, activateOnLoad: true);
+                    if (!lastLoadSucceeded)
+                    {
+                        Log.Error($"[SceneService] 스테이지 로드 실패: '{targetStageId}'. Build Settings 또는 Assets/Scenes 등록을 확인하세요.");
+                        // 실패 시 기존 스테이지 유지, 즉시 페이드 인 후 해제
+                        yield return FadeInAsync(defaultFadeSeconds);
+                        if (inputService != null) inputService.Lock(false);
+                        yield break;
+                    }
+                    currentStageId = targetStageId;
                 }
-            }
 
-            if (!string.IsNullOrEmpty(currentStage))
+                if (!string.IsNullOrEmpty(prevStage))
+                {
+                    yield return UnloadStageAsync(prevStage);
+                }
+
+                yield return FadeInAsync(defaultFadeSeconds);
+                if (inputService != null) inputService.Lock(false);
+            }
+            finally
             {
-                yield return UnloadStageAsync(currentStage);
+                isTransitioning = false;
             }
-
-            yield return FadeInAsync(defaultFadeSeconds);
-            if (inputService != null) inputService.Lock(false);
         }
 
         private static string GetActiveStageName()
@@ -121,14 +145,14 @@ namespace AFKS.Core.Services.Scene
             // 사전 검증: 빌드 세팅/에셋번들에 로드 가능 여부 확인
             if (!Application.CanStreamedLevelBeLoaded(stageId))
             {
-                Debug.LogError($"[SceneService] 씬 '{stageId}' 을(를) 로드할 수 없습니다. File > Build Settings에 씬을 추가했는지 확인하세요.");
+                Log.Error($"[SceneService] 씬 '{stageId}' 을(를) 로드할 수 없습니다. File > Build Settings에 씬을 추가했는지 확인하세요.");
                 yield break;
             }
 
             var op = SceneManager.LoadSceneAsync(stageId, LoadSceneMode.Additive);
             if (op == null)
             {
-                Debug.LogError($"[SceneService] LoadSceneAsync가 null을 반환했습니다: '{stageId}'");
+                Log.Error($"[SceneService] LoadSceneAsync가 null을 반환했습니다: '{stageId}'");
                 yield break;
             }
             while (!op.isDone) yield return null;
@@ -148,17 +172,53 @@ namespace AFKS.Core.Services.Scene
             if (scene.IsValid())
             {
                 SceneManager.SetActiveScene(scene);
+                InvokeStageInitialize(scene);
             }
             yield break;
         }
 
         public IEnumerator UnloadStageAsync(string stageId)
         {
+            var scene = SceneManager.GetSceneByName(stageId);
+            if (scene.IsValid())
+            {
+                InvokeStageTeardown(scene);
+            }
             var op = SceneManager.UnloadSceneAsync(stageId);
             if (op != null)
             {
                 while (!op.isDone) yield return null;
                 GameEvents.RaiseStageUnloaded(stageId);
+            }
+        }
+        #endregion
+
+        #region 내부 메서드
+        private static void InvokeStageInitialize(Scene scene)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i].GetComponent<StageRoot>();
+                if (root != null)
+                {
+                    root.Initialize();
+                    break;
+                }
+            }
+        }
+
+        private static void InvokeStageTeardown(Scene scene)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i].GetComponent<StageRoot>();
+                if (root != null)
+                {
+                    root.Teardown();
+                    break;
+                }
             }
         }
         #endregion

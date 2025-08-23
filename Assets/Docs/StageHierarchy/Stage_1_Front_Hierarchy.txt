@@ -19,7 +19,8 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - (UI 대체 시) 라벨/힌트 텍스트가 필요하면 UI > Text - TextMeshPro 추가, 5.3 규칙 준수
 - Interaction/Hotspots
   - 생성 경로: GameObject > Create Empty (이름: Hotspots)
-  - 자식 FrontDoor: Create Empty → Add Component: HotspotMove, BoxCollider2D
+  - 자식 FrontDoor: Create Empty → Add Component: BoxCollider2D, HotspotMove
+    - BoxCollider2D: 클릭 영역 설정, IsTrigger=Off
 - Services/StageRoot
   - 생성 경로: GameObject > Create Empty (이름: StageRoot)
   - Add Component: StageRoot
@@ -45,6 +46,7 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
     - Size = 환경에 맞게 설정
   - Hotspot Move(스크립트)
     - Target Stage Id = "Stage_Lobby"
+    - (입력) InputService가 필요. Core 씬에 존재해야 함
 
 - Services/StageRoot (Empty)
   - Transform: 기본값
@@ -54,6 +56,24 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
 - FrontDoor 클릭 → HotspotMove가 StageChangeRequested("Stage_Lobby") 발행
 - (UI 대체) UI Button OnClick → GameEvents.RaiseStageChangeRequested("Stage_Lobby")
   - Button 자식에 TextMeshProUGUI 라벨 배치(가이드 5.3 권장값)
+
+5) Build Settings(Scenes In Build)
+- Core(최상단), Stage_Menu, Stage_Front, Stage_Lobby 등록
+
+6) Tests(기능 검증)
+- 정문 클릭 → Stage_Lobby 전환 요청(연타 시 단 1회만 전환)
+
+7) 체크리스트
+- [ ] HotspotMove.targetStageId = "Stage_Lobby"
+- [ ] Collider2D 또는 UI Button으로 클릭 입력 확보
+- [ ] StageRoot 존재
+
+8) FAQ(문제 해결)
+- 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인
+- 전환 실패: Build Settings 등록/ID 오타 확인
+
+9) 변경 이력(Change Log)
+- v1.2: 입력 경로(InputService.ObjectClicked) 기준으로 업데이트
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), Stage_Menu, Stage_Front 등록

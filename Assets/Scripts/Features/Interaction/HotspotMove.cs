@@ -1,5 +1,7 @@
 using UnityEngine;
 using AFKS.Core.Events;
+using AFKS.Core.Services;
+using AFKS.Core.Services.Input;
 
 namespace AFKS.Features.Interaction
 {
@@ -14,14 +16,29 @@ namespace AFKS.Features.Interaction
         [InspectorName("목표 스테이지 ID")]
         [Tooltip("클릭 시 이동할 스테이지 ID (예: Stage_Lobby)")]
         private string targetStageId;
+
+        private IInputService inputService;
         #endregion
 
         #region 유니티 수명주기
-        private void OnMouseDown()
+        private void Awake()
         {
-            if (!string.IsNullOrEmpty(targetStageId))
+            ServiceLocator.TryGet<IInputService>(out inputService);
+        }
+
+        private void OnEnable()
+        {
+            if (inputService != null)
             {
-                GameEvents.RaiseStageChangeRequested(targetStageId);
+                inputService.ObjectClicked += OnObjectClicked;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (inputService != null)
+            {
+                inputService.ObjectClicked -= OnObjectClicked;
             }
         }
         #endregion
@@ -30,6 +47,16 @@ namespace AFKS.Features.Interaction
         public void SetTarget(string stageId)
         {
             targetStageId = stageId;
+        }
+        #endregion
+
+        #region 이벤트 핸들러
+        private void OnObjectClicked(GameObject clicked)
+        {
+            if (clicked == gameObject && !string.IsNullOrEmpty(targetStageId))
+            {
+                GameEvents.RaiseStageChangeRequested(targetStageId);
+            }
         }
         #endregion
     }

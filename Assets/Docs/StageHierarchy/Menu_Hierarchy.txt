@@ -141,4 +141,21 @@ Purpose: 메인 메뉴(새 게임/계속/설정/종료)
 - 전환 실패: 씬 미등록/ID 오타
 
 9) 변경 이력(Change Log)
+- v1.2: 표준(텍스트/섹션) 유지. 기능 변동 없음
+
+5) Build Settings(Scenes In Build)
+- Core(최상단), Stage_Menu, Stage_Front 등록
+
+6) Tests(기능 검증)
+- 메뉴 표시, 버튼 3종 동작, New 클릭 시 Front 전환(페이드)
+
+7) 체크리스트
+- [ ] OnClick 연결 완료
+- [ ] Build Settings 등록 완료(Core/Stage_Menu/Stage_Front)
+
+8) FAQ(문제 해결)
+- 클릭 불가: EventSystem 유무, OnClick 누락 확인
+- 전환 실패: 씬 미등록/ID 오타
+
+9) 변경 이력(Change Log)
 - v1.2: 초보자 표준(번호/유형/(Empty)/[Components] 및 1:1 절차) 적용

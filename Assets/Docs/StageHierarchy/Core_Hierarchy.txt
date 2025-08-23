@@ -8,10 +8,12 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
     - AudioService (Empty, Optional) [Components: AudioService]
     - InputService (Empty) [Components: Input Service]
     - SceneService (Empty) [Components: SceneService]
+    - InventoryService (Empty) [Components: InventoryService]
     - StartupLoader (Empty) [Components: StartupLoader]
   - UI (Empty)
     - EventSystem (UI/Event System, Optional) [Components: EventSystem]
     - FadeCanvas (UI/Canvas + UI/Image + CanvasGroup + FadeCanvas) [Components: Canvas, CanvasScaler, GraphicRaycaster, Image, CanvasGroup, FadeCanvas]
+    - CloseupViewer (UI/CanvasGroup + CloseupViewer) [Components: CanvasGroup, CloseupViewer]
   - Empty (Empty)
     - SaveServiceBootstrap (Empty, Optional) [Components: -]
 
@@ -24,34 +26,14 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
   - AudioService(선택): Create Empty → Add Component: AudioService
   - InputService: Create Empty(이름: InputService) → Add Component: Input Service
   - SceneService: Create Empty(이름: SceneService) → Add Component: SceneService
+  - InventoryService: Create Empty(이름: InventoryService) → Add Component: Inventory Service
   - StartupLoader: Create Empty(이름: StartupLoader) → Add Component: StartupLoader
 - UI 자식
   - EventSystem(선택): GameObject > UI > Event System
   - FadeCanvas: GameObject > UI > Canvas → 하위 UI > Image → Add Component: CanvasGroup, FadeCanvas
+  - CloseupViewer: UI > Create Empty(이름: CloseupViewer) → Add Component: CanvasGroup, CloseupViewer
 - Empty 자식
   - SaveServiceBootstrap(선택): Create Empty(이름 유지)
-
-5) Build Settings(Scenes In Build)
-- Core.unity를 목록 최상단에 배치(항상 상주)
-- MainMenu 씬(및 이후 Stage_*)을 애디티브 로드 대상으로 등록
-
-6) Notes
-- Core는 한 번만 초기화되며 전환 내내 유지됩니다.
-- DontDestroyOnLoad를 별도 사용하지 않아도 Core 씬이 언로드되지 않도록 구성합니다.
-- 전환 실패 시 이전 스테이지 유지 + 페이드 해제 + 로그로 처리합니다.
-
-7) Quick Test (MVP)
-1) Core 열기 → Play → StartupLoader가 MainMenu 요청
-2) MainMenu 버튼 동작 확인(전환 대상은 후속 스테이지 추가 후 검증)
-3) 페이드/입력차단 동작 확인
-
---- 세부 스펙 템플릿 (추후 채움) ---
-[Objects & Components]
-- Core/SceneService: [SceneService]
-- Core/FadeCanvas: [Canvas, Image, CanvasGroup]
-- Core/StartupLoader: [StartupLoader]
-- Core/EventSystem: [EventSystem, InputSystemUIInputModule]
-- Core/AudioService: [AudioService]
 
 3) 인스펙터 설정(실제 인스펙터 순서)
 - Services/AudioService (Empty)
@@ -73,84 +55,61 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
     - 페이드 캔버스 = Core/UI/FadeCanvas의 FadeCanvas
     - 기본 페이드 시간(초) = 0.60
 
+- Services/InventoryService (Empty)
+  - Transform: 기본값
+  - Inventory Service(스크립트)
+    - Initial Items = (비워둠)
+
 - Services/StartupLoader (Empty)
   - Transform: 기본값
   - Startup Loader(스크립트)
-    - 초기 스테이지 ID = "MainMenu" (현재 프로젝트 기준)
+    - 초기 스테이지 ID = "Stage_Menu" (또는 프로젝트 기준 초기 스테이지)
     - 시작 시 자동 로드 = On
 
 - UI/FadeCanvas (Canvas + Image + CanvasGroup + FadeCanvas)
-  - RectTransform: 기본값(Stretch, Left/Right/Top/Bottom=0)
-  - Canvas
-    - Render Mode = Screen Space - Overlay
-    - Sorting Order = 1000
-  - Canvas Scaler
-    - UI Scale Mode = Scale With Screen Size
-    - Reference Resolution = 1920x1080
-    - Screen Match Mode = Match Width Or Height, Match = 0.5
-  - Graphic Raycaster = 기본값
-  - Image
-    - Color = #000000, Alpha = 1.0
-  - Canvas Group
-    - Alpha = 0
-    - Interactable = Off
-    - Blocks Raycasts = Off
-  - Fade Canvas(스크립트)
-    - 캔버스 그룹 = (자기 CanvasGroup)
+  - RectTransform: Stretch(Left/Right/Top/Bottom=0)
+  - Canvas: Render Mode=Overlay, Sorting Order=1000
+  - Canvas Scaler: 1920x1080, Match 0.5
+  - Image: Color #000000, Alpha 1.0
+  - Canvas Group: Alpha 0, Interactable Off, Blocks Off
+  - Fade Canvas(스크립트): 캔버스 그룹 = 자기 CanvasGroup
+
+- UI/CloseupViewer (CanvasGroup + CloseupViewer)
+  - CanvasGroup: Alpha=0, Interactable Off, Blocks Off
+  - Closeup Viewer(스크립트)
+    - Image = (UI/Image 참조)
+    - Text = (TMP 또는 Text 참조)
+    - Fade Seconds = 0.15
 
 - UI/EventSystem (선택)
-  - Transform: 기본값
   - Event System = 기본값
-  - Input System UI Input Module = (프로젝트에서 New Input System 사용 시 자동 구성)
+  - Input System UI Input Module = (프로젝트가 New Input System 사용 시 자동)
 
 4) Components & Wiring(참조/이벤트)
 - GameEvents.StageChangeRequested → SceneService.OnStageChangeRequested
-- FadeCanvas API: Fade(in/out) 호출 지점
- - InputService: 포인터가 UI 위일 때 클릭 무시(옵션)
+- SceneService: Fade.Out → LoadAdditive(next) → Activate → Unload(prev) → Fade.In
+- FadeCanvas API: SceneService에서 전환 시 호출
+- InputService: ObjectClicked 이벤트로 2D/3D 클릭 타겟 전달, UI 위 클릭 무시(옵션)
+- InventoryService: PickupItem/ DoorLocked 등에서 조회/수정 사용
+- CloseupViewer: PickupItem/DocumentCloseup에서 호출하여 이미지/텍스트 표시
 
-Data / IDs
-- N/A (Core는 전역 서비스 및 UI만 보관)
+5) Build Settings(Scenes In Build)
+- Core.unity를 목록 최상단에 배치(항상 상주)
+- Stage_Menu, Stage_Front, Stage_Lobby 등 Stage_* 씬 등록
 
-Global Integration
-- Input Lock Level: Transition
-- Fade: out/in = 0.6s, 타이밍 = Load/Unload 전후
-- Audio: 전환 시 CrossFade(옵션)
+6) Tests(기능 검증)
+- 재생 → StartupLoader가 Initial Stage 요청 → SceneService 전환(3회 연속) 성공
+- 전환 중 연타 입력 무시(재진입 가드)
 
-Exceptions / Safety
-- 중복 등록 방지, 구독/해제 위치 명시
-- 전환 실패 시 롤백 처리 플로우
+7) 체크리스트
+- [ ] FadeCanvas 참조가 SceneService에 연결됨
+- [ ] InventoryService/CloseupViewer 존재
+- [ ] EventSystem 존재(필요 시)
+- [ ] Build Settings 순서(Core 최상단) 확인
 
-Performance / Memory
-- 프레임당 할당 없음, 로그 최소화
+8) FAQ(문제 해결)
+- 클릭 불가: EventSystem 유무, Collider2D/카메라 레이어 확인
+- 전환 실패: 씬 미등록/ID 오타 로그 확인
 
-Tests
-- 왕복 전환 50회, 실패/예외/누수 0 확인
-
-
-초보자용 단계별 가이드 (하이라키 + 인스펙터)
-1) 씬 생성: File > New Scene → 저장 이름 `Core.unity`
-2) 하이라키 만들기
-- Core (Empty)
-  - FadeCanvas (Canvas + Image + CanvasGroup + FadeCanvas)
-  - SceneService (SceneService)
-  - StartupLoader (StartupLoader)
-  - EventSystem (EventSystem, 선택)
-3) 인스펙터 설정
-- FadeCanvas(Canvas)
-  - Render Mode: Screen Space - Overlay, Sorting Order: 1000
-  - CanvasScaler: Scale With Screen Size, Reference 1920x1080, Match 0.5
-  - Image: Color #000000, Alpha 1.0, RectTransform Stretch(모두 0)
-  - CanvasGroup: Alpha 0, Interactable Off, Blocks Raycasts Off
-  - FadeCanvas(스크립트): 기본값 사용
-- SceneService
-  - Default Fade Seconds: 0.6 (권장)
-  - FadeCanvas: 위 FadeCanvas를 드래그하여 참조 연결
-- StartupLoader
-  - Initial Stage Id: `Stage_Menu` (또는 `Stage_Front`)
-  - Auto Load On Start: On
-- EventSystem(선택)
-  - EventSystem 컴포넌트만 있어도 OK
-4) 빌드/실행 준비
-- Build Settings에 Core를 최상단으로, MainMenu 추가
-5) 실행 확인
-- 재생 → StartupLoader가 Initial Stage를 요청 → SceneService가 페이드/로드/언로드/페이드 수행
+9) 변경 이력(Change Log)
+- v1.1: InventoryService/CloseupViewer 추가, Components & Wiring 확장

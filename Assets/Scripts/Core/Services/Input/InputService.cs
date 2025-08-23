@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using AFKS.Core.Services;
+using UnityEngine.UI;
 
 namespace AFKS.Core.Services.Input
 {
@@ -27,6 +28,7 @@ namespace AFKS.Core.Services.Input
         public Vector2 PointerPosition => UnityEngine.Input.mousePosition;
 
         public event Action Clicked;
+        public event Action<GameObject> ObjectClicked;
         #endregion
 
         #region 유니티 수명주기
@@ -37,23 +39,20 @@ namespace AFKS.Core.Services.Input
 
         private void Update()
         {
-            if (IsLocked)
-            {
-                return;
-            }
+            if (IsLocked) return;
 
-            // UI 위면 클릭 무시(옵션)
-            if (ignoreClicksWhenPointerOverUI && IsPointerOverUI())
-            {
-                return;
-            }
-
-            // 마우스 좌클릭 또는 터치 시작을 클릭으로 처리
+            // 클릭 에지 검출 후 UI 위 체크로 할당/비용 최소화
             bool mouseClicked = UnityEngine.Input.GetMouseButtonDown(0);
             bool touchClicked = UnityEngine.Input.touchCount > 0 && UnityEngine.Input.GetTouch(0).phase == TouchPhase.Began;
-            if (mouseClicked || touchClicked)
+            if (!(mouseClicked || touchClicked)) return;
+
+            if (ignoreClicksWhenPointerOverUI && IsPointerOverUI()) return;
+
+            Clicked?.Invoke();
+
+            if (TryRaycast(out var go))
             {
-                Clicked?.Invoke();
+                ObjectClicked?.Invoke(go);
             }
         }
         #endregion
@@ -71,13 +70,40 @@ namespace AFKS.Core.Services.Input
                 return false;
             }
 
-            var eventData = new PointerEventData(EventSystem.current);
-            eventData.position = PointerPosition;
+            var eventData = new PointerEventData(EventSystem.current)
+            {
+                position = PointerPosition
+            };
             var results = ListPool<RaycastResult>.Get();
             EventSystem.current.RaycastAll(eventData, results);
             bool overUI = results.Count > 0;
             ListPool<RaycastResult>.Release(results);
             return overUI;
+        }
+
+        public bool TryRaycast(out GameObject clickedObject)
+        {
+            // 2D 물리 우선(사진형 2D 씬 기준), 실패 시 3D 물리 폴백
+            var cam = uiCamera != null ? uiCamera : Camera.main;
+            clickedObject = null;
+            if (cam == null) return false;
+
+            var worldPoint = cam.ScreenToWorldPoint(new Vector3(PointerPosition.x, PointerPosition.y, Mathf.Abs(cam.transform.position.z)));
+            var hit2D = Physics2D.OverlapPoint(worldPoint);
+            if (hit2D != null)
+            {
+                clickedObject = hit2D.gameObject;
+                return true;
+            }
+
+            var ray = cam.ScreenPointToRay(PointerPosition);
+            if (Physics.Raycast(ray, out var hit3D))
+            {
+                clickedObject = hit3D.collider.gameObject;
+                return true;
+            }
+
+            return false;
         }
         #endregion
 

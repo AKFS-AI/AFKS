@@ -19,11 +19,15 @@ namespace AFKS.Core.Services.Input
         bool IsPointerOverUI();
         /// <summary>입력 잠금을 설정/해제.</summary>
         void Lock(bool locked);
+        /// <summary>화면 포인터 위치로 레이캐스트하여 클릭된 오브젝트를 반환합니다.</summary>
+        bool TryRaycast(out GameObject clickedObject);
         #endregion
 
         #region 이벤트
         /// <summary>좌클릭이 눌렸을 때 발생.</summary>
         event System.Action Clicked;
+        /// <summary>좌클릭으로 특정 오브젝트가 클릭되었을 때 발생.</summary>
+        event System.Action<GameObject> ObjectClicked;
         #endregion
     }
 }
