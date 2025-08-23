@@ -3,33 +3,57 @@ SceneName: Stage_Front
 Purpose: 병원 앞(정문 클릭 → Lobby)
 
 1) 하이라키어 최종 구조도
-1. StageRoot (Empty) [Components: StageRoot]
-2. BG (2D/Sprite or UI/Image) [Components: SpriteRenderer or Image]
-3. Hotspots (Empty) [Components: -]
-  3.1 FrontDoor (Empty) [Components: HotspotMove, BoxCollider2D]
+- World (Empty)
+  - BG (2D/Sprite or UI/Image) [Components: SpriteRenderer or Image]
+- Interaction (Empty)
+  - Hotspots (Empty) [Components: -]
+    - FrontDoor (Empty) [Components: HotspotMove, BoxCollider2D]
+- Services (Empty)
+  - StageRoot (Empty) [Components: StageRoot]
 
 2) 하이라키어 제작 절차(생성 경로 포함)
-2.1 (1) StageRoot
-  - 생성 경로: GameObject > Create Empty (이름: StageRoot)
-  - Add Component: StageRoot
-2.2 (2) BG
+- 컨테이너 생성: World, Interaction, Services (모두 Empty)
+- World/BG
   - 생성 경로: GameObject > 2D Object > Sprite (이름: BG)  |  (대안) Canvas 하위 UI > Image
   - Add Component: SpriteRenderer(2D) 또는 Image(UI)
-2.3 (3) Hotspots
+  - (UI 대체 시) 라벨/힌트 텍스트가 필요하면 UI > Text - TextMeshPro 추가, 5.3 규칙 준수
+- Interaction/Hotspots
   - 생성 경로: GameObject > Create Empty (이름: Hotspots)
-2.4 (3.1) FrontDoor
-  - 생성 경로: Hotspots 하위, GameObject > Create Empty (이름: FrontDoor)
-  - Add Component: HotspotMove, BoxCollider2D
+  - 자식 FrontDoor: Create Empty → Add Component: HotspotMove, BoxCollider2D
+- Services/StageRoot
+  - 생성 경로: GameObject > Create Empty (이름: StageRoot)
+  - Add Component: StageRoot
 
-3) 인스펙터 설정
-- StageRoot: 기본값
-- BG(SpriteRenderer): Sprite 할당, 권장 해상도 1920x1080
-- FrontDoor(HotspotMove): Target Stage Id = "Stage_Lobby"
-- FrontDoor(Collider2D): 클릭 영역에 맞게 Size 조정, Is Trigger 해제(기본)
+3) 인스펙터 설정(실제 인스펙터 순서)
+- World/BG (2D/Sprite 또는 UI/Image)
+  - SpriteRenderer 선택 시
+    - Transform: 기본값
+    - Sprite Renderer
+      - Sprite = <배경 스프라이트>
+      - Draw Mode = Simple
+  - UI/Image로 구성 시(Canvas 하위)
+    - RectTransform = Stretch(Left/Right/Top/Bottom=0)
+    - Image
+      - Color = #FFFFFF, Alpha=1
+    - TextMeshProUGUI(라벨 필요 시)
+      - Auto Size On(24~40), Raycast Target Off
+
+- Interaction/Hotspots/FrontDoor (Empty)
+  - Transform: 클릭 영역 위치/크기에 맞게 조정
+  - Box Collider 2D
+    - Is Trigger = Off(기본)
+    - Size = 환경에 맞게 설정
+  - Hotspot Move(스크립트)
+    - Target Stage Id = "Stage_Lobby"
+
+- Services/StageRoot (Empty)
+  - Transform: 기본값
+  - StageRoot(스크립트) = 기본값
 
 4) Components & Wiring(참조/이벤트 배선)
 - FrontDoor 클릭 → HotspotMove가 StageChangeRequested("Stage_Lobby") 발행
 - (UI 대체) UI Button OnClick → GameEvents.RaiseStageChangeRequested("Stage_Lobby")
+  - Button 자식에 TextMeshProUGUI 라벨 배치(가이드 5.3 권장값)
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), Stage_Menu, Stage_Front 등록

@@ -8,16 +8,19 @@ namespace AFKS.Core.UI
     /// 페이드 중에는 Raycast 차단으로 입력을 막습니다.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
-    [AddComponentMenu("AFKS/UI/페이드 캔버스")]
+    [AddComponentMenu("AFKS/UI/Fade Canvas")]
     public sealed class FadeCanvas : MonoBehaviour
     {
+        #region 필드
         [SerializeField]
         [InspectorName("캔버스 그룹")]
         [Tooltip("페이드에 사용할 CanvasGroup 컴포넌트입니다.")]
         private CanvasGroup canvasGroup;
 
         private Coroutine currentRoutine;
+        #endregion
 
+        #region 유니티 수명주기
         private void Reset()
         {
             canvasGroup = GetComponent<CanvasGroup>();
@@ -34,7 +37,9 @@ namespace AFKS.Core.UI
             canvasGroup.blocksRaycasts = false;
             canvasGroup.interactable = false;
         }
+        #endregion
 
+        #region 코루틴
         public IEnumerator FadeOut(float seconds)
         {
             yield return FadeTo(1f, seconds);
@@ -87,6 +92,7 @@ namespace AFKS.Core.UI
             canvasGroup.interactable = block;
             currentRoutine = null;
         }
+        #endregion
     }
 }
 

@@ -11,9 +11,10 @@ namespace AFKS.Core.Services.Scene
     /// 페이드와 입력 잠금을 동반한 스테이지(Additive) 로드/언로드를 수행합니다.
     /// Core 씬에 배치된 FadeCanvas 참조가 필요합니다.
     /// </summary>
-    [AddComponentMenu("AFKS/씬/씬 전환 서비스")]
+    [AddComponentMenu("AFKS/Scene/Scene Service")]
     public sealed class SceneService : MonoBehaviour, ISceneService
     {
+        #region 필드
         [SerializeField]
         [InspectorName("페이드 캔버스")]
         [Tooltip("전환 시 화면을 어둡게/밝게 페이드할 캔버스입니다.")]
@@ -25,7 +26,10 @@ namespace AFKS.Core.Services.Scene
         private float defaultFadeSeconds = 0.35f;
 
         private IInputService inputService;
+        private bool lastLoadSucceeded;
+        #endregion
 
+        #region 유니티 수명주기
         private void Awake()
         {
             ServiceLocator.Register<ISceneService>(this, overwriteExisting: true);
@@ -41,12 +45,16 @@ namespace AFKS.Core.Services.Scene
         {
             GameEvents.StageChangeRequested -= OnStageChangeRequested;
         }
+        #endregion
 
+        #region 이벤트 핸들러
         private void OnStageChangeRequested(string targetStageId)
         {
             StartCoroutine(TransitionToStageCoroutine(targetStageId));
         }
+        #endregion
 
+        #region 코루틴
         private IEnumerator TransitionToStageCoroutine(string targetStageId)
         {
             if (inputService != null) inputService.Lock(true);
@@ -56,6 +64,14 @@ namespace AFKS.Core.Services.Scene
             if (!string.IsNullOrEmpty(targetStageId))
             {
                 yield return LoadStageAdditiveAsync(targetStageId, activateOnLoad: true);
+                if (!lastLoadSucceeded)
+                {
+                    Debug.LogError($"[SceneService] 스테이지 로드 실패: '{targetStageId}'. Build Settings 또는 Assets/Scenes 등록을 확인하세요.");
+                    // 실패 시 기존 스테이지 유지, 즉시 페이드 인 후 해제
+                    yield return FadeInAsync(defaultFadeSeconds);
+                    if (inputService != null) inputService.Lock(false);
+                    yield break;
+                }
             }
 
             if (!string.IsNullOrEmpty(currentStage))
@@ -100,7 +116,21 @@ namespace AFKS.Core.Services.Scene
 
         public IEnumerator LoadStageAdditiveAsync(string stageId, bool activateOnLoad = false)
         {
+            lastLoadSucceeded = false;
+
+            // 사전 검증: 빌드 세팅/에셋번들에 로드 가능 여부 확인
+            if (!Application.CanStreamedLevelBeLoaded(stageId))
+            {
+                Debug.LogError($"[SceneService] 씬 '{stageId}' 을(를) 로드할 수 없습니다. File > Build Settings에 씬을 추가했는지 확인하세요.");
+                yield break;
+            }
+
             var op = SceneManager.LoadSceneAsync(stageId, LoadSceneMode.Additive);
+            if (op == null)
+            {
+                Debug.LogError($"[SceneService] LoadSceneAsync가 null을 반환했습니다: '{stageId}'");
+                yield break;
+            }
             while (!op.isDone) yield return null;
 
             if (activateOnLoad)
@@ -108,6 +138,7 @@ namespace AFKS.Core.Services.Scene
                 yield return ActivateLoadedStageAsync(stageId);
             }
 
+            lastLoadSucceeded = true;
             GameEvents.RaiseStageLoaded(stageId);
         }
 
@@ -130,6 +161,7 @@ namespace AFKS.Core.Services.Scene
                 GameEvents.RaiseStageUnloaded(stageId);
             }
         }
+        #endregion
     }
 }
 

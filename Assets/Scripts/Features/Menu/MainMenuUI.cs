@@ -8,9 +8,10 @@ namespace AFKS.Features.Menu
     /// <summary>
     /// 메인 메뉴 씬에서 사용합니다. 인스펙터에서 버튼들을 연결하십시오.
     /// </summary>
-    [AddComponentMenu("AFKS/메뉴/메인 메뉴 UI")]
+    [AddComponentMenu("AFKS/Menu/Main Menu UI")]
     public sealed class MainMenuUI : MonoBehaviour
     {
+        #region 필드
         [SerializeField]
         [InspectorName("새 게임 버튼")]
         private Button newGameButton;
@@ -22,7 +23,9 @@ namespace AFKS.Features.Menu
         [SerializeField]
         [InspectorName("종료 버튼")]
         private Button quitButton;
+        #endregion
 
+        #region 유니티 수명주기
         private void Awake()
         {
             if (newGameButton != null) newGameButton.onClick.AddListener(OnClickNewGame);
@@ -36,7 +39,9 @@ namespace AFKS.Features.Menu
             if (continueButton != null) continueButton.onClick.RemoveListener(OnClickContinue);
             if (quitButton != null) quitButton.onClick.RemoveListener(OnClickQuit);
         }
+        #endregion
 
+        #region 이벤트 핸들러
         private void OnClickNewGame()
         {
             // MVP 단계에서는 바로 Stage_Front로 이동
@@ -57,6 +62,7 @@ namespace AFKS.Features.Menu
             Application.Quit();
 #endif
         }
+        #endregion
     }
 }
 

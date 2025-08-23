@@ -3,21 +3,25 @@ using System;
 namespace AFKS.Core.Events
 {
     /// <summary>
-    /// Central game event hub. Lightweight C# events to decouple features.
+    /// 게임 이벤트 허브. 기능 간 결합을 낮추는 경량 C# 이벤트 모음입니다.
     /// </summary>
     public static class GameEvents
     {
-        // Stage flow
+        #region 스테이지 흐름
         public static event Action<string> StageChangeRequested;
         public static event Action<string> StageLoaded;
         public static event Action<string> StageUnloaded;
+        #endregion
 
-        // Inventory (future use)
+        #region 인벤토리(확장 예정)
         public static event Action<string> ItemPicked;
+        #endregion
 
-        // Jump scare (future use)
+        #region 점프스케어(확장 예정)
         public static event Action<string> JumpScareTriggered;
+        #endregion
 
+        #region 발행 함수
         public static void RaiseStageChangeRequested(string targetStageId)
         {
             StageChangeRequested?.Invoke(targetStageId);
@@ -42,6 +46,7 @@ namespace AFKS.Core.Events
         {
             JumpScareTriggered?.Invoke(clipId);
         }
+        #endregion
     }
 }
 

@@ -2,47 +2,48 @@ Title: Core - Hierarchy & Wiring Guide
 SceneName: Core
 Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 전환의 기반
 
-Hierarchy (추천)
-- Core (empty)
-  - SceneService (SceneService)
-  - FadeCanvas (Canvas + Image + CanvasGroup)
-  - StartupLoader (StartupLoader)
-  - [Optional] EventSystem (EventSystem + InputModule)
-  - [Optional] AudioService (AudioService)
-  - [Optional] SaveServiceBootstrap (초기 로드/저장 트리거용 빈 오브젝트)
+1) 하이라키어 최종 구조도
+- Core (Empty)
+  - Services (Empty)
+    - AudioService (Empty, Optional) [Components: AudioService]
+    - InputService (Empty) [Components: Input Service]
+    - SceneService (Empty) [Components: SceneService]
+    - StartupLoader (Empty) [Components: StartupLoader]
+  - UI (Empty)
+    - EventSystem (UI/Event System, Optional) [Components: EventSystem]
+    - FadeCanvas (UI/Canvas + UI/Image + CanvasGroup + FadeCanvas) [Components: Canvas, CanvasScaler, GraphicRaycaster, Image, CanvasGroup, FadeCanvas]
+  - Empty (Empty)
+    - SaveServiceBootstrap (Empty, Optional) [Components: -]
 
-Components & Wiring
-- SceneService
-  - 역할: StageChangeRequested 구독 → Fade.Out → LoadAdditive(next) → Activate → Unload(prev) → Fade.In
-  - 필드: defaultFadeSeconds = 0.6 (권장)
-- FadeCanvas
-  - Canvas: Screen Space - Overlay, Sorting Order 가장 위
-  - Image: Black(#000), Stretch(Full)
-  - CanvasGroup: alpha=0, blocksRaycasts=false, interactable=false
-  - 사용: 전환 중 alpha 1.0, blocksRaycasts true로 입력 차단
-- StartupLoader
-  - initialStageId = Stage_Front (또는 Stage_Menu)
-  - autoLoadOnStart = true
-- [Optional] EventSystem
-  - UI 상호작용 안전 장치(메뉴/모달 대비)
-- [Optional] AudioService
-  - BGM/SFX 최소 재생 및 크로스페이드(후속 단계 연결)
-- [Optional] SaveServiceBootstrap
-  - 게임 시작 시 세이브 로드 → 옵션/볼륨 반영(후속 단계 연결)
+2) 하이라키어 제작 절차(생성 경로 포함)
+- 컨테이너 생성
+  - Services: GameObject > Create Empty
+  - UI: GameObject > Create Empty
+  - Empty: GameObject > Create Empty
+- Services 자식
+  - AudioService(선택): Create Empty → Add Component: AudioService
+  - InputService: Create Empty(이름: InputService) → Add Component: Input Service
+  - SceneService: Create Empty(이름: SceneService) → Add Component: SceneService
+  - StartupLoader: Create Empty(이름: StartupLoader) → Add Component: StartupLoader
+- UI 자식
+  - EventSystem(선택): GameObject > UI > Event System
+  - FadeCanvas: GameObject > UI > Canvas → 하위 UI > Image → Add Component: CanvasGroup, FadeCanvas
+- Empty 자식
+  - SaveServiceBootstrap(선택): Create Empty(이름 유지)
 
-Build Settings
+5) Build Settings(Scenes In Build)
 - Core.unity를 목록 최상단에 배치(항상 상주)
-- Stage_* / Stage_Menu 씬은 애디티브 로드 대상
+- MainMenu 씬(및 이후 Stage_*)을 애디티브 로드 대상으로 등록
 
-Notes
+6) Notes
 - Core는 한 번만 초기화되며 전환 내내 유지됩니다.
 - DontDestroyOnLoad를 별도 사용하지 않아도 Core 씬이 언로드되지 않도록 구성합니다.
 - 전환 실패 시 이전 스테이지 유지 + 페이드 해제 + 로그로 처리합니다.
 
-Quick Test (MVP)
-1) Core 열기 → Play → StartupLoader가 Stage_Front 요청
-2) Stage_Front에서 HotspotMove로 Stage_Office 이동
-3) 왕복 전환 5회: 페이드/언로드/입력차단 정상 여부 확인
+7) Quick Test (MVP)
+1) Core 열기 → Play → StartupLoader가 MainMenu 요청
+2) MainMenu 버튼 동작 확인(전환 대상은 후속 스테이지 추가 후 검증)
+3) 페이드/입력차단 동작 확인
 
 --- 세부 스펙 템플릿 (추후 채움) ---
 [Objects & Components]
@@ -52,31 +53,77 @@ Quick Test (MVP)
 - Core/EventSystem: [EventSystem, InputSystemUIInputModule]
 - Core/AudioService: [AudioService]
 
-[Serialized Fields / Values]
-- SceneService.defaultFadeSeconds = 0.6s
-- StartupLoader.initialStageId = "Stage_Front"
-- CanvasGroup.alpha = 0, blocksRaycasts=false, interactable=false
+3) 인스펙터 설정(실제 인스펙터 순서)
+- Services/AudioService (Empty)
+  - Transform: Position=(0,0,0), Rotation=(0,0,0), Scale=(1,1,1)
+  - Audio Service(스크립트)
+    - Bgm A = None (Audio Source)  ; 재생 중 자동 생성
+    - Bgm B = None (Audio Source)  ; 재생 중 자동 생성
+    - Sfx = None (Audio Source)    ; 재생 중 자동 생성
 
-[Events / Bindings]
+- Services/InputService (Empty)
+  - Transform: 기본값
+  - Input Service(스크립트)
+    - UI 카메라 = None(Camera, 옵션)
+    - UI 위 클릭 무시 = On(권장)
+
+- Services/SceneService (Empty)
+  - Transform: 기본값
+  - Scene Service(스크립트)
+    - 페이드 캔버스 = Core/UI/FadeCanvas의 FadeCanvas
+    - 기본 페이드 시간(초) = 0.60
+
+- Services/StartupLoader (Empty)
+  - Transform: 기본값
+  - Startup Loader(스크립트)
+    - 초기 스테이지 ID = "MainMenu" (현재 프로젝트 기준)
+    - 시작 시 자동 로드 = On
+
+- UI/FadeCanvas (Canvas + Image + CanvasGroup + FadeCanvas)
+  - RectTransform: 기본값(Stretch, Left/Right/Top/Bottom=0)
+  - Canvas
+    - Render Mode = Screen Space - Overlay
+    - Sorting Order = 1000
+  - Canvas Scaler
+    - UI Scale Mode = Scale With Screen Size
+    - Reference Resolution = 1920x1080
+    - Screen Match Mode = Match Width Or Height, Match = 0.5
+  - Graphic Raycaster = 기본값
+  - Image
+    - Color = #000000, Alpha = 1.0
+  - Canvas Group
+    - Alpha = 0
+    - Interactable = Off
+    - Blocks Raycasts = Off
+  - Fade Canvas(스크립트)
+    - 캔버스 그룹 = (자기 CanvasGroup)
+
+- UI/EventSystem (선택)
+  - Transform: 기본값
+  - Event System = 기본값
+  - Input System UI Input Module = (프로젝트에서 New Input System 사용 시 자동 구성)
+
+4) Components & Wiring(참조/이벤트)
 - GameEvents.StageChangeRequested → SceneService.OnStageChangeRequested
 - FadeCanvas API: Fade(in/out) 호출 지점
+ - InputService: 포인터가 UI 위일 때 클릭 무시(옵션)
 
-[Data / IDs]
+Data / IDs
 - N/A (Core는 전역 서비스 및 UI만 보관)
 
-[Global Integration]
+Global Integration
 - Input Lock Level: Transition
 - Fade: out/in = 0.6s, 타이밍 = Load/Unload 전후
 - Audio: 전환 시 CrossFade(옵션)
 
-[Exceptions / Safety]
+Exceptions / Safety
 - 중복 등록 방지, 구독/해제 위치 명시
 - 전환 실패 시 롤백 처리 플로우
 
-[Performance / Memory]
+Performance / Memory
 - 프레임당 할당 없음, 로그 최소화
 
-[Tests]
+Tests
 - 왕복 전환 50회, 실패/예외/누수 0 확인
 
 
@@ -104,6 +151,6 @@ Quick Test (MVP)
 - EventSystem(선택)
   - EventSystem 컴포넌트만 있어도 OK
 4) 빌드/실행 준비
-- Build Settings에 Core를 최상단으로, Stage_Menu / Stage_Front 추가
+- Build Settings에 Core를 최상단으로, MainMenu 추가
 5) 실행 확인
 - 재생 → StartupLoader가 Initial Stage를 요청 → SceneService가 페이드/로드/언로드/페이드 수행
