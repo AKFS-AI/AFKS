@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: e57f5161e3cdf0a428263dd72846baff
+guid: 9e25bb2e86db3194b94b1190a4038909
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7328028858602958044
-    second: StageBG_1_0
+      213: 4641944269922965540
+    second: StageBG_1_2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,7 +100,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: StageBG_1_0
+      name: StageBG_1_2_0
       rect:
         serializedVersion: 2
         x: 0
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cdc27dcdb6362b560800000000000000
-      internalID: 7328028858602958044
+      spriteID: 4281beb28bf7b6040800000000000000
+      internalID: 4641944269922965540
       vertices: []
       indices: 
       edges: []

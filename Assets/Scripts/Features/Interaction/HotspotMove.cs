@@ -2,6 +2,8 @@ using UnityEngine;
 using AFKS.Core.Events;
 using AFKS.Core.Services;
 using AFKS.Core.Services.Input;
+using AFKS.Core.Services.Scene;
+using UnityEngine.SceneManagement;
 
 namespace AFKS.Features.Interaction
 {
@@ -55,7 +57,14 @@ namespace AFKS.Features.Interaction
         {
             if (clicked == gameObject && !string.IsNullOrEmpty(targetStageId))
             {
+                // 우선 전역 전환 이벤트 발행(코어가 있을 때 정상 처리)
                 GameEvents.RaiseStageChangeRequested(targetStageId);
+
+                // 코어( SceneService )가 없는 스탠드얼론 스테이지에서도 동작하도록 폴백
+                if (!ServiceLocator.TryGet<ISceneService>(out _))
+                {
+                    SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
+                }
             }
         }
         #endregion

@@ -1,6 +1,6 @@
 Title: Stage1 - Hierarchy & Wiring Guide
 SceneName: Stage1
-Purpose: 병원 앞(정문 클릭 → Lobby)
+Purpose: 병원 앞(문 클로즈업→쇠사슬 해금→문 클릭 시 Stage2)
 
 1) 하이라키어 최종 구조도
 - World (Empty)
@@ -23,6 +23,7 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - 생성 경로: GameObject > Create Empty (이름: Hotspots)
   - 자식 DoorZoom: Create Empty → Add Component: BoxCollider2D, HotspotInspect
     - HotspotInspect: 클릭 시 CloseupViewer.Open(문 클로즈업 스프라이트)
+    - 전제: Core/UI에 CloseupViewer가 존재하고, CloseupViewer(Image 필드)가 자식 UI/Image에 연결되어 있어야 함
     - (Core/UI/CloseupViewer) Close On Click=On, Close On Esc=On 권장
   - 자식 Chain: Create Empty → Add Component: BoxCollider2D, ChainUnlock
     - ChainUnlock.requiredClicks = 3(예시)
@@ -47,9 +48,10 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - Box Collider 2D
     - Is Trigger = Off(기본)
     - Size = 환경에 맞게 설정
-  - Hotspot Inspect(스크립트)
+  - HotspotInspect(스크립트)
     - Closeup Sprite = 문 클로즈업 이미지
     - (입력) InputService가 필요. Core 씬에 존재해야 함
+    - (UI) CloseupViewer는 Canvas 하위이며 Image 필드가 연결되어 있어야 표시됨
 
 - Interaction/Hotspots/Chain (Empty)
   - Transform: 문 중앙 체인 영역에 맞게 조정
@@ -62,7 +64,7 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - Transform: 문 영역
   - Box Collider 2D
     - Is Trigger = Off
-  - Hotspot Move(스크립트)
+  - HotspotMove(스크립트)
     - Target Stage Id = "Stage2"
   - 초기 상태: SetActive(false)
 
@@ -71,15 +73,17 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - StageRoot(스크립트) = 기본값
 
 4) Components & Wiring(참조/이벤트 배선)
-- FrontDoor 클릭 → HotspotMove가 StageChangeRequested("Stage_Lobby") 발행
-- (UI 대체) UI Button OnClick → GameEvents.RaiseStageChangeRequested("Stage_Lobby")
-  - Button 자식에 TextMeshProUGUI 라벨 배치(가이드 5.3 권장값)
+- DoorZoom(HotspotInspect).OnClick → CloseupViewer.Open(문 클로즈업)
+- Chain(ChainUnlock).OnClick 누적 → OnUnlocked → DoorMove.SetActive(true)
+- DoorMove(HotspotMove).OnClick → GameEvents.RaiseStageChangeRequested("Stage2")
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), MainMenu, Stage1, Stage2 등록
 
 6) Tests(기능 검증)
-- 정문 클릭 → Stage2 전환 요청(연타 시 단 1회만 전환)
+- 문 클릭 → 문 클로즈업 표시
+- 체인 3회 클릭 → DoorMove 활성화
+- 문 클릭 → Stage2 전환(연타 시 단 1회만 전환)
 
 - 7) 체크리스트
 - [ ] HotspotInspect.CloseupSprite 연결
@@ -94,20 +98,4 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
 9) 변경 이력(Change Log)
 - v1.2: 입력 경로(InputService.ObjectClicked) 기준으로 업데이트
 
-5) Build Settings(Scenes In Build)
-- Core(최상단), Stage_Menu, Stage_Front 등록
-
-6) Tests(기능 검증)
-- 정문 클릭 → Stage_Lobby 전환 요청
-
-7) 체크리스트
-- [ ] HotspotMove.targetStageId = "Stage_Lobby"
-- [ ] Collider2D 또는 UI Button으로 클릭 입력 확보
-- [ ] StageRoot 존재
-
-8) FAQ(문제 해결)
-- 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인
-- 전환 실패: Build Settings 등록/ID 오타 확인
-
-9) 변경 이력(Change Log)
-- v1.1: 표준 섹션(최종 구조도→제작 절차→인스펙터)로 재구성
+ 

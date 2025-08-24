@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using AFKS.Core.Services;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using AFKS.Core.Events;
 
 namespace AFKS.Core.Services.Input
 {
@@ -24,6 +26,16 @@ namespace AFKS.Core.Services.Input
         [Tooltip("포인터가 UI 위에 있을 때 클릭 이벤트를 무시합니다.")]
         private bool ignoreClicksWhenPointerOverUI = true;
 
+        [SerializeField]
+        [InspectorName("클릭 가능한 레이어")]
+        [Tooltip("2D/3D 레이캐스트 시 대상으로 삼을 레이어 마스크입니다.")]
+        private LayerMask clickableLayers = ~0; // Everything
+
+        [SerializeField]
+        [InspectorName("디버그 로그")] 
+        [Tooltip("클릭/레이캐스트 경로를 콘솔에 로그로 출력합니다.")]
+        private bool debugLogging = false;
+
         public bool IsLocked { get; private set; }
         public Vector2 PointerPosition => UnityEngine.Input.mousePosition;
 
@@ -35,6 +47,23 @@ namespace AFKS.Core.Services.Input
         private void Awake()
         {
             ServiceLocator.Register<IInputService>(this, overwriteExisting: true);
+            // 초기 카메라 자동 할당(없으면 Camera.main 또는 임의 활성 카메라)
+            if (uiCamera == null)
+            {
+                uiCamera = Camera.main != null ? Camera.main : FindAnyActiveCamera();
+            }
+        }
+
+        private void OnEnable()
+        {
+            GameEvents.StageLoaded += OnStageLoaded;
+            GameEvents.StageUnloaded += OnStageUnloaded;
+        }
+
+        private void OnDisable()
+        {
+            GameEvents.StageLoaded -= OnStageLoaded;
+            GameEvents.StageUnloaded -= OnStageUnloaded;
         }
 
         private void Update()
@@ -46,13 +75,22 @@ namespace AFKS.Core.Services.Input
             bool touchClicked = UnityEngine.Input.touchCount > 0 && UnityEngine.Input.GetTouch(0).phase == TouchPhase.Began;
             if (!(mouseClicked || touchClicked)) return;
 
-            if (ignoreClicksWhenPointerOverUI && IsPointerOverUI()) return;
+            if (ignoreClicksWhenPointerOverUI && IsPointerOverUI())
+            {
+                if (debugLogging) Debug.Log("[InputService] Click blocked by UI raycast.");
+                return;
+            }
 
             Clicked?.Invoke();
 
             if (TryRaycast(out var go))
             {
                 ObjectClicked?.Invoke(go);
+                if (debugLogging) Debug.Log($"[InputService] ObjectClicked: {go.name}");
+            }
+            else if (debugLogging)
+            {
+                Debug.Log("[InputService] Raycast miss.");
             }
         }
         #endregion
@@ -89,15 +127,21 @@ namespace AFKS.Core.Services.Input
             if (cam == null) return false;
 
             var worldPoint = cam.ScreenToWorldPoint(new Vector3(PointerPosition.x, PointerPosition.y, Mathf.Abs(cam.transform.position.z)));
-            var hit2D = Physics2D.OverlapPoint(worldPoint);
-            if (hit2D != null)
+            var hits2D = Physics2D.OverlapPointAll(worldPoint);
+            if (hits2D != null && hits2D.Length > 0)
             {
-                clickedObject = hit2D.gameObject;
-                return true;
+                for (int i = 0; i < hits2D.Length; i++)
+                {
+                    var col = hits2D[i];
+                    if (col == null) continue;
+                    if (((1 << col.gameObject.layer) & clickableLayers.value) == 0) continue;
+                    clickedObject = col.gameObject;
+                    return true;
+                }
             }
 
             var ray = cam.ScreenPointToRay(PointerPosition);
-            if (Physics.Raycast(ray, out var hit3D))
+            if (Physics.Raycast(ray, out var hit3D, float.MaxValue, clickableLayers))
             {
                 clickedObject = hit3D.collider.gameObject;
                 return true;
@@ -111,6 +155,64 @@ namespace AFKS.Core.Services.Input
         private void OnDestroy()
         {
             ServiceLocator.Unregister<IInputService>();
+        }
+        #endregion
+
+        #region 내부 카메라 바인딩
+        private void OnStageLoaded(string stageId)
+        {
+            // 방금 로드된 스테이지 씬에서 우선 카메라를 찾아 바인딩
+            var scene = SceneManager.GetSceneByName(stageId);
+            if (!scene.IsValid() || !scene.isLoaded) return;
+            var camInScene = FindCameraInScene(scene);
+            if (camInScene != null)
+            {
+                uiCamera = camInScene;
+            }
+            else if (uiCamera == null)
+            {
+                uiCamera = Camera.main != null ? Camera.main : FindAnyActiveCamera();
+            }
+        }
+
+        private void OnStageUnloaded(string stageId)
+        {
+            // 언로드된 씬의 카메라를 참조 중이면 폴백
+            if (uiCamera != null && uiCamera.gameObject.scene.name == stageId)
+            {
+                uiCamera = Camera.main != null ? Camera.main : FindAnyActiveCamera();
+            }
+        }
+
+        private static Camera FindCameraInScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var cams = roots[i].GetComponentsInChildren<Camera>(true);
+                for (int j = 0; j < cams.Length; j++)
+                {
+                    var c = cams[j];
+                    if (c != null && c.isActiveAndEnabled)
+                    {
+                        return c;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static Camera FindAnyActiveCamera()
+        {
+            var all = UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != null && all[i].isActiveAndEnabled)
+                {
+                    return all[i];
+                }
+            }
+            return null;
         }
         #endregion
     }

@@ -147,6 +147,8 @@ Owner: 기획/개발 공용
   - 각 속성은 ‘현재 기본값 = 권장값(설명)’ 형식으로 기입한다. 값이 비워도 되는 참조는 “None(옵션)”으로 명시한다.
   - 체크박스/드롭다운/오브젝트 참조/수치값을 구분해 표기하고, 단위(초, px 등)를 함께 적는다.
   - 동일 오브젝트 내 자식의 인스펙터는 자식 오브젝트 항목에서 별도로 기술한다.
+  - 정합 규칙: 1) 최종 구조도, 2) 제작 절차, 3) 인스펙터 섹션은 반드시 동일한 오브젝트 순서를 사용한다.
+  - Canvas 상위 규칙: UI 렌더링이 필요한 모든 UI 컴포넌트(Image, Text, Button, CanvasGroup 등)는 상위에 Canvas가 반드시 있어야 한다. CloseupViewer 같은 CanvasGroup 기반 오브젝트도 부모 체인에 Canvas가 존재해야 한다.
   - 예시(간단)
     - FadeCanvas (UI/Canvas)
       - Transform
@@ -203,8 +205,8 @@ Owner: 기획/개발 공용
 - SHOULD: 이름은 의도를 드러내며 UpperCamelCase(오브젝트), SNAKE_CASE(상수)를 따른다.
 - SHOULD: 공통 UI 스케일(1920x1080, Match 0.5)을 유지한다.
 
-14) 식별자·네이밍 정책(IDs & Naming)
-- 씬 이름: Core, Stage_Menu, Stage_<Name> (예: Stage_Front, Stage_Lobby)
+-14) 식별자·네이밍 정책(IDs & Naming)
+- 씬 이름: Core, MainMenu, Stage1, Stage2, 이후 Stage_Office/Stage_Delivery/Stage_Nursery/Stage_Chapel
 - 스테이지 상수: StageIds.Menu/Front/Lobby/Office/Delivery/Nursery/Chapel
 - 오브젝트: 기능 기반 UpperCamelCase (예: FadeCanvas, SceneService, StartupLoader)
 - 파일: Stage_<Index>_<Name>_Hierarchy.txt, Core_Hierarchy.txt, Menu_Hierarchy.txt

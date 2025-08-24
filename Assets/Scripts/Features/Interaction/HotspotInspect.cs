@@ -30,8 +30,8 @@ namespace AFKS.Features.Interaction
         private void Awake()
         {
             ServiceLocator.TryGet<IInputService>(out inputService);
-            // CloseupViewer는 씬 내에서 1개 존재한다고 가정하고 찾아서 캐시
-            closeupViewer = Object.FindObjectOfType<CloseupViewer>(includeInactive: true);
+            // CloseupViewer는 씬 내에서 1개 존재한다고 가정하고 찾아서 캐시(신규 API)
+            closeupViewer = UnityEngine.Object.FindFirstObjectByType<CloseupViewer>(FindObjectsInactive.Include);
         }
 
         private void OnEnable()
@@ -54,19 +54,60 @@ namespace AFKS.Features.Interaction
         #region 이벤트 핸들러
         private void OnObjectClicked(GameObject clicked)
         {
-            if (clicked != gameObject) return;
-            if (closeupViewer == null) return;
+            if (clicked != gameObject)
+            {
+                return;
+            }
+            Debug.Log("[HotspotInspect] Clicked = self; trying to open closeup.");
+            if (closeupViewer != null)
+            {
+                if (closeupSprite != null)
+                {
+                    closeupViewer.Show(closeupSprite, string.IsNullOrEmpty(title) ? null : title);
+                }
+                else
+                {
+                    closeupViewer.Show();
+                }
+                return;
+            }
 
-            if (closeupSprite != null)
-            {
-                closeupViewer.Show(closeupSprite, string.IsNullOrEmpty(title) ? null : title);
-            }
-            else
-            {
-                closeupViewer.Show();
-            }
+            // 코어(UI/CloseupViewer) 부재 시 간단한 폴백 팝업을 사용
+            FallbackPopup(closeupSprite, title);
         }
         #endregion
+
+        #region 폴백 UI
+        private static void FallbackPopup(Sprite sprite, string title)
+        {
+            var go = new GameObject("_FallbackCloseupCanvas");
+            var canvas = go.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var cg = go.AddComponent<CanvasGroup>();
+            cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true;
+
+            var imgGO = new GameObject("Image");
+            imgGO.transform.SetParent(go.transform, false);
+            var img = imgGO.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = sprite;
+            var rt = img.rectTransform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+            go.AddComponent<FallbackCloser>();
+        }
+        #endregion
+    }
+
+    internal sealed class FallbackCloser : MonoBehaviour
+    {
+        private void Update()
+        {
+            if (UnityEngine.Input.GetMouseButtonDown(0) || UnityEngine.Input.GetKeyDown(KeyCode.Escape))
+            {
+                Destroy(gameObject);
+            }
+        }
     }
 }
 

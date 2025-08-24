@@ -13,9 +13,12 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
   - UI (Empty)
     - EventSystem (UI/Event System, Optional) [Components: EventSystem]
     - FadeCanvas (UI/Canvas + UI/Image + CanvasGroup + FadeCanvas) [Components: Canvas, CanvasScaler, GraphicRaycaster, Image, CanvasGroup, FadeCanvas]
-    - CloseupViewer (UI/CanvasGroup + CloseupViewer) [Components: CanvasGroup, CloseupViewer]
+    - CloseupCanvas (UI/Canvas) [Components: Canvas, CanvasScaler(optional), GraphicRaycaster(optional)]
+      - CloseupViewer (UI/CanvasGroup + CloseupViewer) [Components: CanvasGroup, CloseupViewer]
   - Empty (Empty)
     - SaveServiceBootstrap (Empty, Optional) [Components: -]
+  - Utils (Empty)
+    - GlobalSingletonGuard (Empty) [Components: GlobalSingletonGuard]
 
 2) 하이라키어 제작 절차(생성 경로 포함)
 - 컨테이너 생성
@@ -31,9 +34,15 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
 - UI 자식
   - EventSystem: GameObject > UI > Event System (전역 1개, Core에만 배치)
   - FadeCanvas: GameObject > UI > Canvas → 하위 UI > Image → Add Component: CanvasGroup, FadeCanvas
-  - CloseupViewer: UI > Create Empty(이름: CloseupViewer) → Add Component: CanvasGroup, CloseupViewer
+  - CloseupCanvas: GameObject > UI > Canvas(이름: CloseupCanvas)
+    - 하위에 CloseupViewer 배치
+    - CloseupViewer: Create Empty → Add Component: CanvasGroup, CloseupViewer
+    - CloseupViewer 자식 Image 생성: GameObject > UI > Image(Stretch, L/R/T/B=0)
+    - 배선: CloseupViewer(Image 필드) ← (자식 Image)
 - Empty 자식
   - SaveServiceBootstrap(선택): Create Empty(이름 유지)
+ - Utils 자식
+  - GlobalSingletonGuard: Create Empty(이름: GlobalSingletonGuard) → Add Component: GlobalSingletonGuard
 
 3) 인스펙터 설정(실제 인스펙터 순서)
 - Services/AudioService (Empty)
@@ -46,7 +55,7 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
 - Services/InputService (Empty)
   - Transform: 기본값
   - Input Service(스크립트)
-    - UI 카메라 = None(Camera, 옵션)
+    - UI 카메라 = None(Camera, 옵션, 스테이지 로드시 자동 바인딩)
     - UI 위 클릭 무시 = On(권장)
 
 - Services/SceneService (Empty)
@@ -77,15 +86,19 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
 - UI/CloseupViewer (CanvasGroup + CloseupViewer)
   - CanvasGroup: Alpha=0, Interactable Off, Blocks Off
   - Closeup Viewer(스크립트)
-    - Image = (UI/Image 참조)
+    - Image = (자식 UI/Image 참조)
     - Text = (TMP 또는 Text 참조)
     - Fade Seconds = 0.15
     - Close On Click = On(권장)
     - Close On Esc = On(권장)
+  - 참고
+    - CloseupViewer는 반드시 Canvas 하위에 있어야 합니다(부모에 Canvas 존재 필수).
+    - CloseupViewer 오브젝트는 항상 활성 상태 유지(표시는 CanvasGroup으로 제어).
 
 - UI/EventSystem (선택)
   - Event System = 기본값
   - Input System UI Input Module = (프로젝트가 New Input System 사용 시 자동)
+  - 참고: 전역 1개만 유지. 스테이지 씬에는 두지 않음
 
 4) Components & Wiring(참조/이벤트)
 - GameEvents.StageChangeRequested → SceneService.OnStageChangeRequested
@@ -94,6 +107,7 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
 - InputService: ObjectClicked 이벤트로 2D/3D 클릭 타겟 전달, UI 위 클릭 무시(옵션)
 - InventoryService: PickupItem/ DoorLocked 등에서 조회/수정 사용
 - CloseupViewer: PickupItem/DocumentCloseup에서 호출하여 이미지/텍스트 표시
+ - GlobalSingletonGuard: 씬 공존 시 EventSystem/AudioListener 중복을 자동 비활성화하여 1개만 활성 유지
 
 5) Build Settings(Scenes In Build)
 - Core.unity를 목록 최상단에 배치(항상 상주)
@@ -109,11 +123,13 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디
 - [ ] EventSystem 전역 1개(Core에만)
 - [ ] 활성 AudioListener 1개(Main Camera 권장)
 - [ ] Build Settings 순서(Core → MainMenu → Stage1 → Stage2) 확인
+ - [ ] GlobalSingletonGuard 존재 및 활성
 
 8) FAQ(문제 해결)
 - 클릭 불가: EventSystem 유무, Collider2D/카메라 레이어 확인
 - 전환 실패: 씬 미등록/ID 오타 로그 확인, StageIds↔씬 이름 일치
 - 오디오 경고: AudioListener가 중복되지 않았는지 확인(Core 1개만 활성)
+ - EventSystem 중복 경고: 스테이지 씬의 EventSystem 제거 또는 GlobalSingletonGuard 확인
 
 9) 변경 이력(Change Log)
 - v1.1: InventoryService/CloseupViewer 추가, Components & Wiring 확장
