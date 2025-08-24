@@ -82,6 +82,19 @@ namespace AFKS.Features.Interaction
             OnUnlocked?.Invoke();
         }
         #endregion
+
+        #region 마우스 폴백(스테이지 단독 실행 지원)
+        private void OnMouseDown()
+        {
+            if (unlocked) return;
+            if (!enabled || !gameObject.activeInHierarchy) return;
+            clickCount++;
+            if (clickCount >= Mathf.Max(1, requiredClicks))
+            {
+                Unlock();
+            }
+        }
+        #endregion
     }
 }
 

@@ -59,6 +59,11 @@ namespace AFKS.Features.Interaction
                 return;
             }
             Debug.Log("[HotspotInspect] Clicked = self; trying to open closeup.");
+            // 런타임 시점에 코어(UI)가 늦게 초기화된 경우 재탐색
+            if (closeupViewer == null)
+            {
+                closeupViewer = UnityEngine.Object.FindFirstObjectByType<CloseupViewer>(FindObjectsInactive.Include);
+            }
             if (closeupViewer != null)
             {
                 if (closeupSprite != null)
@@ -83,6 +88,7 @@ namespace AFKS.Features.Interaction
             var go = new GameObject("_FallbackCloseupCanvas");
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = short.MaxValue;
             var cg = go.AddComponent<CanvasGroup>();
             cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true;
 
@@ -95,6 +101,33 @@ namespace AFKS.Features.Interaction
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
 
             go.AddComponent<FallbackCloser>();
+        }
+        #endregion
+
+        #region 마우스 폴백(스테이지 단독 실행 지원)
+        private void OnMouseDown()
+        {
+            // InputService가 없거나 레이어 마스크로 누락되어도 콜라이더만 있으면 동작하도록 폴백
+            if (!enabled || !gameObject.activeInHierarchy) return;
+            if (closeupViewer == null)
+            {
+                closeupViewer = UnityEngine.Object.FindFirstObjectByType<CloseupViewer>(FindObjectsInactive.Include);
+            }
+            if (closeupViewer != null)
+            {
+                if (closeupSprite != null)
+                {
+                    closeupViewer.Show(closeupSprite, string.IsNullOrEmpty(title) ? null : title);
+                }
+                else
+                {
+                    closeupViewer.Show();
+                }
+            }
+            else
+            {
+                FallbackPopup(closeupSprite, title);
+            }
         }
         #endregion
     }

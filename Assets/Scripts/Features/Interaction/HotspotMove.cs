@@ -68,6 +68,19 @@ namespace AFKS.Features.Interaction
             }
         }
         #endregion
+
+        #region 마우스 폴백(스테이지 단독 실행 지원)
+        private void OnMouseDown()
+        {
+            if (string.IsNullOrEmpty(targetStageId)) return;
+            if (!enabled || !gameObject.activeInHierarchy) return;
+            GameEvents.RaiseStageChangeRequested(targetStageId);
+            if (!ServiceLocator.TryGet<ISceneService>(out _))
+            {
+                SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
+            }
+        }
+        #endregion
     }
 }
 
