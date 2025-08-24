@@ -3,42 +3,37 @@ SceneName: MainMenu
 Purpose: 메인 메뉴(새 게임/계속/설정/종료)
 
 1) 하이라키어 최종 구조도
-- Canvas (UI/Canvas) [Components: Canvas, CanvasScaler, GraphicRaycaster]
-  - UI (Empty)
-    - MainMenu (Empty) [Components: MainMenuUI]
-      - Buttons (Empty) [Components: VerticalLayoutGroup, ContentSizeFitter(optional)]
-        - Button_Continue (UI/Button) [Components: Button, TextMeshProUGUI(label)]
-        - Button_New (UI/Button) [Components: Button, TextMeshProUGUI(label)]
-        - Button_Quit (UI/Button) [Components: Button, TextMeshProUGUI(label)]
-        - Button_Settings (UI/Button) [Components: Button, TextMeshProUGUI(label)]
-    - Panel_BG (UI/Image) [Components: Image]
-    - Panel_Settings (Empty) [Components: SettingsPanel(optional), Set Inactive]
+- UI_Empty(-)
+  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+    - UI_Empty(-)
+      - MainMenu_Empty(MainMenuUI)
+        - Buttons_Empty(VerticalLayoutGroup, ContentSizeFitter(optional))
+          - Button_Continue_UI/Button(Button, TextMeshProUGUI)
+          - Button_New_UI/Button(Button, TextMeshProUGUI)
+          - Button_Quit_UI/Button(Button, TextMeshProUGUI)
+          - Button_Settings_UI/Button(Button, TextMeshProUGUI)
+      - Panel_BG_UI/Image(Image)
+      - Panel_Settings_Empty(SettingsPanel(optional))
+- EventSystem_UI/Event System(-)
 
 2) 하이라키어 제작 절차(생성 경로 포함)
-2.1 (1) Canvas
+- MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
   - 생성 경로: GameObject > UI > Canvas
-  - 자동 포함: CanvasScaler, GraphicRaycaster
-2.2 (1.1) Panel_BG
-  - 생성 경로: Canvas 하위, GameObject > UI > Image
-2.3 (1.2) MainMenu
-  - 생성 경로: Canvas 하위, GameObject > Create Empty (이름: MainMenu)
-  - Add Component: MainMenuUI
-2.4 (1.2.1) Buttons
-  - 생성 경로: MainMenu 하위, GameObject > Create Empty (이름: Buttons)
-  - Add Component: Vertical Layout Group, (선택) Content Size Fitter
-  - RectTransform: Anchor Stretch(Left/Right/Top/Bottom = 0), Pos/Size = 0
-  - Vertical Layout Group 권장값: Padding(L/R/T/B = 32/32/32/32), Spacing=16, Child Alignment=Middle Center, Control Child Size(Width=On, Height=On), Child Force Expand(Width=On, Height=Off)
-2.5 (1.2.1.1~1.2.1.4) 버튼 4개
-  - 생성 경로: Buttons 하위, GameObject > UI > Button (이름: Button_New/Continue/Settings/Quit)
-  - Label 생성: Button 하위, GameObject > UI > Text - TextMeshPro
-  - Label 권장값: Font(공통), Auto Size On(24~40), Alignment Middle Center, Raycast Target Off
-  - (선택) Layout Element 추가: Preferred Height = 80, Flexible Height = 0  ; 동일한 크기/간격 유지
-2.6 (1.3) Panel_Settings
-  - 생성 경로: Canvas 하위, GameObject > Create Empty (이름: Panel_Settings)
-  - Add Component: SettingsPanel(optional), SetActive(false)
+- Panel_BG_UI/Image(Image)
+  - 생성 경로: MainCanvas 하위, UI > Image
+- MainMenu_Empty(MainMenuUI)
+  - 생성 경로: MainCanvas 하위, Create Empty
+- Buttons_Empty(VerticalLayoutGroup, ContentSizeFitter(optional))
+  - 생성 경로: MainMenu 하위, Create Empty
+  - 버튼 4개 생성: Button_*_UI/Button(Button, TextMeshProUGUI)
+    - 생성 경로: Buttons 하위, UI > Button / 하위 UI > Text - TextMeshPro
+- Panel_Settings_Empty(SettingsPanel(optional))
+  - 생성 경로: MainCanvas 하위, Create Empty
+- EventSystem_UI/Event System(-)
+  - 생성 경로: GameObject > UI > Event System
 
 3) 인스펙터 설정(실제 인스펙터 순서)
-- 1. Canvas (UI/Canvas)
+- 1. MainCanvas (UI/Canvas)
   - RectTransform: 기본값
   - Canvas
     - Render Mode = Screen Space - Overlay
@@ -46,7 +41,7 @@ Purpose: 메인 메뉴(새 게임/계속/설정/종료)
   - Canvas Scaler
     - UI Scale Mode = Scale With Screen Size
     - Reference Resolution = 1920x1080
-    - Screen Match Mode = Match Width Or Height, Match = 0.5
+    - Screen Match Mode = Match Width Or Height, Match = 1.0 (Height)
   - Graphic Raycaster = 기본값
 
 - 1.1 Panel_BG (UI/Image)
@@ -57,9 +52,9 @@ Purpose: 메인 메뉴(새 게임/계속/설정/종료)
 - 1.2 MainMenu (Empty)
   - Transform: 기본값
   - MainMenuUI(스크립트)
-    - 새 게임 버튼 = Buttons/Button_New (Button)
-    - 계속하기 버튼 = Buttons/Button_Continue (Button)
-    - 종료 버튼 = Buttons/Button_Quit (Button)
+    - 새 게임 버튼 = UI/Buttons/Button_New (Button)
+    - 계속하기 버튼 = UI/Buttons/Button_Continue (Button)
+    - 종료 버튼 = UI/Buttons/Button_Quit (Button)
 
 - 1.2.1 Buttons (Empty)
   - RectTransform: Anchor Stretch(Left/Right/Top/Bottom = 0)
@@ -110,22 +105,18 @@ Purpose: 메인 메뉴(새 게임/계속/설정/종료)
   - (선택) Layout Element: Preferred Height = 80
   - Label(TMP) = 위와 동일
 
-- 1.3 Panel_Settings (Empty)
-  - Transform: 기본값
-  - SettingsPanel(스크립트, 선택)
-    - 패널 루트 = (자기 자신)
-    - 초기 활성화 = Off
-  - GameObject.SetActive(false)
+- 2. EventSystem
+  - 기본값
 
 4) 객체 간 참조/이벤트 배선(1:1 매핑)
-- MainMenu(MainMenuUI).새 게임 버튼 ← Buttons/Button_New(Button)
-- MainMenu(MainMenuUI).계속하기 버튼 ← Buttons/Button_Continue(Button)
-- MainMenu(MainMenuUI).종료 버튼 ← Buttons/Button_Quit(Button)
+- MainMenu(MainMenuUI).새 게임 버튼 ← UI/Buttons/Button_New(Button)
+- MainMenu(MainMenuUI).계속하기 버튼 ← UI/Buttons/Button_Continue(Button)
+- MainMenu(MainMenuUI).종료 버튼 ← UI/Buttons/Button_Quit(Button)
 - Buttons/Button_New(Button).OnClick → MainMenuUI.OnClickNewGame()
 - Buttons/Button_Continue(Button).OnClick → MainMenuUI.OnClickContinue()
 - Buttons/Button_Quit(Button).OnClick → MainMenuUI.OnClickQuit()
 - Buttons/Button_Settings(Button).OnClick → (SettingsPanel 구현 시 연결)
-  - 참고: 저장 데이터가 없거나 SaveService 미구현 시 '계속하기' 버튼은 런타임에서 자동 숨김(MainMenuUI).
+- 참고: 저장 데이터가 없거나 SaveService 미구현 시 '계속하기' 버튼은 런타임에서 자동 숨김(MainMenuUI).
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), MainMenu, Stage1 등록
@@ -134,14 +125,16 @@ Purpose: 메인 메뉴(새 게임/계속/설정/종료)
 - 메뉴 표시, 버튼 3종 동작, New 클릭 시 Stage1 전환(페이드)
 
 7) 체크리스트
+- [ ] MainCanvas 1개, EventSystem 1개 유지
+- [ ] CanvasScaler Match=1.0(Height)
 - [ ] OnClick 연결 완료
 - [ ] Build Settings 등록 완료(Core/MainMenu/Stage1)
 
 8) FAQ(문제 해결)
-- 클릭 불가: EventSystem 유무, OnClick 누락 확인
+- 클릭 불가: EventSystem 유무, OnClick 누락 확인, GraphicRaycaster 존재 확인
 - 전환 실패: 씬 미등록/ID 오타
 
 9) 변경 이력(Change Log)
-- v1.2: 표준(텍스트/섹션) 유지. 기능 변동 없음
+- v1.3: 씬별 MainCanvas/EventSystem 1개 원칙 반영, Match=1.0(Height)
 
  

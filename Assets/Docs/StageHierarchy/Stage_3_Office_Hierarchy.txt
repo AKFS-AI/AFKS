@@ -1,53 +1,19 @@
-Title: Stage_Office - Hierarchy & Wiring Guide
+Title: Stage3 - Office - Hierarchy & Wiring Guide
 SceneName: Stage_Office
-Purpose: 관리실(CCTV 점프스케어, 열쇠 획득)
+Purpose: 관리실 장면(왕복 이동/상호작용 기반)
 
-Hierarchy (추천)
-- StageRoot (StageRoot)
-- BG (SpriteRenderer/Image)
-- Props
-  - CCTV (HotspotInspect → setFlag=Jumpscare_Office)
-  - Docs (HotspotInspect → item_incident_docs)
-  - Blueprint (HotspotInspect → item_blueprint)
-  - KeyRing (HotspotInspect → item_keyring, setFlag=DeliveryUnlocked)
-- BackDoor (HotspotMove → Stage2)
+1) 하이라키어 최종 구조도
+- World_Empty(-)
+  - BG_2D/Sprite(SpriteRenderer)
+- Interaction_Empty(-)
+  - Hotspots_Empty(-)
+    - BackDoor_Empty(HotspotMove, BoxCollider2D)
+- UI_Empty(-)
+  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+- EventSystem_UI/Event System(-)
+- Services_Empty(-)
+  - StageRoot_Empty(StageRoot)
 
-Components & Wiring
-- StageRoot: 기본
-- Props/CCTV: Inspect 시 JumpScarePlayer 호출(추후)
-- Props/KeyRing: setFlag=DeliveryUnlocked → Lobby의 Door_Delivery 가드 해제
-- BackDoor(HotspotMove): targetStageId = Stage2
-
-Notes
-- 점프스케어는 입력 잠금 윈도우/모노 다운과 함께 구현(추후 단계)
-
---- 세부 스펙 템플릿 (추후 채움) ---
-[Objects & Components]
-- StageRoot: [StageRoot]
-- CCTV/Docs/Blueprint/KeyRing: [HotspotInspect]
-- BackDoor: [HotspotMove]
-
-[Serialized Fields / Values]
-- CCTV.setFlagOnSuccess = "Jumpscare_Office"
-- KeyRing.itemId = "item_keyring"
-- KeyRing.setFlagOnSuccess = "DeliveryUnlocked"
-- BackDoor.targetStageId = "Stage2"
-
-[Events / Bindings]
-- CCTV.Inspect → JumpScarePlayer.Play(clip)
-
-[Data / IDs]
-- item_incident_docs, item_blueprint, item_keyring
-
-[Global Integration]
-- Save: Flags에 DeliveryUnlocked 반영
-
-[Exceptions / Safety]
-- 중복 플래그 세팅 방지
-
-[Performance / Memory]
-- Inspector Gizmo로 클릭 영역 명확화
-
-[Tests]
-- KeyRing 획득 후 Lobby에서 Door_Delivery 해금 확인
+2) 하이라키어 제작 절차(생성 경로 포함)
+...
 

@@ -21,7 +21,14 @@ namespace AFKS.Core.UI
 		[SerializeField] private bool closeOnClick = true;
 		[SerializeField] private bool closeOnEsc = true;
 		[SerializeField] private bool debugLog = false;
+		[SerializeField] private bool forceOverlayIfZero = true;
 		private Coroutine current;
+		private Transform originalParent;
+		private int originalSiblingIndex;
+		private Canvas overlayCanvasRef;
+		private RectTransform container;
+		private Transform containerOriginalParent;
+		private int containerOriginalSiblingIndex;
 		#endregion
 
 		#region 유니티 수명주기
@@ -36,6 +43,7 @@ namespace AFKS.Core.UI
 			// 자식에 연결된 Image를 자동 바인딩(인스펙터 미연결 대비)
 			if (image == null) image = GetComponentInChildren<Image>(true);
 			if (image == null) EnsureImageExists();
+			EnsureContainer();
 			var parentCanvas = GetComponentInParent<Canvas>();
 			if (debugLog)
 			{
@@ -72,6 +80,7 @@ namespace AFKS.Core.UI
 		public void Show(Sprite sprite, string title = null)
 		{
 			EnsureSelfLayout();
+			EnsureContainer();
 			if (image == null) EnsureImageExists();
 			if (image != null)
 			{
@@ -105,6 +114,22 @@ namespace AFKS.Core.UI
 					rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
 					rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
 					if (debugLog) Debug.Log($"[CloseupViewer] Rect was zero. Forced stretch fill. NewSize={rt.rect.size}");
+					// 여전히 0이면 전용 오버레이 캔버스로 폴백
+					if (forceOverlayIfZero && (rt.rect.width < 1f || rt.rect.height < 1f))
+					{
+						AttachToOverlayCanvas();
+						EnsureSelfLayout();
+						EnsureImageLayout();
+						Canvas.ForceUpdateCanvases();
+						if (debugLog)
+						{
+							var selfRt = GetComponent<RectTransform>();
+							var pr = selfRt != null ? selfRt.rect.size : new Vector2(-1f, -1f);
+							var ir = image.rectTransform.rect.size;
+							var pc = GetComponentInParent<Canvas>();
+							Debug.Log($"[CloseupViewer] Fallback overlay attached. viewerSize={pr} imgSize={ir} overlayCanvasMode={pc?.renderMode} sorting={pc?.sortingOrder} hasSelfRT={(selfRt!=null)}");
+						}
+					}
 				}
 			}
 			Show();
@@ -134,6 +159,7 @@ namespace AFKS.Core.UI
 			canvasGroup.alpha = 0f;
 			canvasGroup.blocksRaycasts = false;
 			canvasGroup.interactable = false;
+			RestoreParentIfNeeded();
 			if (debugLog) Debug.Log("[CloseupViewer] HideImmediate()");
 		}
 		#endregion
@@ -153,6 +179,10 @@ namespace AFKS.Core.UI
 				yield return null;
 			}
 			canvasGroup.alpha = target;
+			if (target <= 0f)
+			{
+				RestoreParentIfNeeded();
+			}
 			current = null;
 		}
 
@@ -170,7 +200,20 @@ namespace AFKS.Core.UI
 		private void EnsureSelfLayout()
 		{
 			var rt = GetComponent<RectTransform>();
-			if (rt == null) return;
+			if (rt == null)
+			{
+				// 자기 자신에 RectTransform이 없으면 컨테이너로 보정
+				if (container != null)
+				{
+					container.anchorMin = Vector2.zero;
+					container.anchorMax = Vector2.one;
+					container.offsetMin = Vector2.zero;
+					container.offsetMax = Vector2.zero;
+					container.localScale = Vector3.one;
+					container.anchoredPosition = Vector2.zero;
+				}
+				return;
+			}
 			rt.anchorMin = Vector2.zero;
 			rt.anchorMax = Vector2.one;
 			rt.offsetMin = Vector2.zero;
@@ -183,10 +226,81 @@ namespace AFKS.Core.UI
 		private void EnsureImageExists()
 		{
 			var imgGO = new GameObject("Image");
-			imgGO.transform.SetParent(transform, false);
+			imgGO.transform.SetParent(container != null ? (Transform)container : transform, false);
 			image = imgGO.AddComponent<Image>();
 			image.preserveAspect = true;
 			EnsureImageLayout();
+		}
+
+		private void EnsureContainer()
+		{
+			if (container != null) return;
+			var selfRt = GetComponent<RectTransform>();
+			if (selfRt != null)
+			{
+				container = selfRt;
+				return;
+			}
+			// 부모에 RectTransform이 없다면 컨테이너 생성
+			var containerGO = new GameObject("Container");
+			container = containerGO.AddComponent<RectTransform>();
+			container.SetParent(transform, false);
+			container.anchorMin = Vector2.zero;
+			container.anchorMax = Vector2.one;
+			container.offsetMin = Vector2.zero;
+			container.offsetMax = Vector2.zero;
+			// CanvasGroup을 컨테이너로 옮겨 참조
+			var group = containerGO.AddComponent<CanvasGroup>();
+			if (canvasGroup != null)
+			{
+				group.alpha = canvasGroup.alpha;
+				group.blocksRaycasts = canvasGroup.blocksRaycasts;
+				group.interactable = canvasGroup.interactable;
+			}
+			canvasGroup = group;
+			// 기존 자식들을 컨테이너로 이동 (이미지/텍스트 등)
+			var toMove = new System.Collections.Generic.List<Transform>();
+			for (int i = 0; i < transform.childCount; i++)
+			{
+				var child = transform.GetChild(i);
+				if (child != container) toMove.Add(child);
+			}
+			foreach (var ch in toMove) ch.SetParent(container, false);
+		}
+
+		private void AttachToOverlayCanvas()
+		{
+			if (overlayCanvasRef == null)
+			{
+				var found = GameObject.Find("CloseupOverlayCanvas");
+				if (found != null) overlayCanvasRef = found.GetComponent<Canvas>();
+				if (overlayCanvasRef == null)
+				{
+					var go = new GameObject("CloseupOverlayCanvas");
+					overlayCanvasRef = go.AddComponent<Canvas>();
+					overlayCanvasRef.renderMode = RenderMode.ScreenSpaceOverlay;
+					overlayCanvasRef.sortingOrder = 5000;
+					go.AddComponent<CanvasScaler>();
+					go.AddComponent<GraphicRaycaster>();
+				}
+			}
+			EnsureContainer();
+			if (containerOriginalParent == null)
+			{
+				containerOriginalParent = container.parent;
+				containerOriginalSiblingIndex = container.GetSiblingIndex();
+			}
+			container.SetParent(overlayCanvasRef.transform, false);
+		}
+
+		private void RestoreParentIfNeeded()
+		{
+			if (container != null && containerOriginalParent != null)
+			{
+				container.SetParent(containerOriginalParent, false);
+				container.SetSiblingIndex(containerOriginalSiblingIndex);
+				containerOriginalParent = null;
+			}
 		}
 		#endregion
 

@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 38c99700ecd5e53498278f4cac18e8ef
+guid: 3d8d8a0d09209de4e9127f3217541eb6
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7859990355377420950
-    second: InteractionDoor_1_0
+      213: 2275113532079004281
+    second: InteractionDoor_1_1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,7 +100,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: InteractionDoor_1_0
+      name: InteractionDoor_1_1_0
       rect:
         serializedVersion: 2
         x: 0
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 69a744e859b441d60800000000000000
-      internalID: 7859990355377420950
+      spriteID: 97ad04f04b3d29f10800000000000000
+      internalID: 2275113532079004281
       vertices: []
       indices: 
       edges: []

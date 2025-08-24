@@ -6,7 +6,8 @@ using AFKS.Core.Services.Input;
 namespace AFKS.Features.Interaction
 {
     /// <summary>
-    /// 클릭 누적 횟수가 임계값에 도달하면 해제(OnUnlocked)하고 타깃 오브젝트를 활성화합니다.
+    /// [Deprecated] UI 기반 체인 해금은 ChainCloseupController + ChainHotspotUI를 사용하세요.
+    /// 월드 오브젝트 상호작용 전용으로 남겨두며, 신규 구현에는 권장하지 않습니다.
     /// </summary>
     [AddComponentMenu("AFKS/Interaction/Chain Unlock")]
     public sealed class ChainUnlock : MonoBehaviour

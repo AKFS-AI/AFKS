@@ -1,5 +1,5 @@
 Title: StageHierarchy - 폴더 구성 및 문서 작성 가이드
-Version: v1.1
+Version: v1.2
 Owner: 기획/개발 공용
 
 0) 목적
@@ -48,18 +48,21 @@ Owner: 기획/개발 공용
 - 수치/토글은 기본값과 권장값을 함께 명시한다.
 - Stage ID, 씬 이름, 버튼 메서드 등 ‘문자열/식별자’는 정확히 표기한다.
 
-5.1) 표기 규칙(Notation)
-- 부모/자식 관계: 들여쓰기로 표현한다(‘-’ 하이픈 트리). 번호는 사용하지 않는다.
-- 오브젝트 유형 표기: 이름 뒤 괄호에 표기한다. 예) MainMenu (Empty), Panel_BG (UI/Image), BG (2D/Sprite)
-  - Empty: GameObject > Create Empty로 만든 빈 오브젝트
-  - UI/<Control>: UI 메뉴에서 생성한 UI 오브젝트(Button, Image 등)
-  - 2D/Sprite: 2D Object > Sprite로 생성한 스프라이트 오브젝트
-  - 월드 기본 원칙: BG/오브젝트/핫스팟은 2D/Sprite 사용. 메뉴/HUD/토스트 등만 UI 사용.
-- 컴포넌트 표기: 대괄호로 명시한다. 예) [Components: Canvas, CanvasScaler, GraphicRaycaster]
-- 구조↔절차 일치: ‘최종 구조도’와 ‘제작 절차’는 동일한 순서와 들여쓰기를 유지한다(번호 대신 불릿 사용).
+5.1) 표기 규칙(이름_객체정보(컴포넌트))
+- 최종 구조도와 절차의 각 줄은 다음 형식을 사용한다.
+  - 이름_객체정보(컴포넌트)
+  - 예: MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+       CloseupImage_UI/Image(Image, AspectRatioFitter)
+       ChainRoot_Empty(-)
+- 객체정보는 생성 메뉴 경로의 요약이다.
+  - UI/Button, UI/Image, UI/Canvas, UI/TextMeshPro, UI/Event System
+  - 2D/Sprite, 3D/Cube 등 엔진 기본 객체
+  - Empty = GameObject > Create Empty로 만든 빈 오브젝트
+- 컴포넌트는 대괄호 대신 괄호로 나열한다. 필요 없으면 (-)로 표기한다.
+- 구조↔절차 일치: ‘최종 구조도’와 ‘제작 절차’는 동일한 순서/들여쓰기를 유지한다.
 
 5.2) 표 스타일(읽기 쉬운 기호 규칙)
-- [Components] = 실제 컴포넌트 이름 나열, [Inspector] = 핵심 속성만 불릿으로
+- [Components] = 실제 컴포넌트 이름 나열, [Inspector] = 핵심 속성만 불릿으로 (기존 문서 호환용)
 - 참조 연결 표기: Consumer.Field ← Provider, 이벤트: Button.OnClick → Receiver.Method()
 - 값=권장값(설명) 형태를 유지. 예) Alpha=0.65(배경 반투명)
 
@@ -101,10 +104,6 @@ Owner: 기획/개발 공용
 - 신규 항목은 정렬 키 위치에 ‘삽입’한다. 기존 항목의 상대 순서가 바뀌지 않도록 한다.
 
 5.7) 컨테이너 정책(Container Objects)
-5.9) 전역 컴포넌트 단일성(Global Singletons)
-- EventSystem: Core 씬에만 1개. Stage 씬에는 두지 않거나, 있다면 비활성화한다.
-- AudioListener: 활성 인스턴스는 항상 1개(Core/Main Camera 권장). Stage 씬 카메라의 AudioListener는 제거/비활성화한다.
-
 - 목적: 하이라키 가독성/변경 안정성 향상. 실제 씬에서도 분류 단위를 “빈 컨테이너 GameObject”로 둔다.
 - 원칙
   - 컨테이너는 Empty(GameObject > Create Empty)로 만들고, Transform은 Reset(0,0,0 / 1,1,1).
@@ -112,6 +111,10 @@ Owner: 기획/개발 공용
   - 컨테이너 이름 예: `Services`, `UI`, `World`, `Data`, `Empty` 등. 팀에서 승인한 집합만 사용.
   - 정렬 정책(5.6)을 컨테이너 내부 자식에도 동일 적용.
   - EditorOnly 이름은 사용하지 않는다(자식까지 빌드 제외 위험).
+
+5.9) 전역 컴포넌트 단일성(Global Singletons)
+- EventSystem: ‘씬마다 1개’를 원칙으로 배치하되, 애디티브 전환 시 활성 인스턴스는 항상 1개만 유지한다(GlobalSingletonGuard가 나머지를 자동 비활성화).
+- AudioListener: 활성 인스턴스 1개 유지(일반적으로 현재 활성 카메라). 다른 씬 카메라는 비활성화되거나 언로드된다.
 
 5.10) 해상도/PPU/카메라 규칙(배경 스케일링)
 - 용어: PPU(Pixels Per Unit) = 스프라이트 픽셀/월드 1유닛 비.
@@ -125,9 +128,14 @@ Owner: 기획/개발 공용
     - 예: 원본 1536×1024, 목표 1920×1080, PPU=100 → scaleX=1.25, scaleY≈1.0547
 
 5.11) CloseUp + 단계적 해금 패턴(문/쇠사슬)
-- 개요: 멀리서 클릭 → 문 클로즈업 → 특정 요소 N회 클릭으로 해금 → 이동 핫스팟 활성화
-- 구성: HotspotInspect(클로즈업) + ChainUnlock(N회 클릭) + HotspotMove(해금 후 활성)
-- 흐름: DoorZoom 클릭 → CloseupViewer.Open → Chain N회 클릭→ Unlocked → DoorMove 활성화 → DoorMove 클릭 → StageChangeRequested(next)
+- 개요: 멀리서 클릭 → 문 클로즈업(UI) → 특정 요소 N회 클릭으로 해금 → 문 UI 핫스팟 활성화 → 전환
+- 구성(권장): HotspotInspect(클로즈업 패널 표시) + ChainHotspotUI(N회 클릭) + ChainCloseupController(흔들림/파괴/BG 교체) + HotspotMoveUI(전환)
+- 흐름: DoorZoom 클릭 → CloseupPanel 활성 → Chain N회 클릭 → Break → BG1_2로 교체 + DoorHotspot 활성 → DoorHotspot 클릭 → StageChangeRequested(next)
+
+5.12) 씬별 MainCanvas 정책
+- 각 씬은 `MainCanvas` 1개 + `EventSystem` 1개를 가진다.
+- 클로즈업 오버레이는 `CloseupPanel`(Canvas 없음) 프리팹을 `MainCanvas` 하위에 배치하는 것을 권장한다.
+- CanvasScaler 표준: ReferenceResolution=1920×1080, Screen Match=Match Width Or Height, Match=1.0(Height).
 
 6) 검수 체크리스트(공통)
 - [ ] 하이라키 트리와 실제 오브젝트 구성이 일치한다.
@@ -186,7 +194,6 @@ Owner: 기획/개발 공용
 - 문서와 씬/코드가 어긋나면 문서 우선 업데이트 후, 씬/코드를 맞춘다.
 - 정기 점검(스프린트 말): 모든 씬 문서의 체크리스트 통과 스크린샷/로그를 첨부한다.
 
-
 11) 범위·대상(Scope & Audience)
 - 대상: Unity 초보~중급 실무자. 텍스트만으로 씬 제작·배선을 완료할 수 있어야 한다.
 - 범위: Core/Menu/Stage_* 씬의 하이라키/인스펙터/배선/빌드/검증 규칙. 아트·오디오 상세는 별도 가이드 참조.
@@ -203,9 +210,9 @@ Owner: 기획/개발 공용
 - MUST: 중요한 수치(해상도, Alpha, Sorting Order)는 값과 의미를 함께 적는다.
 - MUST: Build Settings 등록/순서를 명시하고 검증 체크리스트에 포함한다.
 - SHOULD: 이름은 의도를 드러내며 UpperCamelCase(오브젝트), SNAKE_CASE(상수)를 따른다.
-- SHOULD: 공통 UI 스케일(1920x1080, Match 0.5)을 유지한다.
+- SHOULD: 공통 UI 스케일(1920x1080, Match 1.0/Height)을 유지한다.
 
--14) 식별자·네이밍 정책(IDs & Naming)
+14) 식별자·네이밍 정책(IDs & Naming)
 - 씬 이름: Core, MainMenu, Stage1, Stage2, 이후 Stage_Office/Stage_Delivery/Stage_Nursery/Stage_Chapel
 - 스테이지 상수: StageIds.Menu/Front/Lobby/Office/Delivery/Nursery/Chapel
 - 오브젝트: 기능 기반 UpperCamelCase (예: FadeCanvas, SceneService, StartupLoader)
@@ -319,6 +326,6 @@ Owner: 기획/개발 공용
 - 전환 실패: 씬 미등록/ID 오타 로그 확인
 
 9) 변경 이력(Change Log)
-- v1.0: 최초 작성 (<작성자/날짜>)
+- v1.2: 씬별 MainCanvas 정책 도입, CloseupPanel 권장, EventSystem 단일 활성 원칙 갱신
 ------------------------------------------------------------
 

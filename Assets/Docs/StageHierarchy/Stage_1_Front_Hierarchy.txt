@@ -2,38 +2,104 @@ Title: Stage1 - Hierarchy & Wiring Guide
 SceneName: Stage1
 Purpose: 병원 앞(문 클로즈업→쇠사슬 해금→문 클릭 시 Stage2)
 
-1) 하이라키어 최종 구조도
-- World (Empty)
-  - BG (2D/Sprite) [Components: SpriteRenderer]
-- Interaction (Empty)
-  - Hotspots (Empty) [Components: -]
-    - DoorZoom (Empty) [Components: HotspotInspect, BoxCollider2D]
-    - Chain (Empty) [Components: ChainUnlock, BoxCollider2D]
-    - DoorMove (Empty) [Components: HotspotMove, BoxCollider2D]
-- Services (Empty)
-  - StageRoot (Empty) [Components: StageRoot]
+1) 하이라키어 최종 구조도(프리팹은 별도 구조도로 분리)
+- World_Empty(-)
+  - BG_2D/Sprite(SpriteRenderer)
+- Interaction_Empty(-)
+  - Hotspots_Empty(-)
+    - DoorZoom_Empty(HotspotInspect, BoxCollider2D)
+- UI_Empty(-)
+  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+- EventSystem_UI/Event System(-)
+- Services_Empty(-)
+  - StageRoot_Empty(StageRoot)
+
+1-1) CloseupPanel.prefab 구조도(체인 상/하 2분할 구성)
+- CloseupPanel_Empty(CanvasGroup, ChainCloseupController, CloseupPanelAutoWire)
+  - CloseupImage_UI/Image(Image, AspectRatioFitter)
+  - ChainRoot_Empty(-)
+    - ChainTop_UI/Image(Image, Animator(optional))
+    - ChainBottom_UI/Image(Image, Animator(optional))
+  - ChainHotspot_UI/Image(Image, ChainHotspotUI)
+  - DoorHotspot_UI/Image(HotspotMoveUI)
 
 2) 하이라키어 제작 절차(생성 경로 포함)
-- 컨테이너 생성: World, Interaction, Services (모두 Empty)
-- World/BG
-  - 생성 경로: GameObject > 2D Object > Sprite (이름: BG)
-  - Add Component: SpriteRenderer
-  - 참고: UI/Image 대체는 특수 케이스에서만 사용(라벨 등 UI 혼합 필요 시)
-- Interaction/Hotspots
-  - 생성 경로: GameObject > Create Empty (이름: Hotspots)
-  - 자식 DoorZoom: Create Empty → Add Component: BoxCollider2D, HotspotInspect
-    - HotspotInspect: 클릭 시 CloseupViewer.Open(문 클로즈업 스프라이트)
-    - 전제: Core/UI에 CloseupViewer가 존재하고, CloseupViewer(Image 필드)가 자식 UI/Image에 연결되어 있어야 함
-    - (Core/UI/CloseupViewer) Close On Click=On, Close On Esc=On 권장
-  - 자식 Chain: Create Empty → Add Component: BoxCollider2D, ChainUnlock
-    - ChainUnlock.requiredClicks = 3(예시)
-    - ChainUnlock.targetToEnable = DoorMove
-    - ChainUnlock.OnUnlocked → (추가 액션 필요 시 연결)
-  - 자식 DoorMove: Create Empty → Add Component: BoxCollider2D, HotspotMove (초기 비활성)
-    - ChainUnlock.Unlocked 시 DoorMove.SetActive(true)
-- Services/StageRoot
-  - 생성 경로: GameObject > Create Empty (이름: StageRoot)
-  - Add Component: StageRoot
+- 컨테이너 생성: World_Empty, Interaction_Empty, UI_Empty, Services_Empty (모두 Empty)
+- BG 생성: BG_2D/Sprite(SpriteRenderer)
+  - 생성 경로: GameObject > 2D Object > Sprite
+- 상호작용 컨테이너: Hotspots_Empty(-)
+  - DoorZoom 생성: DoorZoom_Empty(HotspotInspect, BoxCollider2D)
+    - 생성 경로: GameObject > Create Empty
+    - BoxCollider2D 추가, HotspotInspect 추가
+    - HotspotInspect: 클릭 시 UI/MainCanvas에 CloseupPanel 소환(또는 활성)
+- UI 캔버스: MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+  - 생성 경로: GameObject > UI > Canvas
+- 이벤트 시스템: EventSystem_UI/Event System(-)
+  - 생성 경로: GameObject > UI > Event System
+- CloseupPanel 프리팹 제작/배치
+  - CloseupPanel 생성: CloseupPanel_Empty(CanvasGroup, ChainCloseupController, CloseupPanelAutoWire)
+    - 생성 경로: GameObject > Create Empty (부모=MainCanvas)
+  - CloseupImage 생성: CloseupImage_UI/Image(Image, AspectRatioFitter)
+    - 생성 경로: GameObject > UI > Image (부모=CloseupPanel)
+  - ChainRoot/체인 상하: ChainRoot_Empty → ChainTop_UI/Image, ChainBottom_UI/Image
+  - ChainHotspot 생성: ChainHotspot_UI/Image(Image, ChainHotspotUI)
+    - ChainHotspotUI가 컨트롤러에 자동 연결(자동화 스크립트)
+  - DoorHotspot 생성: DoorHotspot_UI/Image(HotspotMoveUI) [초기 비활성]
+    - HotspotMoveUI.targetStageId="Stage2", closeupRootToDestroy=CloseupPanel
+  - 프리팹 저장: Assets/Prefabs/CloseupPanel.prefab
+  - 배치: MainCanvas 하위에 배치 또는 DoorZoom에서 Instantiate
+
+2-1) CloseupPanel(정밀 체인 클릭 + 전환)
+- 목적: 해상도와 무관하게 체인 클릭 영역을 정확히 맞추고, 해금 후 문 UI로 바로 전환
+- 구성
+  - CloseupPanel (RectTransform 풀스트레치)
+    - CanvasGroup + ChainCloseupController + CloseupPanelAutoWire
+    - CloseupImage(Image, Preserve Aspect=On)
+      - AspectRatioFitter: Mode=EnvelopeParent(화면 꽉 채우기, 크롭) 또는 FitInParent(레터박스)
+    - ChainRoot(Empty)
+      - ChainTop(Image), ChainBottom(Image) 2분할 구성(체인 상/하)
+      - (선택) ChainRoot 또는 개별 이미지에 Animator 부착
+    - ChainHotspot(Image 알파 0, Raycast On, ChainHotspotUI)
+      - 클릭 시 ChainCloseupController.OnChainClicked 호출(자동 연결)
+    - DoorHotspot(Image 알파 0, Raycast On, 초기 비활성)
+      - HotspotMoveUI.targetStageId = "Stage2"
+      - HotspotMoveUI.closeupRootToDestroy = MainCanvas(또는 CloseupPanel 루트)
+  - 애니메이션(선택)
+    - 체인 흔들림: Animator Trigger = "Shake" (상/하 동기 흔들림)
+    - 체인 파괴: Animator Trigger = "Break" (상/하 비활성 또는 알파 0/파편 연출)
+    - 애니 이벤트가 있으면 마지막 프레임에서 ChainCloseupController.OnBreakAnimationCompleted() 호출
+
+생성 경로(메뉴) 가이드
+1) MainCanvas_UI/Canvas 생성: GameObject > UI > Canvas
+2) CloseupPanel 프리팹 배치 또는 Instantiate
+3) CloseupImage 설정: Preserve Aspect On, AspectRatioFitter 설정
+4) ChainHotspot 설정: Image α=0 + Button, OnClick → Controller.OnChainClicked
+5) DoorHotspot 설정: Image α=0 + HotspotMoveUI, targetStageId="Stage2"
+
+2-2) 체인 핫스팟 정규화 배치 방법
+- 원본 클로즈업 텍스처 크기: (texW, texH)
+- 체인 사각(pxX, pxY, pxW, pxH) 픽셀 기준으로 측정
+- 정규화 앵커 값 계산:
+  - nx = pxX / texW, ny = pxY / texH, nw = pxW / texW, nh = pxH / texH
+  - ChainHotspot.anchorMin = (nx, ny)
+  - ChainHotspot.anchorMax = (nx + nw, ny + nh)
+  - ChainHotspot.offsetMin/Max = (0,0)
+- 예시: texW=2048, texH=1024, 사각= x:768, y:384, w:512, h:256 → anchorMin=(0.375, 0.375), anchorMax=(0.625, 0.625)
+
+2-3) 프리팹/배치 요약
+- 배치: 각 씬의 UI/MainCanvas 하위에 CloseupPanel 배치(권장) 또는 DoorZoom 시 Instantiate
+- 자동 연결: CloseupPanelAutoWire가 CloseupImage/ChainHotspot/ DoorHotspot/Animator를 자동 주입
+- 상태 복원: ChainCloseupController.stateKey 기본값 사용(PlayerPrefs)
+
+2-4) 줌(카메라 접근 느낌) 연출 설정
+- DoorZoom(HotspotInspect) 인스펙터
+  - UI 프리팹 소환 사용 = On
+  - 소환할 패널 프리팹 = CloseupPanel 프리팹 참조
+  - 대상 Canvas = UI/MainCanvas
+  - 줌 연출(초) = 0.25 (권장 0.2~0.35)
+  - 시작 스케일 = (0.3, 0.3)
+  - Easing 曲선 = EaseInOut(기본)
+- 효과: 클릭 위치에서 패널이 커지며 중앙으로 스무스하게 이동(알파 페이드 포함)
 
 3) 인스펙터 설정(실제 인스펙터 순서)
 - World/BG (2D/Sprite)
@@ -49,53 +115,63 @@ Purpose: 병원 앞(문 클로즈업→쇠사슬 해금→문 클릭 시 Stage2)
     - Is Trigger = Off(기본)
     - Size = 환경에 맞게 설정
   - HotspotInspect(스크립트)
-    - Closeup Sprite = 문 클로즈업 이미지
-    - (입력) InputService가 필요. Core 씬에 존재해야 함
-    - (UI) CloseupViewer는 Canvas 하위이며 Image 필드가 연결되어 있어야 표시됨
+    - 클릭 시 UI/MainCanvas/CloseupPanel을 표시하도록 설정
 
-- Interaction/Hotspots/Chain (Empty)
-  - Transform: 문 중앙 체인 영역에 맞게 조정
-  - Box Collider 2D: Size/위치 조정
-  - ChainUnlock(스크립트)
-    - Required Clicks = 3(예시)
-    - OnUnlocked → DoorMove.SetActive(true)
+- UI/MainCanvas (UI/Canvas)
+  - Canvas
+    - Render Mode = Screen Space - Overlay
+  - Canvas Scaler
+    - Reference Resolution = 1920 x 1080
+    - Screen Match Mode = Match Width Or Height, Match = 1.0 (Height)
+  - Graphic Raycaster = 기본값
 
-- Interaction/Hotspots/DoorMove (Empty)
-  - Transform: 문 영역
-  - Box Collider 2D
-    - Is Trigger = Off
-  - HotspotMove(스크립트)
-    - Target Stage Id = "Stage2"
-  - 초기 상태: SetActive(false)
-
-- Services/StageRoot (Empty)
-  - Transform: 기본값
-  - StageRoot(스크립트) = 기본값
+- UI/MainCanvas/CloseupPanel
+  - CloseupImage(Image)
+    - Preserve Aspect = On
+    - AspectRatioFitter.Mode = EnvelopeParent(가득 채우기) 또는 FitInParent(레터박스)
+  - ChainHotspot(Image + ChainHotspotUI)
+    - ChainHotspotUI가 컨트롤러에 자동 연결됨
+    - anchorMin/Max: 정규화 값 설정(nx,ny,nw,nh) → offset=0
+  - DoorHotspot(HotspotMoveUI)
+    - targetStageId = "Stage2"
+  - ChainCloseupController
+    - bgLockedSprite=BG1_1, bgUnlockedSprite=BG1_2
+    - chainRoot=ChainRoot, chainAnimator=(선택) Animator, requiredClicks=원하는 값
+    - breakAnimSeconds=애니 이벤트 미사용 시만 폴백 대기
 
 4) Components & Wiring(참조/이벤트 배선)
-- DoorZoom(HotspotInspect).OnClick → CloseupViewer.Open(문 클로즈업)
-- Chain(ChainUnlock).OnClick 누적 → OnUnlocked → DoorMove.SetActive(true)
-- DoorMove(HotspotMove).OnClick → GameEvents.RaiseStageChangeRequested("Stage2")
+- DoorZoom(HotspotInspect).OnClick → UI/MainCanvas/CloseupPanel 활성/소환(클로즈업)
+- ChainHotspotUI 클릭 → ChainCloseupController.OnChainClicked(클릭 누적/흔들림)
+- ChainCloseupController: 누적=requiredClicks 도달 → Break 애니메이션 →
+  - CloseupImage.sprite = BG1_2(해제 이미지)로 교체
+  - ChainRoot 비활성화 → DoorHotspot 활성화
+- DoorHotspot(HotspotMoveUI).OnClick → GameEvents.RaiseStageChangeRequested("Stage2") → CloseupPanel/프리팹 파괴(선택)
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), MainMenu, Stage1, Stage2 등록
 
 6) Tests(기능 검증)
-- 문 클릭 → 문 클로즈업 표시
-- 체인 3회 클릭 → DoorMove 활성화
-- 문 클릭 → Stage2 전환(연타 시 단 1회만 전환)
+- 문 클릭 → 클로즈업 패널 표시(BG1_1)
+- 체인 N회 클릭(설정값) → 흔들림 후 파괴 → BG1_2로 교체, DoorHotspot 활성화
+- DoorHotspot 클릭 → Stage2 전환(연타 시 1회만)
+- ESC로 닫았다 재진입 시 BG1_2 상태 복원(해제 유지)
+- 줌 연출: 클릭 위치에서 시작해 중앙으로 확대/페이드되며 0.25s 내 완료
 
-- 7) 체크리스트
-- [ ] HotspotInspect.CloseupSprite 연결
-- [ ] ChainUnlock.requiredClicks 값 설정, OnUnlocked → DoorMove 활성화 연결
-- [ ] DoorMove.HotspotMove.targetStageId = "Stage2"
-- [ ] Collider2D 배치 확인, StageRoot 존재
+7) 체크리스트
+- [ ] DoorZoom에 HotspotInspect 부착(클로즈업 패널 표시 동작 확인)
+- [ ] MainCanvas 1개, EventSystem 1개 유지
+- [ ] CloseupPanel: CloseupPanelAutoWire 추가(자동 연결 정상 동작 확인)
+- [ ] CloseupImage: AspectRatioFitter 설정, Preserve Aspect On
+- [ ] ChainCloseupController: BG1_1/BG1_2, ChainRoot, Animator(Shake/Break), requiredClicks 설정
+- [ ] ChainHotspotUI 클릭으로 컨트롤러 호출됨 확인(정규화 앵커 적용)
+- [ ] DoorHotspot에 HotspotMoveUI 부착, targetStageId="Stage2"
+- [ ] HotspotInspect: 패널 프리팹/Canvas/줌 시간/시작 스케일 설정
 
 8) FAQ(문제 해결)
-- 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인
+- 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인, EventSystem 유무 확인
 - 전환 실패: Build Settings 등록/ID 오타 확인
 
 9) 변경 이력(Change Log)
-- v1.2: 입력 경로(InputService.ObjectClicked) 기준으로 업데이트
+- v1.5: CloseupViewer 의존 제거, ChainHotspotUI/CloseupPanelAutoWire 도입, 자동 와이어링 및 중복 생성 가드 반영
 
  
