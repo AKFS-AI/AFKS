@@ -12,14 +12,14 @@ Hierarchy (추천)
 - Jumpscare
   - Silhouette (Trigger)
   - BodyDrop (Trigger)
-- BackDoor (HotspotMove → Stage_Lobby)
+- BackDoor (HotspotMove → Stage2)
 
 Components & Wiring
 - StageRoot: 기본
 - Props/EKG: Use 시 알람 SFX 트리거(추후)
 - Props/Ultrasound: Inspect → CloseUpController
 - Jumpscare/*: Trigger → JumpScarePlayer.Play
-- BackDoor: targetStageId = Stage_Lobby
+- BackDoor: targetStageId = Stage2
 
 Notes
 - 효과음/연출은 이후 단계에서 AudioService/Timeline 연동
@@ -33,7 +33,7 @@ Notes
 
 [Serialized Fields / Values]
 - Ultrasound.itemId = "item_ultrasound_photo"
-- BackDoor.targetStageId = "Stage_Lobby"
+- BackDoor.targetStageId = "Stage2"
 
 [Events / Bindings]
 - Trigger → JumpScarePlayer.Play(clip)

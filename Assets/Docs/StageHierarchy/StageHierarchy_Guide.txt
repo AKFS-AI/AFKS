@@ -1,5 +1,5 @@
 Title: StageHierarchy - 폴더 구성 및 문서 작성 가이드
-Version: v1.0
+Version: v1.1
 Owner: 기획/개발 공용
 
 0) 목적
@@ -7,9 +7,9 @@ Owner: 기획/개발 공용
 
 1) 폴더 구조(권장)
 - Core_Hierarchy.txt               : 코어 씬(전역 서비스/페이드/초기 로더)
-- Menu_Hierarchy.txt               : 메인 메뉴 씬
-- Stage_1_Front_Hierarchy.txt      : 스테이지 1(병원 앞)
-- Stage_2_Lobby_Hierarchy.txt      : 스테이지 2(로비)
+- Menu_Hierarchy.txt               : 메인 메뉴 씬(MainMenu)
+- Stage_1_Front_Hierarchy.txt      : 스테이지 1(병원 앞, Scene=Stage1)
+- Stage_2_Lobby_Hierarchy.txt      : 스테이지 2(로비, Scene=Stage2)
 - Stage_3_Office_Hierarchy.txt     : 스테이지 3(관리실)
 - Stage_4_Delivery_Hierarchy.txt   : 스테이지 4(분만실)
 - Stage_5_Nursery_Hierarchy.txt    : 스테이지 5(신생아실)
@@ -17,8 +17,9 @@ Owner: 기획/개발 공용
 - StageHierarchy_Guide.txt         : 본 가이드(이 파일)
 
 2) 파일 네이밍 규칙
-- 씬별 문서: Stage_<Index>_<Name>_Hierarchy.txt
+- 씬별 문서: Stage_<Index>_<Name>_Hierarchy.txt (문서용 규칙)
   예) Stage_1_Front_Hierarchy.txt, Stage_2_Lobby_Hierarchy.txt
+- 실제 씬 파일(코드 기준): MainMenu, Stage1, Stage2, (이후) Stage_Office 등. StageIds는 실제 씬 이름과 1:1 일치해야 함.
 - 공통/특수: Core_Hierarchy.txt, Menu_Hierarchy.txt
 - 메타 파일(.meta)은 Unity가 자동 관리한다.
 
@@ -53,6 +54,7 @@ Owner: 기획/개발 공용
   - Empty: GameObject > Create Empty로 만든 빈 오브젝트
   - UI/<Control>: UI 메뉴에서 생성한 UI 오브젝트(Button, Image 등)
   - 2D/Sprite: 2D Object > Sprite로 생성한 스프라이트 오브젝트
+  - 월드 기본 원칙: BG/오브젝트/핫스팟은 2D/Sprite 사용. 메뉴/HUD/토스트 등만 UI 사용.
 - 컴포넌트 표기: 대괄호로 명시한다. 예) [Components: Canvas, CanvasScaler, GraphicRaycaster]
 - 구조↔절차 일치: ‘최종 구조도’와 ‘제작 절차’는 동일한 순서와 들여쓰기를 유지한다(번호 대신 불릿 사용).
 
@@ -99,6 +101,10 @@ Owner: 기획/개발 공용
 - 신규 항목은 정렬 키 위치에 ‘삽입’한다. 기존 항목의 상대 순서가 바뀌지 않도록 한다.
 
 5.7) 컨테이너 정책(Container Objects)
+5.9) 전역 컴포넌트 단일성(Global Singletons)
+- EventSystem: Core 씬에만 1개. Stage 씬에는 두지 않거나, 있다면 비활성화한다.
+- AudioListener: 활성 인스턴스는 항상 1개(Core/Main Camera 권장). Stage 씬 카메라의 AudioListener는 제거/비활성화한다.
+
 - 목적: 하이라키 가독성/변경 안정성 향상. 실제 씬에서도 분류 단위를 “빈 컨테이너 GameObject”로 둔다.
 - 원칙
   - 컨테이너는 Empty(GameObject > Create Empty)로 만들고, Transform은 Reset(0,0,0 / 1,1,1).
@@ -107,12 +113,29 @@ Owner: 기획/개발 공용
   - 정렬 정책(5.6)을 컨테이너 내부 자식에도 동일 적용.
   - EditorOnly 이름은 사용하지 않는다(자식까지 빌드 제외 위험).
 
+5.10) 해상도/PPU/카메라 규칙(배경 스케일링)
+- 용어: PPU(Pixels Per Unit) = 스프라이트 픽셀/월드 1유닛 비.
+- 월드 크기: worldWidth=imgWidth/PPU, worldHeight=imgHeight/PPU
+- 카메라(Orthographic): 세로 유닛 = 2×Size, 가로 유닛 = 2×Size×(ScreenWidth/ScreenHeight)
+- 맞춤 방식
+  - Fit Height(전체 표시): Size = imgHeight ÷ (2×PPU)  ; 좌우 여백 허용
+  - Aspect Fill(가득 채우기): Size = (imgWidth/PPU) ÷ (2×aspect)  ; 일부 크롭, aspect=ScreenWidth/ScreenHeight
+  - Stretch(강제 맞춤, 왜곡 허용): 카메라 Size는 목표 세로 기준, BG.Scale로 보정
+    - scaleX = (targetWidth/PPU) ÷ worldWidth,  scaleY = (targetHeight/PPU) ÷ worldHeight
+    - 예: 원본 1536×1024, 목표 1920×1080, PPU=100 → scaleX=1.25, scaleY≈1.0547
+
+5.11) CloseUp + 단계적 해금 패턴(문/쇠사슬)
+- 개요: 멀리서 클릭 → 문 클로즈업 → 특정 요소 N회 클릭으로 해금 → 이동 핫스팟 활성화
+- 구성: HotspotInspect(클로즈업) + ChainUnlock(N회 클릭) + HotspotMove(해금 후 활성)
+- 흐름: DoorZoom 클릭 → CloseupViewer.Open → Chain N회 클릭→ Unlocked → DoorMove 활성화 → DoorMove 클릭 → StageChangeRequested(next)
+
 6) 검수 체크리스트(공통)
 - [ ] 하이라키 트리와 실제 오브젝트 구성이 일치한다.
 - [ ] 필수 컴포넌트가 누락되지 않았다(CanvasGroup, Collider2D 등).
 - [ ] 배선이 연결됐다(Button.OnClick, SceneService.FadeCanvas 참조 등).
-- [ ] Build Settings에 씬이 등록되고 순서가 맞다(Core 맨 위).
+- [ ] Build Settings에 씬이 등록되고 순서가 맞다(Core → MainMenu → Stage1 → Stage2 ...).
 - [ ] 실행 검증 시 전환/페이드/입력이 정상 동작한다.
+- [ ] 전역 단일성: EventSystem=1, AudioListener=1 유지.
 
 5.8) 인스펙터 미러링(Inspector Mirroring)
 - 목적: 문서의 ‘3) 인스펙터 설정’ 섹션이 실제 Unity 인스펙터 화면과 1:1로 일치하도록 한다.
@@ -143,7 +166,7 @@ Owner: 기획/개발 공용
 - 페이드 UI: FadeCanvas(CanvasGroup 알파/입력 차단)
 - 입력: InputService(IInputService, Lock/Pointer/UI 오버 판정)
 - 스테이지 루트: StageRoot(Initialize/Teardown 훅)
-- 스테이지 ID: StageIds(Menu/Front/Lobby/Office/Delivery/Nursery/Chapel)
+- 스테이지 ID: StageIds(Menu=MainMenu, Front=Stage1, Lobby=Stage2, Office/Delivery/Nursery/Chapel)
 
 8) 변경 시 원칙
 - 변경 시 해당 씬 문서의 관련 섹션을 즉시 업데이트한다.
@@ -188,7 +211,7 @@ Owner: 기획/개발 공용
 
 15) 씬 분류·수명주기(Scene Taxonomy & Lifecycle)
 - Core: 상주. 서비스 등록/전환/페이드/입력락 유지.
-- Stage_Menu: 진입 UI. 버튼 → GameEvents.StageChangeRequested 발행.
+- MainMenu: 진입 UI. 버튼 → GameEvents.StageChangeRequested 발행. 저장이 없으면 Continue는 숨김.
 - Stage_*: 애디티브 로드/활성/이전 언로드. StageRoot로 진입/종료 훅 제공.
 - 전환 순서: Input.Lock → Fade.Out → LoadAdditive(next) → Activate → Unload(prev) → Fade.In → Input.Unlock
 
@@ -200,12 +223,12 @@ Owner: 기획/개발 공용
 17) 품질 게이트(Definition of Done)
 - [ ] 문서 섹션 표준을 모두 채웠다.
 - [ ] 오브젝트 카드가 누락 없이 유효하다.
-- [ ] Build Settings 등록/순서 스샷 첨부.
-- [ ] 실행 검증: 메뉴→Front 전환이 페이드와 입력락을 동반해 3회 이상 성공.
+- [ ] Build Settings 등록/순서 스샷 첨부(Core→MainMenu→Stage1→Stage2).
+- [ ] 실행 검증: MainMenu→Stage1 전환이 페이드와 입력락을 동반해 3회 이상 성공.
 - [ ] 콘솔 Error 0, Warning 허용 범위 내(설명 기재).
 
 18) 검증 매트릭스(Validation Matrix)
-- 정상: 메뉴 버튼 3종(New/Continue/Quit) 동작, FrontDoor 클릭 전환.
+- 정상: 메뉴 버튼 3종(New/Continue/Quit) 동작, FrontDoor 클릭 전환(Stage1→Stage2).
 - 엣지: 빠른 연타, UI 위 클릭 무시, 씬 미등록 시 실패 로그.
 - 예외: 잘못된 Stage ID → 이전 상태 유지 + 페이드 해제 + 로그.
 - 성능: 전환 < 1.5s, 전환 중 GC/에러 0(기본 리소스 기준).
@@ -276,7 +299,7 @@ Owner: 기획/개발 공용
 - ID/이름 일치: StageIds.<Name> ↔ SceneName=<Exact_Scene_Name>
 
 5) Build Settings(Scenes In Build)
-- 순서: 1) Core  2) Stage_Menu  3) <This_Scene>  (필요 씬 모두 추가)
+- 순서: 1) Core  2) MainMenu  3) <This_Scene>  (필요 씬 모두 추가)
 
 6) Tests(기능 검증)
 - 정상 동작: <버튼/핫스팟> 동작 시 <결과> 확인

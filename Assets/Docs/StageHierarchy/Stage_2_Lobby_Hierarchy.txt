@@ -1,5 +1,5 @@
-Title: Stage_Lobby - Hierarchy & Wiring Guide
-SceneName: Stage_Lobby
+Title: Stage2 - Hierarchy & Wiring Guide
+SceneName: Stage2
 Purpose: 병원 로비(문/아이템/점프스케어)
 
 1) 하이라키어 최종 구조도
@@ -20,7 +20,7 @@ Purpose: 병원 로비(문/아이템/점프스케어)
 
 2) 하이라키어 제작 절차(생성 경로 포함)
 - 컨테이너 생성: World, Interaction, Services
-- World/BG: 2D Sprite 또는 UI Image 구성
+- World/BG: 2D Sprite 구성(기본). UI/Image 대체는 특수 케이스에서만 사용.
 - Interaction/Doors
   - Door_Office: Create Empty → Add Component: BoxCollider2D, HotspotMove
   - Door_Delivery: Create Empty → Add Component: BoxCollider2D, DoorLocked, HotspotMove
@@ -56,7 +56,7 @@ Purpose: 병원 로비(문/아이템/점프스케어)
 - Jumpscare/CounterGhost: 클릭 시 JumpscareTrigger.Fire()
 
 5) Build Settings(Scenes In Build)
-- Core, Stage_Menu, Stage_Front, Stage_Lobby, Stage_Office, Stage_Delivery 등록
+- Core, MainMenu, Stage1, Stage2, Stage_Office, Stage_Delivery 등록
 
 6) Tests(기능 검증)
 - Door_Office 이동 OK

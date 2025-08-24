@@ -14,14 +14,14 @@ Hierarchy (추천)
   - OpeningPhoto (HotspotInspect → item_opening_photo)
 - Jumpscare
   - HeadMaster (Trigger)
-- BackDoor (HotspotMove → Stage_Lobby)
+- BackDoor (HotspotMove → Stage2)
 
 Components & Wiring
 - StageRoot: 기본
 - Altar/Slots: Use 성공 시 슬롯 비주얼 변경 및 플래그 세팅
 - Props/*: Inspect → CloseUpController
 - Jumpscare/HeadMaster: Trigger → JumpScarePlayer.Play
-- BackDoor: targetStageId = Stage_Lobby
+- BackDoor: targetStageId = Stage2
 
 Notes
 - 3슬롯 완료 조건으로 엔딩 트리거를 제어
@@ -38,7 +38,7 @@ Notes
 - Slot_Cross.requiredItemId = "item_cross"
 - Slot_Key.requiredItemId = "item_keyring"
 - Slot_MusicBox.requiredItemId = "item_musicbox"
-- BackDoor.targetStageId = "Stage_Lobby"
+- BackDoor.targetStageId = "Stage2"
 
 [Events / Bindings]
 - 3슬롯 사용 완료 → 엔딩 연출 트리거

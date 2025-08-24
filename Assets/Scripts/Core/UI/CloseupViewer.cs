@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using AFKS.Features.Items;
 
 namespace AFKS.Core.UI
@@ -10,13 +11,15 @@ namespace AFKS.Core.UI
 	/// </summary>
 	[RequireComponent(typeof(CanvasGroup))]
 	[AddComponentMenu("AFKS/UI/Closeup Viewer")]
-	public sealed class CloseupViewer : MonoBehaviour
+	public sealed class CloseupViewer : MonoBehaviour, IPointerDownHandler
 	{
 		#region 필드
 		[SerializeField] private CanvasGroup canvasGroup;
 		[SerializeField] private Image image;
 		[SerializeField] private Text text;
 		[SerializeField] private float fadeSeconds = 0.15f;
+		[SerializeField] private bool closeOnClick = true;
+		[SerializeField] private bool closeOnEsc = true;
 		private Coroutine current;
 		#endregion
 
@@ -30,6 +33,17 @@ namespace AFKS.Core.UI
 		{
 			if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
 			HideImmediate();
+		}
+
+		private void Update()
+		{
+			if (closeOnEsc && canvasGroup != null && canvasGroup.blocksRaycasts)
+			{
+				if (Input.GetKeyDown(KeyCode.Escape))
+				{
+					Hide();
+				}
+			}
 		}
 		#endregion
 
@@ -88,6 +102,17 @@ namespace AFKS.Core.UI
 			}
 			canvasGroup.alpha = target;
 			current = null;
+		}
+		#endregion
+
+		#region 이벤트 시스템
+		public void OnPointerDown(PointerEventData eventData)
+		{
+			if (!closeOnClick) return;
+			if (canvasGroup != null && canvasGroup.blocksRaycasts)
+			{
+				Hide();
+			}
 		}
 		#endregion
 	}

@@ -6,9 +6,9 @@ namespace AFKS.Features.Stage
     public static class StageIds
     {
         #region 기본 스테이지 ID
-        public const string Menu = "Stage_Menu";
-        public const string Front = "Stage_Front";
-        public const string Lobby = "Stage_Lobby";
+        public const string Menu = "MainMenu";
+        public const string Front = "Stage1";
+        public const string Lobby = "Stage2";
         public const string Office = "Stage_Office";
         public const string Delivery = "Stage_Delivery";
         public const string Nursery = "Stage_Nursery";

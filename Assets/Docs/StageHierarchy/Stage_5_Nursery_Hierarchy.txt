@@ -12,13 +12,13 @@ Hierarchy (추천)
   - Note (HotspotInspect → item_note)
 - Jumpscare
   - BabyFace (Trigger)
-- BackDoor (HotspotMove → Stage_Lobby)
+- BackDoor (HotspotMove → Stage2)
 
 Components & Wiring
 - StageRoot: 기본
 - Props/*: Inspect → CloseUpController
 - Jumpscare/BabyFace: Trigger → JumpScarePlayer.Play
-- BackDoor: targetStageId = Stage_Lobby
+- BackDoor: targetStageId = Stage2
 
 Notes
 - 인큐베이터 열림 조건을 플래그/아이템으로 제어 가능(추후)
@@ -34,7 +34,7 @@ Notes
 - MusicBox.itemId = "item_musicbox"
 - BloodTest.itemId = "item_blood_test"
 - Note.itemId = "item_note"
-- BackDoor.targetStageId = "Stage_Lobby"
+- BackDoor.targetStageId = "Stage2"
 
 [Events / Bindings]
 - Trigger(BabyFace) → JumpScarePlayer.Play(clip)

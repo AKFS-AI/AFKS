@@ -1,6 +1,6 @@
 Title: Core - Hierarchy & Wiring Guide
 SceneName: Core
-Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 전환의 기반
+Purpose: 전역 서비스/전역 UI 상주, 스테이지(MainMenu/Stage*) 애디티브 전환의 기반
 
 1) 하이라키어 최종 구조도
 - Core (Empty)
@@ -29,7 +29,7 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
   - InventoryService: Create Empty(이름: InventoryService) → Add Component: Inventory Service
   - StartupLoader: Create Empty(이름: StartupLoader) → Add Component: StartupLoader
 - UI 자식
-  - EventSystem(선택): GameObject > UI > Event System
+  - EventSystem: GameObject > UI > Event System (전역 1개, Core에만 배치)
   - FadeCanvas: GameObject > UI > Canvas → 하위 UI > Image → Add Component: CanvasGroup, FadeCanvas
   - CloseupViewer: UI > Create Empty(이름: CloseupViewer) → Add Component: CanvasGroup, CloseupViewer
 - Empty 자식
@@ -60,10 +60,10 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
   - Inventory Service(스크립트)
     - Initial Items = (비워둠)
 
-- Services/StartupLoader (Empty)
+ - Services/StartupLoader (Empty)
   - Transform: 기본값
   - Startup Loader(스크립트)
-    - 초기 스테이지 ID = "Stage_Menu" (또는 프로젝트 기준 초기 스테이지)
+    - 초기 스테이지 ID = "MainMenu" (또는 프로젝트 기준 초기 스테이지)
     - 시작 시 자동 로드 = On
 
 - UI/FadeCanvas (Canvas + Image + CanvasGroup + FadeCanvas)
@@ -80,6 +80,8 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
     - Image = (UI/Image 참조)
     - Text = (TMP 또는 Text 참조)
     - Fade Seconds = 0.15
+    - Close On Click = On(권장)
+    - Close On Esc = On(권장)
 
 - UI/EventSystem (선택)
   - Event System = 기본값
@@ -95,7 +97,7 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
 
 5) Build Settings(Scenes In Build)
 - Core.unity를 목록 최상단에 배치(항상 상주)
-- Stage_Menu, Stage_Front, Stage_Lobby 등 Stage_* 씬 등록
+- MainMenu, Stage1, Stage2 등록(추가 스테이지는 이후 순서대로)
 
 6) Tests(기능 검증)
 - 재생 → StartupLoader가 Initial Stage 요청 → SceneService 전환(3회 연속) 성공
@@ -104,12 +106,14 @@ Purpose: 전역 서비스/전역 UI 상주, 스테이지(Stage_*) 애디티브 �
 7) 체크리스트
 - [ ] FadeCanvas 참조가 SceneService에 연결됨
 - [ ] InventoryService/CloseupViewer 존재
-- [ ] EventSystem 존재(필요 시)
-- [ ] Build Settings 순서(Core 최상단) 확인
+- [ ] EventSystem 전역 1개(Core에만)
+- [ ] 활성 AudioListener 1개(Main Camera 권장)
+- [ ] Build Settings 순서(Core → MainMenu → Stage1 → Stage2) 확인
 
 8) FAQ(문제 해결)
 - 클릭 불가: EventSystem 유무, Collider2D/카메라 레이어 확인
-- 전환 실패: 씬 미등록/ID 오타 로그 확인
+- 전환 실패: 씬 미등록/ID 오타 로그 확인, StageIds↔씬 이름 일치
+- 오디오 경고: AudioListener가 중복되지 않았는지 확인(Core 1개만 활성)
 
 9) 변경 이력(Change Log)
 - v1.1: InventoryService/CloseupViewer 추가, Components & Wiring 확장

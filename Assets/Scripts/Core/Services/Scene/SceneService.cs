@@ -172,6 +172,7 @@ namespace AFKS.Core.Services.Scene
             if (scene.IsValid())
             {
                 SceneManager.SetActiveScene(scene);
+                DisableDuplicatedGlobalComponents(scene);
                 InvokeStageInitialize(scene);
             }
             yield break;
@@ -194,7 +195,7 @@ namespace AFKS.Core.Services.Scene
         #endregion
 
         #region 내부 메서드
-        private static void InvokeStageInitialize(Scene scene)
+        private static void InvokeStageInitialize(UnityEngine.SceneManagement.Scene scene)
         {
             var roots = scene.GetRootGameObjects();
             for (int i = 0; i < roots.Length; i++)
@@ -208,7 +209,7 @@ namespace AFKS.Core.Services.Scene
             }
         }
 
-        private static void InvokeStageTeardown(Scene scene)
+        private static void InvokeStageTeardown(UnityEngine.SceneManagement.Scene scene)
         {
             var roots = scene.GetRootGameObjects();
             for (int i = 0; i < roots.Length; i++)
@@ -218,6 +219,43 @@ namespace AFKS.Core.Services.Scene
                 {
                     root.Teardown();
                     break;
+                }
+            }
+        }
+        #endregion
+
+        #region 유틸리티
+        /// <summary>
+        /// Additive 로드 시 중복 생길 수 있는 전역 컴포넌트(EventSystem/AudioListener)를 정리합니다.
+        /// Core 상주 인스턴스를 유지하고, 방금 로드된 스테이지 씬의 중복 인스턴스는 비활성화합니다.
+        /// </summary>
+        private static void DisableDuplicatedGlobalComponents(UnityEngine.SceneManagement.Scene loadedScene)
+        {
+            // EventSystem: 하나만 활성화되도록, 방금 로드된 씬의 것은 비활성화
+            var eventSystems = Object.FindObjectsByType<UnityEngine.EventSystems.EventSystem>(FindObjectsSortMode.None);
+            if (eventSystems != null && eventSystems.Length > 1)
+            {
+                for (int i = 0; i < eventSystems.Length; i++)
+                {
+                    var es = eventSystems[i];
+                    if (es != null && es.gameObject.scene == loadedScene)
+                    {
+                        es.enabled = false;
+                    }
+                }
+            }
+
+            // AudioListener: 하나만 활성화되도록, 방금 로드된 씬의 것은 비활성화
+            var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
+            if (listeners != null && listeners.Length > 1)
+            {
+                for (int i = 0; i < listeners.Length; i++)
+                {
+                    var al = listeners[i];
+                    if (al != null && al.gameObject.scene == loadedScene)
+                    {
+                        al.enabled = false;
+                    }
                 }
             }
         }

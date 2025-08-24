@@ -10,13 +10,13 @@ Hierarchy (추천)
   - Docs (HotspotInspect → item_incident_docs)
   - Blueprint (HotspotInspect → item_blueprint)
   - KeyRing (HotspotInspect → item_keyring, setFlag=DeliveryUnlocked)
-- BackDoor (HotspotMove → Stage_Lobby)
+- BackDoor (HotspotMove → Stage2)
 
 Components & Wiring
 - StageRoot: 기본
 - Props/CCTV: Inspect 시 JumpScarePlayer 호출(추후)
 - Props/KeyRing: setFlag=DeliveryUnlocked → Lobby의 Door_Delivery 가드 해제
-- BackDoor(HotspotMove): targetStageId = Stage_Lobby
+- BackDoor(HotspotMove): targetStageId = Stage2
 
 Notes
 - 점프스케어는 입력 잠금 윈도우/모노 다운과 함께 구현(추후 단계)
@@ -31,7 +31,7 @@ Notes
 - CCTV.setFlagOnSuccess = "Jumpscare_Office"
 - KeyRing.itemId = "item_keyring"
 - KeyRing.setFlagOnSuccess = "DeliveryUnlocked"
-- BackDoor.targetStageId = "Stage_Lobby"
+- BackDoor.targetStageId = "Stage2"
 
 [Events / Bindings]
 - CCTV.Inspect → JumpScarePlayer.Play(clip)

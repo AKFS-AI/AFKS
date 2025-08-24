@@ -1,52 +1,70 @@
-Title: Stage_Front - Hierarchy & Wiring Guide
-SceneName: Stage_Front
+Title: Stage1 - Hierarchy & Wiring Guide
+SceneName: Stage1
 Purpose: 병원 앞(정문 클릭 → Lobby)
 
 1) 하이라키어 최종 구조도
 - World (Empty)
-  - BG (2D/Sprite or UI/Image) [Components: SpriteRenderer or Image]
+  - BG (2D/Sprite) [Components: SpriteRenderer]
 - Interaction (Empty)
   - Hotspots (Empty) [Components: -]
-    - FrontDoor (Empty) [Components: HotspotMove, BoxCollider2D]
+    - DoorZoom (Empty) [Components: HotspotInspect, BoxCollider2D]
+    - Chain (Empty) [Components: ChainUnlock, BoxCollider2D]
+    - DoorMove (Empty) [Components: HotspotMove, BoxCollider2D]
 - Services (Empty)
   - StageRoot (Empty) [Components: StageRoot]
 
 2) 하이라키어 제작 절차(생성 경로 포함)
 - 컨테이너 생성: World, Interaction, Services (모두 Empty)
 - World/BG
-  - 생성 경로: GameObject > 2D Object > Sprite (이름: BG)  |  (대안) Canvas 하위 UI > Image
-  - Add Component: SpriteRenderer(2D) 또는 Image(UI)
-  - (UI 대체 시) 라벨/힌트 텍스트가 필요하면 UI > Text - TextMeshPro 추가, 5.3 규칙 준수
+  - 생성 경로: GameObject > 2D Object > Sprite (이름: BG)
+  - Add Component: SpriteRenderer
+  - 참고: UI/Image 대체는 특수 케이스에서만 사용(라벨 등 UI 혼합 필요 시)
 - Interaction/Hotspots
   - 생성 경로: GameObject > Create Empty (이름: Hotspots)
-  - 자식 FrontDoor: Create Empty → Add Component: BoxCollider2D, HotspotMove
-    - BoxCollider2D: 클릭 영역 설정, IsTrigger=Off
+  - 자식 DoorZoom: Create Empty → Add Component: BoxCollider2D, HotspotInspect
+    - HotspotInspect: 클릭 시 CloseupViewer.Open(문 클로즈업 스프라이트)
+    - (Core/UI/CloseupViewer) Close On Click=On, Close On Esc=On 권장
+  - 자식 Chain: Create Empty → Add Component: BoxCollider2D, ChainUnlock
+    - ChainUnlock.requiredClicks = 3(예시)
+    - ChainUnlock.targetToEnable = DoorMove
+    - ChainUnlock.OnUnlocked → (추가 액션 필요 시 연결)
+  - 자식 DoorMove: Create Empty → Add Component: BoxCollider2D, HotspotMove (초기 비활성)
+    - ChainUnlock.Unlocked 시 DoorMove.SetActive(true)
 - Services/StageRoot
   - 생성 경로: GameObject > Create Empty (이름: StageRoot)
   - Add Component: StageRoot
 
 3) 인스펙터 설정(실제 인스펙터 순서)
-- World/BG (2D/Sprite 또는 UI/Image)
-  - SpriteRenderer 선택 시
-    - Transform: 기본값
-    - Sprite Renderer
-      - Sprite = <배경 스프라이트>
-      - Draw Mode = Simple
-  - UI/Image로 구성 시(Canvas 하위)
-    - RectTransform = Stretch(Left/Right/Top/Bottom=0)
-    - Image
-      - Color = #FFFFFF, Alpha=1
-    - TextMeshProUGUI(라벨 필요 시)
-      - Auto Size On(24~40), Raycast Target Off
+- World/BG (2D/Sprite)
+  - Transform: 기본값
+  - Sprite Renderer
+    - Sprite = <배경 스프라이트>
+    - Draw Mode = Simple
+  - 참고: UI/Image 대체는 특수 케이스에서만 사용
 
-- Interaction/Hotspots/FrontDoor (Empty)
+- Interaction/Hotspots/DoorZoom (Empty)
   - Transform: 클릭 영역 위치/크기에 맞게 조정
   - Box Collider 2D
     - Is Trigger = Off(기본)
     - Size = 환경에 맞게 설정
-  - Hotspot Move(스크립트)
-    - Target Stage Id = "Stage_Lobby"
+  - Hotspot Inspect(스크립트)
+    - Closeup Sprite = 문 클로즈업 이미지
     - (입력) InputService가 필요. Core 씬에 존재해야 함
+
+- Interaction/Hotspots/Chain (Empty)
+  - Transform: 문 중앙 체인 영역에 맞게 조정
+  - Box Collider 2D: Size/위치 조정
+  - ChainUnlock(스크립트)
+    - Required Clicks = 3(예시)
+    - OnUnlocked → DoorMove.SetActive(true)
+
+- Interaction/Hotspots/DoorMove (Empty)
+  - Transform: 문 영역
+  - Box Collider 2D
+    - Is Trigger = Off
+  - Hotspot Move(스크립트)
+    - Target Stage Id = "Stage2"
+  - 초기 상태: SetActive(false)
 
 - Services/StageRoot (Empty)
   - Transform: 기본값
@@ -58,15 +76,16 @@ Purpose: 병원 앞(정문 클릭 → Lobby)
   - Button 자식에 TextMeshProUGUI 라벨 배치(가이드 5.3 권장값)
 
 5) Build Settings(Scenes In Build)
-- Core(최상단), Stage_Menu, Stage_Front, Stage_Lobby 등록
+- Core(최상단), MainMenu, Stage1, Stage2 등록
 
 6) Tests(기능 검증)
-- 정문 클릭 → Stage_Lobby 전환 요청(연타 시 단 1회만 전환)
+- 정문 클릭 → Stage2 전환 요청(연타 시 단 1회만 전환)
 
-7) 체크리스트
-- [ ] HotspotMove.targetStageId = "Stage_Lobby"
-- [ ] Collider2D 또는 UI Button으로 클릭 입력 확보
-- [ ] StageRoot 존재
+- 7) 체크리스트
+- [ ] HotspotInspect.CloseupSprite 연결
+- [ ] ChainUnlock.requiredClicks 값 설정, OnUnlocked → DoorMove 활성화 연결
+- [ ] DoorMove.HotspotMove.targetStageId = "Stage2"
+- [ ] Collider2D 배치 확인, StageRoot 존재
 
 8) FAQ(문제 해결)
 - 클릭 불가: Collider2D 부재/카메라 레이어, UI 위 클릭 여부 확인
