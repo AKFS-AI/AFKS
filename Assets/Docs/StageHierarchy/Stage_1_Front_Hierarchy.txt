@@ -146,6 +146,7 @@ Purpose: 병원 앞(문 클로즈업→쇠사슬 해금→문 클릭 시 Stage2)
   - CloseupImage.sprite = BG1_2(해제 이미지)로 교체
   - ChainRoot 비활성화 → DoorHotspot 활성화
 - DoorHotspot(HotspotMoveUI).OnClick → GameEvents.RaiseStageChangeRequested("Stage2") → CloseupPanel/프리팹 파괴(선택)
+ - 디버깅: HotspotInspect.debugLog/CloseupPanelAutoWire.debugLog를 On으로 설정해 캔버스 선택, 프리팹 생성/재사용, BG 자동 매핑 결과 확인
 
 5) Build Settings(Scenes In Build)
 - Core(최상단), MainMenu, Stage1, Stage2 등록

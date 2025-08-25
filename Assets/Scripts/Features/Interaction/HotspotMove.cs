@@ -20,12 +20,19 @@ namespace AFKS.Features.Interaction
         private string targetStageId;
 
         private IInputService inputService;
+        [SerializeField]
+        [Tooltip("전환 요청/폴백 경로를 로그로 출력합니다.")]
+        private bool debugLog = false;
         #endregion
 
         #region 유니티 수명주기
         private void Awake()
         {
             ServiceLocator.TryGet<IInputService>(out inputService);
+            if (debugLog)
+            {
+                Debug.Log($"[HotspotMove] Awake targetStageId={targetStageId} hasInput={(inputService!=null)}");
+            }
         }
 
         private void OnEnable()
@@ -58,11 +65,13 @@ namespace AFKS.Features.Interaction
             if (clicked == gameObject && !string.IsNullOrEmpty(targetStageId))
             {
                 // 우선 전역 전환 이벤트 발행(코어가 있을 때 정상 처리)
+                if (debugLog) Debug.Log($"[HotspotMove] Raise StageChangeRequested -> {targetStageId}");
                 GameEvents.RaiseStageChangeRequested(targetStageId);
 
                 // 코어( SceneService )가 없는 스탠드얼론 스테이지에서도 동작하도록 폴백
                 if (!ServiceLocator.TryGet<ISceneService>(out _))
                 {
+                    if (debugLog) Debug.Log("[HotspotMove] SceneService missing. Fallback to SceneManager.LoadScene");
                     SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
                 }
             }
@@ -74,6 +83,7 @@ namespace AFKS.Features.Interaction
         {
             if (string.IsNullOrEmpty(targetStageId)) return;
             if (!enabled || !gameObject.activeInHierarchy) return;
+            if (debugLog) Debug.Log($"[HotspotMove] OnMouseDown Fallback -> {targetStageId}");
             GameEvents.RaiseStageChangeRequested(targetStageId);
             if (!ServiceLocator.TryGet<ISceneService>(out _))
             {

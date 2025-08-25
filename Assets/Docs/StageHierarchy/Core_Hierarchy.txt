@@ -42,6 +42,7 @@ Purpose: 전역 서비스/전환 페이드/초기 로더 상주(씬별 MainCanva
   - Scene Service(스크립트)
     - 페이드 캔버스 = Core/UI/FadeCanvas의 FadeCanvas
     - 기본 페이드 시간(초) = 0.60
+    - debugLog = Off(문제 발생 시 On으로 단계별 전환 로그 확인)
 
 - UI/FadeCanvas (Canvas + Image + CanvasGroup + FadeCanvas)
   - RectTransform: Stretch(Left/Right/Top/Bottom=0)
@@ -63,6 +64,7 @@ Purpose: 전역 서비스/전환 페이드/초기 로더 상주(씬별 MainCanva
 - InputService: ObjectClicked 이벤트로 2D/3D 클릭 타겟 전달, UI 위 클릭 무시(옵션)
 - InventoryService: PickupItem/ DoorLocked 등에서 조회/수정 사용
 - GlobalSingletonGuard: 씬 공존 시 EventSystem/AudioListener 중복을 자동 비활성화하여 1개만 활성 유지
+ - 디버깅: SceneService.debugLog=On 시 StageChangeRequested/Load/Activate/Unload/Fade 단계 로그 출력
 
 5) Build Settings(Scenes In Build)
 - Core.unity를 목록 최상단에 배치(항상 상주)

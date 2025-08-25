@@ -92,6 +92,7 @@ MonoBehaviour:
   anchorMin01: {x: 0.45, y: 0.42}
   anchorMax01: {x: 0.55, y: 0.55}
   targetToEnable: {fileID: 4200399854082047143}
+  controller: {fileID: 0}
 --- !u!1 &2438614014676402175
 GameObject:
   m_ObjectHideFlags: 0
@@ -103,6 +104,7 @@ GameObject:
   - component: {fileID: 6686466872784144299}
   - component: {fileID: 6802862031251111500}
   - component: {fileID: 747360577579443173}
+  - component: {fileID: 5345071176141509156}
   m_Layer: 0
   m_Name: CloseupPanel
   m_TagString: Untagged
@@ -169,6 +171,18 @@ MonoBehaviour:
   doorHotspot: {fileID: 6132370414287827328}
   closeupRootToDestroy: {fileID: 8986179714224241173}
   stateKey: Stage1_ChainUnlocked
+--- !u!114 &5345071176141509156
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2438614014676402175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55a44f345934c7840a94a2b87d8ac8ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &4080988876895910024
 GameObject:
   m_ObjectHideFlags: 0

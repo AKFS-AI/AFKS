@@ -133,6 +133,12 @@ Owner: 기획/개발 공용
 - 흐름: DoorZoom 클릭 → CloseupPanel 활성 → Chain N회 클릭 → Break → BG1_2로 교체 + DoorHotspot 활성 → DoorHotspot 클릭 → StageChangeRequested(next)
 
 5.12) 씬별 MainCanvas 정책
+5.13) 전문 디버깅(권장 설정)
+- 입력/레이캐스트: InputService.debugLogging=On → 클릭 경로, UI 차단 여부 로그
+- 클로즈업 패널: HotspotInspect.debugLog=On → Canvas 선택/프리팹 생성·재사용 경로 확인
+- 자동 와이어링: CloseupPanelAutoWire.debugLog=On → CloseupImage/ChainHotspot/DoorHotspot 배선 및 BG 자동 매핑 결과 확인
+- 중복 생성 가드: 동일 Canvas 내 ChainCloseupController가 있으면 재생성 금지(Log 없음이면 정상)
+- 전역 단일성: GlobalSingletonGuard/SceneService 로그로 EventSystem/AudioListener 활성 인스턴스 1개 유지 확인
 - 각 씬은 `MainCanvas` 1개 + `EventSystem` 1개를 가진다.
 - 클로즈업 오버레이는 `CloseupPanel`(Canvas 없음) 프리팹을 `MainCanvas` 하위에 배치하는 것을 권장한다.
 - CanvasScaler 표준: ReferenceResolution=1920×1080, Screen Match=Match Width Or Height, Match=1.0(Height).

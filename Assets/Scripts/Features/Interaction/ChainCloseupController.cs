@@ -144,6 +144,12 @@ namespace AFKS.Features.Interaction
 				if (field != null) field.SetValue(move, rootToDestroy);
 			}
 		}
+
+		public void SetBackgroundSprites(Sprite locked, Sprite unlocked)
+		{
+			if (locked != null) bgLockedSprite = locked;
+			if (unlocked != null) bgUnlockedSprite = unlocked;
+		}
 		#endregion
 	}
 }

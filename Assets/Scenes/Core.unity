@@ -702,6 +702,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fadeCanvas: {fileID: 336365111}
   defaultFadeSeconds: 0.6
+  debugLog: 1
 --- !u!1 &2038191765
 GameObject:
   m_ObjectHideFlags: 0

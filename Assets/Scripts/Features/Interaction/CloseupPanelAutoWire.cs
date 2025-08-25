@@ -17,6 +17,10 @@ namespace AFKS.Features.Interaction
 	[AddComponentMenu("AFKS/Interaction/Closeup Panel AutoWire")]
 	public sealed class CloseupPanelAutoWire : MonoBehaviour
 	{
+		[SerializeField]
+		[Tooltip("자동 와이어링 진행 상황을 로그로 출력합니다.")]
+		private bool debugLog = false;
+
 		private void OnValidate()
 		{
 			TryAutoWire();
@@ -45,6 +49,25 @@ namespace AFKS.Features.Interaction
 			var chainHotspot = transform.Find("ChainHotspot") != null ? transform.Find("ChainHotspot").gameObject : null;
 			var doorHotspot = transform.Find("DoorHotspot") != null ? transform.Find("DoorHotspot").gameObject : null;
 
+			// 배경 스프라이트 자동 바인딩(이름 규칙)
+			Sprite autoLocked = null, autoUnlocked = null;
+			if (closeupImage != null && closeupImage.sprite != null)
+			{
+				// CloseupImage 현재 스프라이트를 잠금 기본값으로 가정
+				autoLocked = closeupImage.sprite;
+			}
+			// 리소스/동일 폴더 기준으로 이름 규칙 탐색: *_Locked, *_Unlocked 또는 _L/_U
+			// 간단 구현: 하위 자식 이미지들에서 이름 키워드로 스프라이트 수집
+			var images = GetComponentsInChildren<Image>(true);
+			for (int i = 0; i < images.Length; i++)
+			{
+				var sp = images[i].sprite;
+				if (sp == null) continue;
+				var n = sp.name.ToLowerInvariant();
+				if (n.Contains("locked") || n.EndsWith("_l") || n.EndsWith("_lock")) autoLocked = sp;
+				if (n.Contains("unlocked") || n.EndsWith("_u") || n.EndsWith("_unlock")) autoUnlocked = sp;
+			}
+
 			// 컨트롤러 보장 및 주입
 			var controller = GetComponent<ChainCloseupController>();
 			if (controller == null) controller = gameObject.AddComponent<ChainCloseupController>();
@@ -52,6 +75,11 @@ namespace AFKS.Features.Interaction
 			if (closeupImage != null)
 			{
 				controller.SetCloseupImage(closeupImage);
+				controller.SetBackgroundSprites(autoLocked, autoUnlocked);
+				if (debugLog)
+				{
+					Debug.Log($"[CloseupPanelAutoWire] CloseupImage wired. BG locked={(autoLocked!=null?autoLocked.name:"null")} unlocked={(autoUnlocked!=null?autoUnlocked.name:"null")} ");
+				}
 			}
 			if (chainRoot != null)
 			{
@@ -70,6 +98,7 @@ namespace AFKS.Features.Interaction
 				var ui = chainHotspot.GetComponent<ChainHotspotUI>();
 				if (ui == null) ui = chainHotspot.AddComponent<ChainHotspotUI>();
 				ui.SetController(controller);
+				if (debugLog) Debug.Log("[CloseupPanelAutoWire] ChainHotspotUI wired.");
 			}
 
 			// 문 핫스팟 보장/연결
@@ -86,7 +115,12 @@ namespace AFKS.Features.Interaction
 				{
 					if (doorHotspot.activeSelf) doorHotspot.SetActive(false);
 				}
+				if (debugLog) Debug.Log("[CloseupPanelAutoWire] DoorHotspot wired.");
 			}
+
+			// 패널 활성 시 월드 클릭 차단용 입력락 컴포넌트 보장
+			var locker = GetComponent<InputLockWhileActive>();
+			if (locker == null) gameObject.AddComponent<InputLockWhileActive>();
 
 			// CloseupImage 스트레치 보정
 			if (closeupImageTr != null)

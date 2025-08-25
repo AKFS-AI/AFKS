@@ -31,10 +31,12 @@ Purpose: 로비 장면(왕복 이동/상호작용 기반)
 - Doors/Door_Office
   - BoxCollider2D: 크기=문 영역
   - HotspotMove.targetStageId = "Stage_Office"
+  - HotspotMove.debugLog = Off(필요 시 On)
 - Doors/Door_Delivery
   - BoxCollider2D: 크기=문 영역
   - DoorLocked.requiredItemId = ItemIds.KeyBundle
   - HotspotMove.targetStageId = "Stage_Delivery"
+  - HotspotMove.debugLog = Off(필요 시 On)
 - Items/Cross
   - PickupItem.itemData = (Cross)
 - Items/Permit

@@ -32,6 +32,9 @@ namespace AFKS.Core.Services.Scene
         private bool lastLoadSucceeded;
         private bool isTransitioning;
         private string currentStageId;
+        [SerializeField]
+        [Tooltip("전환 흐름과 로드/언로드 단계를 상세 로그로 출력합니다.")]
+        private bool debugLog = false;
         #endregion
 
         #region 유니티 수명주기
@@ -65,6 +68,7 @@ namespace AFKS.Core.Services.Scene
                 Log.Warn($"[SceneService] 전환 진행 중 중복 요청 무시: '{targetStageId}'");
                 return;
             }
+            if (debugLog) Log.Info($"[SceneService] StageChangeRequested -> {targetStageId}");
             StartCoroutine(TransitionToStageCoroutine(targetStageId));
         }
         #endregion
@@ -76,11 +80,13 @@ namespace AFKS.Core.Services.Scene
             try
             {
                 if (inputService != null) inputService.Lock(true);
+                if (debugLog) Log.Info("[SceneService] FadeOut start");
                 yield return FadeOutAsync(defaultFadeSeconds);
 
                 string prevStage = string.IsNullOrEmpty(currentStageId) ? GetActiveStageName() : currentStageId;
                 if (!string.IsNullOrEmpty(targetStageId))
                 {
+                    if (debugLog) Log.Info($"[SceneService] LoadAdditive -> {targetStageId}");
                     yield return LoadStageAdditiveAsync(targetStageId, activateOnLoad: true);
                     if (!lastLoadSucceeded)
                     {
@@ -95,15 +101,18 @@ namespace AFKS.Core.Services.Scene
 
                 if (!string.IsNullOrEmpty(prevStage))
                 {
+                    if (debugLog) Log.Info($"[SceneService] Unload -> {prevStage}");
                     yield return UnloadStageAsync(prevStage);
                 }
 
+                if (debugLog) Log.Info("[SceneService] FadeIn start");
                 yield return FadeInAsync(defaultFadeSeconds);
                 if (inputService != null) inputService.Lock(false);
             }
             finally
             {
                 isTransitioning = false;
+                if (debugLog) Log.Info("[SceneService] Transition completed");
             }
         }
 
@@ -155,10 +164,12 @@ namespace AFKS.Core.Services.Scene
                 Log.Error($"[SceneService] LoadSceneAsync가 null을 반환했습니다: '{stageId}'");
                 yield break;
             }
+            if (debugLog) Log.Info("[SceneService] Loading in progress...");
             while (!op.isDone) yield return null;
 
             if (activateOnLoad)
             {
+                if (debugLog) Log.Info("[SceneService] ActivateLoadedStageAsync");
                 yield return ActivateLoadedStageAsync(stageId);
             }
 
@@ -174,6 +185,7 @@ namespace AFKS.Core.Services.Scene
                 SceneManager.SetActiveScene(scene);
                 DisableDuplicatedGlobalComponents(scene);
                 InvokeStageInitialize(scene);
+                if (debugLog) Log.Info("[SceneService] Stage activated and initialized");
             }
             yield break;
         }
@@ -188,6 +200,7 @@ namespace AFKS.Core.Services.Scene
             var op = SceneManager.UnloadSceneAsync(stageId);
             if (op != null)
             {
+                if (debugLog) Log.Info("[SceneService] Unloading in progress...");
                 while (!op.isDone) yield return null;
                 GameEvents.RaiseStageUnloaded(stageId);
             }

@@ -51,6 +51,11 @@ namespace AFKS.Features.Interaction
 
         private IInputService inputService;
         private CloseupViewer closeupViewer;
+
+        [SerializeField]
+        [InspectorName("디버그 로그")]
+        [Tooltip("동작 경로/참조 상태를 상세 로그로 출력합니다.")]
+        private bool debugLog = false;
         #endregion
 
         #region 유니티 수명주기
@@ -59,6 +64,10 @@ namespace AFKS.Features.Interaction
             ServiceLocator.TryGet<IInputService>(out inputService);
             // CloseupViewer는 씬 내에서 1개 존재한다고 가정하고 찾아서 캐시(신규 API)
             closeupViewer = UnityEngine.Object.FindFirstObjectByType<CloseupViewer>(FindObjectsInactive.Include);
+            if (debugLog)
+            {
+                Debug.Log($"[HotspotInspect] Awake spawnUIPrefab={spawnUIPrefab} prefab={(closeupPanelPrefab!=null)} canvas={(targetCanvas!=null)} viewer={(closeupViewer!=null)}");
+            }
         }
 
         private void OnEnable()
@@ -176,6 +185,10 @@ namespace AFKS.Features.Interaction
                     }
                 }
                 if (targetCanvas == null && canvases.Length > 0) targetCanvas = canvases[0];
+                if (debugLog)
+                {
+                    Debug.Log($"[HotspotInspect] Canvas resolved -> {(targetCanvas!=null ? targetCanvas.name : "NULL")}");
+                }
             }
             if (targetCanvas == null)
             {
@@ -203,6 +216,7 @@ namespace AFKS.Features.Interaction
                     if (!panel.activeSelf) panel.SetActive(true);
                     rt = panel.GetComponent<RectTransform>();
                     cg = panel.GetComponent<CanvasGroup>();
+                    if (debugLog) Debug.Log("[HotspotInspect] Reusing existing CloseupPanel under Canvas.");
                 }
                 else
                 {
@@ -216,6 +230,7 @@ namespace AFKS.Features.Interaction
                 panel.transform.SetAsLastSibling();
                 rt = panel.GetComponent<RectTransform>();
                 if (rt == null) rt = panel.AddComponent<RectTransform>();
+                if (debugLog) Debug.Log("[HotspotInspect] Instantiated CloseupPanel prefab.");
             }
 
             // 시작 위치: 클릭된 오브젝트의 화면 좌표 → 캔버스 로컬 좌표
@@ -242,6 +257,7 @@ namespace AFKS.Features.Interaction
 
             // 애니메이션 중에는 전역 입력 잠금(중복 생성 방지)
             if (inputService != null) inputService.Lock(true);
+            if (debugLog) Debug.Log("[HotspotInspect] Starting zoom animation with input lock.");
 
             StartCoroutine(AnimateZoom(rt, cg));
         }
