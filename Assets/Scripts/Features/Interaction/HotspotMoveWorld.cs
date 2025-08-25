@@ -1,5 +1,6 @@
 using UnityEngine;
 using AFKS.Core.Services.Scene; // 가정: SceneService 네임스페이스
+using AFKS.Core.Events;
 
 namespace AFKS.Features.Interaction
 {

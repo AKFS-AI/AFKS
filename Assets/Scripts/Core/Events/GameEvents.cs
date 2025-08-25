@@ -21,6 +21,10 @@ namespace AFKS.Core.Events
         public static event Action<string> JumpScareTriggered;
         #endregion
 
+        #region 시스템
+        public static event Action<bool> PauseToggled; // true=Paused
+        #endregion
+
         #region 발행 함수
         public static void RaiseStageChangeRequested(string targetStageId)
         {
@@ -45,6 +49,11 @@ namespace AFKS.Core.Events
         public static void RaiseJumpScareTriggered(string clipId)
         {
             JumpScareTriggered?.Invoke(clipId);
+        }
+
+        public static void RaisePauseToggled(bool paused)
+        {
+            PauseToggled?.Invoke(paused);
         }
         #endregion
     }
