@@ -17,7 +17,9 @@ namespace AFKS.Features.Interaction
 	public sealed class HotspotMoveUI : MonoBehaviour, IPointerClickHandler
 	{
 		[SerializeField] private string targetStageId = "Stage2";
-		[SerializeField] private GameObject closeupRootToDestroy; // 전환 직전 닫을 프리팹 루트
+		[SerializeField] private GameObject closeupRootToDestroy; // 전환 시 제거할 프리팹 루트(지연 제거)
+		[SerializeField] private bool destroyOnStageLoaded = true; // StageLoaded 후 파괴(페이드아웃이 가린 뒤)
+		[SerializeField] private bool disableInteractionImmediately = true; // 클릭 직후 상호작용 차단
 
 		private void Awake()
 		{
@@ -39,11 +41,32 @@ namespace AFKS.Features.Interaction
 				Debug.Log("[HotspotMoveUI] Door click ignored: chain not unlocked yet.");
 				return;
 			}
+			// 즉시 상호작용 차단(시각은 유지)
+			if (disableInteractionImmediately && closeupRootToDestroy != null)
+			{
+				var cg = closeupRootToDestroy.GetComponent<CanvasGroup>();
+				if (cg == null) cg = closeupRootToDestroy.AddComponent<CanvasGroup>();
+				cg.interactable = false;
+				cg.blocksRaycasts = false;
+			}
 			GameEvents.RaiseStageChangeRequested(targetStageId);
-			if (closeupRootToDestroy != null) Destroy(closeupRootToDestroy);
+			// 페이드아웃이 시작된 뒤 검은 화면에서 씬이 교체되도록 지연 파괴
+			if (destroyOnStageLoaded && closeupRootToDestroy != null)
+			{
+				GameEvents.StageLoaded += OnAnyStageLoaded;
+			}
 			if (!ServiceLocator.TryGet<ISceneService>(out _))
 			{
 				SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
+			}
+		}
+
+		private void OnAnyStageLoaded(string _)
+		{
+			GameEvents.StageLoaded -= OnAnyStageLoaded;
+			if (closeupRootToDestroy != null)
+			{
+				Destroy(closeupRootToDestroy);
 			}
 		}
 	}

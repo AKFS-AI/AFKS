@@ -111,6 +111,9 @@ namespace AFKS.Features.Interaction
 				var anim = chainRoot.GetComponent<Animator>();
 				if (anim == null) anim = chainRoot.AddComponent<Animator>();
 				controller.SetChain(chainRoot, anim);
+				// 애니메이션 이벤트 릴레이 보장(ChainRoot에서 발생하는 이벤트를 컨트롤러로 전달)
+				var relay = chainRoot.GetComponent<AnimationEventRelay>();
+				if (relay == null) relay = chainRoot.AddComponent<AnimationEventRelay>();
 				// 체인 그래픽은 클릭을 가로채지 않도록 레이캐스트 비활성화
 				var chainImages = chainRoot.GetComponentsInChildren<Image>(true);
 				for (int i = 0; i < chainImages.Length; i++)
@@ -129,6 +132,7 @@ namespace AFKS.Features.Interaction
 				var ui = chainHotspot.GetComponent<ChainHotspotUI>();
 				if (ui == null) ui = chainHotspot.AddComponent<ChainHotspotUI>();
 				ui.SetController(controller);
+				controller.SetChainHotspot(chainHotspot);
 				// 반드시 레이캐스트 가능한 투명 이미지 부착
 				var img = chainHotspot.GetComponent<Image>();
 				if (img == null) img = chainHotspot.AddComponent<Image>();

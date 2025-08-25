@@ -27,10 +27,28 @@ namespace AFKS.Features.Interaction
 		[SerializeField] private string breakTrigger = "Break";
 		[SerializeField] private int requiredClicks = 3;
 		[SerializeField] private float breakAnimSeconds = 0.8f; // 애니메이션 이벤트가 없을 때 폴백 대기시간
+		[SerializeField] private float shakeLockSeconds = 0.2f; // 흔들림 연출 중 중복 클릭 잠금 시간
+
+		[Header("체인 낙하 연출(폴백)")]
+		[SerializeField] private RectTransform chainTopRect;    // 선택: 상단 조각
+		[SerializeField] private RectTransform chainBottomRect; // 선택: 하단 조각
+		[SerializeField] private float dropSeconds = 0.6f;
+		[SerializeField] private float floorNormalizedY = -0.45f; // 부모 높이 기준 -0.45 지점(화면 하단 근처)
+		[SerializeField] private float horizontalJitter = 40f;
+		[SerializeField] private float rotateDegrees = 35f;
+		[SerializeField] private AnimationCurve dropCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+
+		[Header("목표 지점(Image 좌표계, 0~1)")]
+		[SerializeField] private bool useImageSpaceTargets = true;
+		[SerializeField] private Vector2 topTargetN01 = new Vector2(0.48f, 0.12f);
+		[SerializeField] private Vector2 bottomTargetN01 = new Vector2(0.52f, 0.12f);
 
 		[Header("문 핫스팟")]
 		[SerializeField] private GameObject doorHotspot;  // HotspotMoveUI가 붙은 투명 버튼
 		[SerializeField] private GameObject closeupRootToDestroy; // 전환 전 제거할 루트(프리팹)
+
+		[Header("체인 핫스팟(UI 클릭 영역)")]
+		[SerializeField] private GameObject chainHotspot; // 해제 후 비활성화
 
 		[Header("상태 저장")]
 		[SerializeField] private string stateKey = "Stage1_ChainUnlocked";
@@ -41,6 +59,10 @@ namespace AFKS.Features.Interaction
 		private int clickCount;
 		private bool unlocked;
 		public bool IsUnlocked => unlocked;
+		// 동시 실행 방지 가드
+		private bool breakStarted;
+		private bool breakCompleted;
+		private bool isAnimating; // 흔들림 또는 브레이크 연출 중
 		#endregion
 
 		private void Awake()
@@ -69,27 +91,59 @@ namespace AFKS.Features.Interaction
 		public void OnChainClicked()
 		{
 			if (unlocked) return;
+			// 연출 중에는 추가 클릭 무시(흔들림/브레이크/낙하 포함)
+			if (isAnimating || breakStarted) return;
 			clickCount++;
 			if (chainAnimator != null) chainAnimator.SetTrigger(shakeTrigger);
+			// 흔들림 연출 동안 입력 잠금
+			if (shakeLockSeconds > 0f) StartCoroutine(ShakeLockRoutine(shakeLockSeconds));
 			if (clickCount >= Mathf.Max(1, requiredClicks))
 			{
-				StartCoroutine(BreakRoutine());
+				if (!breakStarted)
+				{
+					StartCoroutine(BreakRoutine());
+				}
 			}
 		}
 
 		private IEnumerator BreakRoutine()
 		{
+			breakStarted = true;
+			isAnimating = true;
 			if (chainAnimator != null) chainAnimator.SetTrigger(breakTrigger);
 			// 애니 이벤트가 없으면 폴백으로 대기
 			yield return new WaitForSecondsRealtime(Mathf.Max(0f, breakAnimSeconds));
+			// 애니 이벤트가 먼저 완료되었으면 종료
+			if (breakCompleted) yield break;
+			// 낙하 연출(체인 조각 RectTransform이 지정된 경우)
+			bool hasPieces = chainRoot != null && (chainTopRect != null || chainBottomRect != null);
+			if (hasPieces)
+			{
+				yield return StartCoroutine(DropPiecesRoutine());
+			}
 			ApplyUnlocked();
 			SaveState();
+			breakCompleted = true;
+			isAnimating = false;
 		}
 
 		public void OnBreakAnimationCompleted() // 애니메이션 이벤트로 직접 호출 가능
 		{
-			ApplyUnlocked();
-			SaveState();
+			if (breakCompleted) return;
+			breakStarted = true;
+			isAnimating = true;
+			// 애니메이션 이벤트가 오면 즉시 낙하 연출을 시도
+			if (chainRoot != null && (chainTopRect != null || chainBottomRect != null))
+			{
+				StartCoroutine(DropPiecesThenUnlock());
+			}
+			else
+			{
+				ApplyUnlocked();
+				SaveState();
+				breakCompleted = true;
+				isAnimating = false;
+			}
 		}
 
 		private void ApplyUnlocked()
@@ -100,6 +154,7 @@ namespace AFKS.Features.Interaction
 				closeupImage.sprite = bgUnlockedSprite;
 			}
 			if (chainRoot != null) chainRoot.SetActive(false);
+			if (chainHotspot != null) chainHotspot.SetActive(false); // 해제 후 더 이상 클릭되지 않도록
 			if (doorHotspot != null) doorHotspot.SetActive(true);
 		}
 
@@ -150,6 +205,12 @@ namespace AFKS.Features.Interaction
 			chainAnimator = animator;
 		}
 
+		public void SetChainParts(RectTransform top, RectTransform bottom)
+		{
+			chainTopRect = top;
+			chainBottomRect = bottom;
+		}
+
 		public void SetDoor(GameObject door, GameObject rootToDestroy)
 		{
 			doorHotspot = door;
@@ -163,10 +224,102 @@ namespace AFKS.Features.Interaction
 			}
 		}
 
+		public void SetChainHotspot(GameObject hotspot)
+		{
+			chainHotspot = hotspot;
+		}
+
 		public void SetBackgroundSprites(Sprite locked, Sprite unlocked)
 		{
 			if (locked != null) bgLockedSprite = locked;
 			if (unlocked != null) bgUnlockedSprite = unlocked;
+		}
+
+		private IEnumerator DropPiecesThenUnlock()
+		{
+			yield return StartCoroutine(DropPiecesRoutine());
+			ApplyUnlocked();
+			SaveState();
+			breakCompleted = true;
+			isAnimating = false;
+		}
+
+		private IEnumerator DropPiecesRoutine()
+		{
+			if (chainRoot == null) yield break;
+			var parent = chainRoot.transform as RectTransform;
+			if (parent == null) yield break;
+			float floorY = Mathf.Clamp(floorNormalizedY, -0.49f, -0.2f) * parent.rect.height; // 로컬 기준 타깃 Y(폴백)
+			// 목표 지점을 CloseupImage의 실제 표시 영역 기준으로 변환(선택)
+			Vector2? topLocal = null;
+			Vector2? bottomLocal = null;
+			if (useImageSpaceTargets && closeupImage != null)
+			{
+				topLocal = ImageN01ToLocal(topTargetN01, parent, closeupImage.rectTransform);
+				bottomLocal = ImageN01ToLocal(bottomTargetN01, parent, closeupImage.rectTransform);
+			}
+			// 병렬 낙하
+			bool topDone = chainTopRect == null;
+			bool bottomDone = chainBottomRect == null;
+			if (!topDone)
+			{
+				var t = topLocal ?? new Vector2(-horizontalJitter, floorY);
+				if (!topLocal.HasValue) t.x = -horizontalJitter; // 폴백 좌우 분리
+				StartCoroutine(DropSingle(chainTopRect, t, rotateDegrees));
+			}
+			if (!bottomDone)
+			{
+				var t = bottomLocal ?? new Vector2(horizontalJitter, floorY);
+				if (!bottomLocal.HasValue) t.x = horizontalJitter; // 폴백 좌우 분리
+				StartCoroutine(DropSingle(chainBottomRect, t, -rotateDegrees));
+			}
+			// 완료 대기
+			float elapsed = 0f;
+			while (!(topDone && bottomDone))
+			{
+				elapsed += Time.unscaledDeltaTime;
+				if (!topDone && chainTopRect == null) topDone = true;
+				if (!bottomDone && chainBottomRect == null) bottomDone = true;
+				if (elapsed > dropSeconds + 0.25f) break; // 안전 타임아웃
+				yield return null;
+			}
+		}
+
+		private IEnumerator DropSingle(RectTransform piece, Vector2 targetLocal, float rotate)
+		{
+			if (piece == null) yield break;
+			var startPos = piece.anchoredPosition;
+			var startRot = piece.localEulerAngles.z;
+			float t = 0f;
+			while (t < 1f)
+			{
+				t += Mathf.Clamp01(Time.unscaledDeltaTime / Mathf.Max(0.001f, dropSeconds));
+				float k = dropCurve != null ? dropCurve.Evaluate(t) : t;
+				var y = Mathf.Lerp(startPos.y, targetLocal.y, k);
+				var x = Mathf.Lerp(startPos.x, targetLocal.x, k);
+				piece.anchoredPosition = new Vector2(x, y);
+				piece.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(startRot, startRot + rotate, k));
+				yield return null;
+			}
+			piece.anchoredPosition = targetLocal;
+			piece.localRotation = Quaternion.Euler(0f, 0f, startRot + rotate);
+		}
+
+		// CloseupImage의 표시 영역에서 정규화 좌표(0~1)를 chainRoot(부모) 로컬 좌표로 변환
+		private static Vector2 ImageN01ToLocal(Vector2 n01, RectTransform parent, RectTransform image)
+		{
+			var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(parent, image);
+			var min = (Vector2)bounds.min;
+			var size = (Vector2)bounds.size;
+			return new Vector2(min.x + n01.x * size.x, min.y + n01.y * size.y);
+		}
+
+		private IEnumerator ShakeLockRoutine(float seconds)
+		{
+			isAnimating = true;
+			yield return new WaitForSecondsRealtime(Mathf.Max(0.01f, seconds));
+			// 브레이크가 시작되었다면 해제는 브레이크 완료 후에 수행됨
+			if (!breakStarted) isAnimating = false;
 		}
 		#endregion
 	}
