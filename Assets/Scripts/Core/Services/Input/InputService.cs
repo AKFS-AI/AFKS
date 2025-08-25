@@ -115,6 +115,20 @@ namespace AFKS.Core.Services.Input
             var results = ListPool<RaycastResult>.Get();
             EventSystem.current.RaycastAll(eventData, results);
             bool overUI = results.Count > 0;
+            if (debugLogging && overUI)
+            {
+                // 상위 1~3개 UI 히트 대상을 경로와 함께 출력
+                int count = Mathf.Min(3, results.Count);
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(128);
+                sb.Append("[InputService] UI Raycast hits(").Append(results.Count).Append(") top:");
+                for (int i = 0; i < count; i++)
+                {
+                    var go = results[i].gameObject;
+                    if (go == null) continue;
+                    sb.Append("\n  ").Append(i + 1).Append(") ").Append(GetTransformPath(go.transform));
+                }
+                Debug.Log(sb.ToString());
+            }
             ListPool<RaycastResult>.Release(results);
             return overUI;
         }
@@ -213,6 +227,20 @@ namespace AFKS.Core.Services.Input
                 }
             }
             return null;
+        }
+        #endregion
+
+        #region 내부 경로 유틸
+        private static string GetTransformPath(Transform tr)
+        {
+            if (tr == null) return "<null>";
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(64);
+            while (tr != null)
+            {
+                sb.Insert(0, "/" + tr.name);
+                tr = tr.parent;
+            }
+            return sb.ToString();
         }
         #endregion
     }

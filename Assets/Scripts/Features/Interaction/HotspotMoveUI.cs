@@ -32,6 +32,13 @@ namespace AFKS.Features.Interaction
 		public void OnPointerClick(PointerEventData eventData)
 		{
 			if (string.IsNullOrEmpty(targetStageId)) return;
+			// 체인이 잠겨 있으면 문 클릭을 무시
+			var controller = GetComponentInParent<ChainCloseupController>(true);
+			if (controller != null && !controller.IsUnlocked)
+			{
+				Debug.Log("[HotspotMoveUI] Door click ignored: chain not unlocked yet.");
+				return;
+			}
 			GameEvents.RaiseStageChangeRequested(targetStageId);
 			if (closeupRootToDestroy != null) Destroy(closeupRootToDestroy);
 			if (!ServiceLocator.TryGet<ISceneService>(out _))

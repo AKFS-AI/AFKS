@@ -34,9 +34,13 @@ namespace AFKS.Features.Interaction
 
 		[Header("상태 저장")]
 		[SerializeField] private string stateKey = "Stage1_ChainUnlocked";
+		[SerializeField]
+		[Tooltip("에디터에서 Play 시작 시 저장 상태를 무시하고 항상 잠금 상태로 시작합니다.")]
+		private bool startLockedInEditor = true;
 
 		private int clickCount;
 		private bool unlocked;
+		public bool IsUnlocked => unlocked;
 		#endregion
 
 		private void Awake()
@@ -50,6 +54,15 @@ namespace AFKS.Features.Interaction
 				// 자동으로 루트 연결 시도
 				moveUI.SendMessage("Awake", SendMessageOptions.DontRequireReceiver);
 			}
+			// 에디터에서는 기본적으로 항상 잠금 상태로 시작(테스트 안정화)
+			#if UNITY_EDITOR
+			if (startLockedInEditor)
+			{
+				ApplyLocked();
+				unlocked = false;
+				return;
+			}
+			#endif
 			LoadStateAndApply();
 		}
 
@@ -105,13 +118,18 @@ namespace AFKS.Features.Interaction
 			}
 			else
 			{
-				if (closeupImage != null && bgLockedSprite != null)
-				{
-					closeupImage.sprite = bgLockedSprite;
-				}
-				if (chainRoot != null) chainRoot.SetActive(true);
-				if (doorHotspot != null) doorHotspot.SetActive(false);
+				ApplyLocked();
 			}
+		}
+
+		private void ApplyLocked()
+		{
+			if (closeupImage != null && bgLockedSprite != null)
+			{
+				closeupImage.sprite = bgLockedSprite;
+			}
+			if (chainRoot != null) chainRoot.SetActive(true);
+			if (doorHotspot != null) doorHotspot.SetActive(false);
 		}
 
 		private void SaveState()

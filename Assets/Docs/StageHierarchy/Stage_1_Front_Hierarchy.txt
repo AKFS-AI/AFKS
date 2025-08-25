@@ -24,30 +24,44 @@ Purpose: 병원 앞(문 클로즈업→쇠사슬 해금→문 클릭 시 Stage2)
   - DoorHotspot_UI/Image(HotspotMoveUI)
 
 2) 하이라키어 제작 절차(생성 경로 포함)
-- 컨테이너 생성: World_Empty, Interaction_Empty, UI_Empty, Services_Empty (모두 Empty)
-- BG 생성: BG_2D/Sprite(SpriteRenderer)
+- 1) 컨테이너 생성
+  - World_Empty, Interaction_Empty, UI_Empty, Services_Empty (Create Empty)
+
+- 2) 배경 생성
+  - BG_2D/Sprite(SpriteRenderer)
   - 생성 경로: GameObject > 2D Object > Sprite
-- 상호작용 컨테이너: Hotspots_Empty(-)
-  - DoorZoom 생성: DoorZoom_Empty(HotspotInspect, BoxCollider2D)
+
+- 3) 핫스팟 컨테이너 및 DoorZoom 생성
+  - Hotspots_Empty 생성(부모=Interaction)
+  - DoorZoom_Empty(HotspotInspect, BoxCollider2D) 생성
     - 생성 경로: GameObject > Create Empty
-    - BoxCollider2D 추가, HotspotInspect 추가
-    - HotspotInspect: 클릭 시 UI/MainCanvas에 CloseupPanel 소환(또는 활성)
-- UI 캔버스: MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
-  - 생성 경로: GameObject > UI > Canvas
-- 이벤트 시스템: EventSystem_UI/Event System(-)
-  - 생성 경로: GameObject > UI > Event System
-- CloseupPanel 프리팹 제작/배치
-  - CloseupPanel 생성: CloseupPanel_Empty(CanvasGroup, ChainCloseupController, CloseupPanelAutoWire)
+    - BoxCollider2D 추가, 영역을 클릭 가능 범위로 조정
+    - HotspotInspect 추가: 클릭 시 UI/MainCanvas에 CloseupPanel 소환(또는 활성)
+
+- 4) UI 캔버스 및 이벤트 시스템 생성
+  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
+    - 생성 경로: GameObject > UI > Canvas
+    - Canvas Scaler: 1920x1080, Match 1.0(Height)
+  - EventSystem_UI/Event System
+    - 생성 경로: GameObject > UI > Event System
+
+- 5) CloseupPanel 프리팹 제작
+  - CloseupPanel_Empty(CanvasGroup, ChainCloseupController, CloseupPanelAutoWire)
     - 생성 경로: GameObject > Create Empty (부모=MainCanvas)
-  - CloseupImage 생성: CloseupImage_UI/Image(Image, AspectRatioFitter)
+    - RectTransform: 풀 스트레치(Left/Right/Top/Bottom=0)
+  - CloseupImage_UI/Image(Image, AspectRatioFitter)
     - 생성 경로: GameObject > UI > Image (부모=CloseupPanel)
-  - ChainRoot/체인 상하: ChainRoot_Empty → ChainTop_UI/Image, ChainBottom_UI/Image
-  - ChainHotspot 생성: ChainHotspot_UI/Image(Image, ChainHotspotUI)
-    - ChainHotspotUI가 컨트롤러에 자동 연결(자동화 스크립트)
-  - DoorHotspot 생성: DoorHotspot_UI/Image(HotspotMoveUI) [초기 비활성]
+    - Image: Preserve Aspect=On, AspectRatioFitter: EnvelopeParent 또는 FitInParent
+  - ChainRoot_Empty → ChainTop_UI/Image, ChainBottom_UI/Image
+  - ChainHotspot_UI/Image(Image, ChainHotspotUI)
+    - ChainHotspotUI가 ChainCloseupController에 자동 연결됨(자동화 스크립트)
+  - DoorHotspot_UI/Image(HotspotMoveUI) [초기 비활성]
     - HotspotMoveUI.targetStageId="Stage2", closeupRootToDestroy=CloseupPanel
   - 프리팹 저장: Assets/Prefabs/CloseupPanel.prefab
-  - 배치: MainCanvas 하위에 배치 또는 DoorZoom에서 Instantiate
+
+- 6) 배치/사용 방식 선택
+  - 옵션 A: MainCanvas 하위에 CloseupPanel을 미리 배치(비활성) → DoorZoom 클릭 시 활성화
+  - 옵션 B: DoorZoom에서 CloseupPanel 프리팹 Instantiate(권장, 중복 생성 가드 포함)
 
 2-1) CloseupPanel(정밀 체인 클릭 + 전환)
 - 목적: 해상도와 무관하게 체인 클릭 영역을 정확히 맞추고, 해금 후 문 UI로 바로 전환

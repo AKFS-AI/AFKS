@@ -72,10 +72,19 @@ namespace AFKS.Features.Interaction
 
 		public void OnPointerClick(PointerEventData eventData)
 		{
-			if (controller != null)
+			if (controller == null)
 			{
-				controller.OnChainClicked();
+				Debug.LogWarning("[ChainHotspotUI] Controller is null. Click ignored.");
+				return;
 			}
+			if (!gameObject.activeInHierarchy || !enabled)
+			{
+				Debug.LogWarning("[ChainHotspotUI] Hotspot inactive/disabled. Click ignored.");
+				return;
+			}
+			var img = GetComponent<Image>();
+			Debug.Log($"[ChainHotspotUI] Click pos={eventData.position} rtAnchors=({self.anchorMin}->{self.anchorMax}) raycast={(img!=null?img.raycastTarget:false)}");
+			controller.OnChainClicked();
 			if (targetToEnable != null)
 			{
 				targetToEnable.SetActive(true);

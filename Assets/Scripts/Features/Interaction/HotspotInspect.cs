@@ -255,9 +255,8 @@ namespace AFKS.Features.Interaction
             }
             cg.alpha = 0f; cg.blocksRaycasts = true; cg.interactable = false;
 
-            // 애니메이션 중에는 전역 입력 잠금(중복 생성 방지)
-            if (inputService != null) inputService.Lock(true);
-            if (debugLog) Debug.Log("[HotspotInspect] Starting zoom animation with input lock.");
+            // 입력 잠금은 패널의 InputLockWhileActive가 담당
+            if (debugLog) Debug.Log("[HotspotInspect] Starting zoom animation.");
 
             StartCoroutine(AnimateZoom(rt, cg));
         }
@@ -282,8 +281,7 @@ namespace AFKS.Features.Interaction
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
             cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true;
 
-            // 입력 잠금 해제
-            if (inputService != null) inputService.Lock(false);
+            // 잠금 해제는 패널 비활성 시 InputLockWhileActive가 처리
         }
         #endregion
     }

@@ -244,16 +244,36 @@ namespace AFKS.Core.Services.Scene
         /// </summary>
         private static void DisableDuplicatedGlobalComponents(UnityEngine.SceneManagement.Scene loadedScene)
         {
-            // EventSystem: 하나만 활성화되도록, 방금 로드된 씬의 것은 비활성화
+            // EventSystem: 전역에서 정확히 1개만 활성 유지
+            // Unity가 중복 시 자동 비활성화할 수 있으므로, 여기서 명시적으로 하나를 선택/활성화하고 나머지를 비활성화합니다.
             var eventSystems = Object.FindObjectsByType<UnityEngine.EventSystems.EventSystem>(FindObjectsSortMode.None);
-            if (eventSystems != null && eventSystems.Length > 1)
+            if (eventSystems != null && eventSystems.Length > 0)
             {
+                UnityEngine.EventSystems.EventSystem keep = null;
+                // 우선순위 변경: 방금 활성화한 스테이지(loadedScene)의 EventSystem을 유지하여 해당 씬 UI가 이벤트를 확실히 받도록 함
                 for (int i = 0; i < eventSystems.Length; i++)
                 {
                     var es = eventSystems[i];
-                    if (es != null && es.gameObject.scene == loadedScene)
+                    if (es == null) continue;
+                    if (es.gameObject.scene == loadedScene)
                     {
-                        es.enabled = false;
+                        keep = es;
+                        break;
+                    }
+                }
+                // 폴백: 로드된 씬에 없으면 첫 번째를 유지
+                if (keep == null) keep = eventSystems[0];
+
+                // 선택된 것은 활성화(게임오브젝트도 활성), 나머지는 비활성화
+                for (int i = 0; i < eventSystems.Length; i++)
+                {
+                    var es = eventSystems[i];
+                    if (es == null) continue;
+                    bool isKeep = es == keep;
+                    es.enabled = isKeep;
+                    if (isKeep && !es.gameObject.activeSelf)
+                    {
+                        es.gameObject.SetActive(true);
                     }
                 }
             }
