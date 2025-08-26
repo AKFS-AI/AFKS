@@ -186,13 +186,13 @@ namespace AFKS.Tools.Editor
             optionsWindowRt.anchorMin = new Vector2(0.5f, 0.5f);
             optionsWindowRt.anchorMax = new Vector2(0.5f, 0.5f);
             optionsWindowRt.anchoredPosition = Vector2.zero;
-            optionsWindowRt.sizeDelta = new Vector2(700, 800);
+            optionsWindowRt.sizeDelta = new Vector2(700, 800); // 스크린샷과 일치하는 크기
             
-            // 옵션 창 배경 (갈색 테마)
+            // 옵션 창 배경 (짙은 검은색 테마)
             var optionsBg = new GameObject("OptionsBackground");
             optionsBg.transform.SetParent(optionsWindow.transform, false);
             var optionsBgImg = optionsBg.AddComponent<Image>();
-            optionsBgImg.color = new Color(0.6f, 0.4f, 0.2f, 0.95f); // 갈색 테마
+            optionsBgImg.color = new Color(0.1f, 0.1f, 0.1f, 0.95f); // 짙은 검은색 테마
             var optionsBgRt = optionsBg.GetComponent<RectTransform>();
             optionsBgRt.anchorMin = Vector2.zero;
             optionsBgRt.anchorMax = Vector2.one;
@@ -205,7 +205,7 @@ namespace AFKS.Tools.Editor
             var closeButtonRt = closeButton.AddComponent<RectTransform>();
             closeButtonRt.anchorMin = new Vector2(1, 1);
             closeButtonRt.anchorMax = new Vector2(1, 1);
-            closeButtonRt.anchoredPosition = new Vector2(-25, -25);
+            closeButtonRt.anchoredPosition = new Vector2(-50, -50); // 스크린샷과 일치하는 위치
             closeButtonRt.sizeDelta = new Vector2(60, 60); // 크기 증가
             
             var closeBtn = closeButton.AddComponent<Button>();
@@ -225,15 +225,33 @@ namespace AFKS.Tools.Editor
             closeTextTmp.alignment = TextAlignmentOptions.Center;
             closeTextTmp.fontSize = 40; // 폰트 크기 증가
             closeTextTmp.color = Color.white;
+            closeTextTmp.fontStyle = FontStyles.Bold; // 볼드체로 두껍게
             var closeTextFont = LoadTMPFontAsset(tmpFontAssetPath);
             if (closeTextFont != null) closeTextTmp.font = closeTextFont;
             closeTextTmp.raycastTarget = false;
             
-            // X 버튼 클릭 이벤트 연결
+            // X 버튼 클릭 이벤트 연결 (GlobalSettingsManager를 통해 처리)
             closeBtn.onClick.AddListener(() => {
-                if (settingsPanel != null)
+                // GlobalSettingsManager를 통해 설정창 닫기
+                var globalSettings = FindFirstObjectByType<AFKS.Core.Systems.GlobalSettingsManager>();
+                if (globalSettings != null)
                 {
-                    settingsPanel.SetActive(false);
+                    globalSettings.CloseSettings();
+                    Debug.Log("GlobalSettingsManager를 통해 설정창이 닫혔습니다.");
+                }
+                else
+                {
+                    // Fallback: 직접 패널 비활성화
+                    if (settingsPanel != null)
+                    {
+                        settingsPanel.SetActive(false);
+                        Debug.Log("Fallback: 설정창이 직접 닫혔습니다.");
+                    }
+                    else if (optionsWindow != null)
+                    {
+                        optionsWindow.SetActive(false);
+                        Debug.Log("Fallback: OptionsWindow가 직접 닫혔습니다.");
+                    }
                 }
             });
             
@@ -276,55 +294,16 @@ namespace AFKS.Tools.Editor
             var soundPanel = CreateGameOptionsSoundPanel("SoundPanel");
             soundPanel.transform.SetParent(settingsButtons.transform, false);
             
-            // 사운드 설정 제목 (헤드폰 아이콘 + 텍스트)
-            var soundTitleGo = new GameObject("SoundTitle");
-            soundTitleGo.transform.SetParent(soundPanel.transform, false);
-            var soundTitleRt = soundTitleGo.AddComponent<RectTransform>();
-            soundTitleRt.sizeDelta = new Vector2(600, 60);
-            
-            // 헤드폰 아이콘 (텍스트로 대체)
-            var headphoneIconGo = new GameObject("HeadphoneIcon");
-            headphoneIconGo.transform.SetParent(soundTitleGo.transform, false);
-            var headphoneIconRt = headphoneIconGo.AddComponent<RectTransform>();
-            headphoneIconRt.anchorMin = new Vector2(0, 0.5f);
-            headphoneIconRt.anchorMax = new Vector2(0.1f, 0.5f);
-            headphoneIconRt.sizeDelta = new Vector2(40, 40);
-            headphoneIconRt.anchoredPosition = Vector2.zero;
-            var headphoneIconTmp = headphoneIconGo.AddComponent<TextMeshProUGUI>();
-            headphoneIconTmp.text = "🎧"; // 헤드폰 이모지
-            headphoneIconTmp.alignment = TextAlignmentOptions.Center;
-            headphoneIconTmp.fontSize = 32;
-            headphoneIconTmp.color = new Color(0.9f, 0.8f, 0.6f);
-            headphoneIconTmp.raycastTarget = false;
-            
-            // 사운드 설정 텍스트
-            var soundTitleTextGo = new GameObject("SoundTitleText");
-            soundTitleTextGo.transform.SetParent(soundTitleGo.transform, false);
-            var soundTitleTextRt = soundTitleTextGo.AddComponent<RectTransform>();
-            soundTitleTextRt.anchorMin = new Vector2(0.15f, 0.5f);
-            soundTitleTextRt.anchorMax = new Vector2(1, 0.5f);
-            soundTitleTextRt.offsetMin = Vector2.zero;
-            soundTitleTextRt.offsetMax = Vector2.zero;
-            var soundTitleTextTmp = soundTitleTextGo.AddComponent<TextMeshProUGUI>();
-            soundTitleTextTmp.text = "사운드 설정";
-            soundTitleTextTmp.alignment = TextAlignmentOptions.Left;
-            soundTitleTextTmp.fontSize = 36;
-            soundTitleTextTmp.color = new Color(0.9f, 0.8f, 0.6f);
-            var soundTitleFont = LoadTMPFontAsset(tmpFontAssetPath);
-            if (soundTitleFont != null) soundTitleTextTmp.font = soundTitleFont;
-            soundTitleTextTmp.raycastTarget = false;
+            // SoundTitle 제거됨 (헤드폰 아이콘과 텍스트 모두 제거)
             
             // 효과음 슬라이더 (이미지 스타일)
-            var effectSoundSlider = CreateImageStyleVolumeSlider("Slider_EffectSound", "효과음", 0.8f);
-            effectSoundSlider.transform.SetParent(soundPanel.transform, false);
+            var effectSoundSlider = CreateImageStyleVolumeSlider("Slider_EffectSound", "효과음", 0.8f, soundPanel.transform);
             
             // 환경음 슬라이더 (이미지 스타일)
-            var envSoundSlider = CreateImageStyleVolumeSlider("Slider_EnvSound", "환경음", 0.6f);
-            envSoundSlider.transform.SetParent(soundPanel.transform, false);
+            var envSoundSlider = CreateImageStyleVolumeSlider("Slider_EnvSound", "환경음", 0.6f, soundPanel.transform);
             
             // 배경음 슬라이더 (이미지 스타일)
-            var bgMusicSlider = CreateImageStyleVolumeSlider("Slider_BGMusic", "배경음", 0.6f);
-            bgMusicSlider.transform.SetParent(soundPanel.transform, false);
+            var bgMusicSlider = CreateImageStyleVolumeSlider("Slider_BGMusic", "배경음", 0.6f, soundPanel.transform);
             
             // 구분선
             var separator = CreateSeparator("Separator");
@@ -334,8 +313,8 @@ namespace AFKS.Tools.Editor
             var btnReturnMenu = CreateButton("Button_ReturnMenu", "메뉴로 돌아가기");
             btnReturnMenu.transform.SetParent(settingsButtons.transform, false);
             
-            // 세이브초기화 버튼
-            var btnResetSave = CreateButton("Button_ResetSave", "세이브초기화");
+            // 세이브 초기화 버튼 (붉은색 경고 표시)
+            var btnResetSave = CreateButton("Button_ResetSave", "세이브 초기화", true, new Color(0.8f, 0.2f, 0.2f, 0.9f));
             btnResetSave.transform.SetParent(settingsButtons.transform, false);
             
             // 설정창 닫기 버튼 제거 (ESC 키로만 닫기)
@@ -349,13 +328,13 @@ namespace AFKS.Tools.Editor
             var settingsManager = settingsGo.AddComponent<AFKS.Core.Systems.GlobalSettingsManager>();
             var soManager = new SerializedObject(settingsManager);
             soManager.FindProperty("settingsPanel").objectReferenceValue = settingsPanel;
-            // soManager.FindProperty("closeSettingsButton").objectReferenceValue = btnCloseSettings; // 닫기 버튼 제거됨
+            soManager.FindProperty("closeSettingsButton").objectReferenceValue = closeBtn; // X 버튼 연결
             soManager.FindProperty("returnToMenuButton").objectReferenceValue = btnReturnMenu;
             soManager.FindProperty("resetSaveButton").objectReferenceValue = btnResetSave;
             soManager.ApplyModifiedPropertiesWithoutUndo();
             
             // CreateButton 함수 정의 (Core 씬용)
-            Button CreateButton(string name, string label, bool interactable = true)
+            Button CreateButton(string name, string label, bool interactable = true, Color? buttonColor = null)
             {
                 var go = new GameObject(name);
                 go.transform.SetParent(settingsButtons.transform, false);
@@ -363,7 +342,7 @@ namespace AFKS.Tools.Editor
                 var b = go.AddComponent<Button>();
                 b.interactable = interactable;
                 var imgBtn = go.AddComponent<Image>();
-                imgBtn.color = new Color(1, 1, 1, 0.08f);
+                imgBtn.color = buttonColor ?? new Color(1, 1, 1, 0.08f); // 기본값 또는 지정된 색상
                 var labelGo = new GameObject("Label");
                 labelGo.transform.SetParent(go.transform, false);
                 var tr = labelGo.AddComponent<RectTransform>();
@@ -378,79 +357,56 @@ namespace AFKS.Tools.Editor
             }
             
             // 이미지와 유사한 사운드 설정 슬라이더 생성 함수 (5개 세그먼트, +/- 버튼)
-            Slider CreateImageStyleVolumeSlider(string name, string label, float defaultValue)
+            Slider CreateImageStyleVolumeSlider(string name, string label, float defaultValue, Transform parent)
             {
                 var container = new GameObject(name);
-                container.transform.SetParent(settingsButtons.transform, false);
+                container.transform.SetParent(parent, false);
                 var containerRt = container.AddComponent<RectTransform>();
                 
-                // 라벨
+                // 라벨 (사운드 이름 + "On" 텍스트)
                 var labelGo = new GameObject("Label");
                 labelGo.transform.SetParent(container.transform, false);
                 var labelRt = labelGo.AddComponent<RectTransform>();
                 labelRt.anchorMin = new Vector2(0, 0.5f);
-                labelRt.anchorMax = new Vector2(0.25f, 0.5f);
+                labelRt.anchorMax = new Vector2(0.3f, 0.5f);
                 labelRt.offsetMin = Vector2.zero;
                 labelRt.offsetMax = Vector2.zero;
                 var labelTmp = labelGo.AddComponent<TextMeshProUGUI>();
-                labelTmp.text = label;
+                labelTmp.text = label; // "효과음", "환경음", "배경음"
                 labelTmp.alignment = TextAlignmentOptions.Left;
                 labelTmp.fontSize = 32;
-                labelTmp.color = new Color(0.9f, 0.8f, 0.6f); // 밝은 갈색
+                labelTmp.color = Color.white; // 흰색으로 변경
                 var labelFont = LoadTMPFontAsset(tmpFontAssetPath);
                 if (labelFont != null) labelTmp.font = labelFont;
                 labelTmp.raycastTarget = false;
                 
-                // 슬라이더 컨테이너
+                // 슬라이더 컨테이너 (라벨 너비 증가에 맞춤)
                 var sliderContainer = new GameObject("SliderContainer");
                 sliderContainer.transform.SetParent(container.transform, false);
                 var sliderContainerRt = sliderContainer.AddComponent<RectTransform>();
-                sliderContainerRt.anchorMin = new Vector2(0.3f, 0.5f);
-                sliderContainerRt.anchorMax = new Vector2(0.7f, 0.5f);
+                sliderContainerRt.anchorMin = new Vector2(0.35f, 0.5f);
+                sliderContainerRt.anchorMax = new Vector2(1, 0.5f);
                 sliderContainerRt.offsetMin = Vector2.zero;
                 sliderContainerRt.offsetMax = Vector2.zero;
                 
-                // - 버튼
-                var minusBtn = new GameObject("MinusButton");
-                minusBtn.transform.SetParent(sliderContainer.transform, false);
-                var minusBtnRt = minusBtn.AddComponent<RectTransform>();
-                minusBtnRt.anchorMin = new Vector2(0, 0.5f);
-                minusBtnRt.anchorMax = new Vector2(0.1f, 0.5f);
-                minusBtnRt.sizeDelta = new Vector2(30, 30);
-                minusBtnRt.anchoredPosition = Vector2.zero;
-                var minusButton = minusBtn.AddComponent<Button>();
-                var minusBtnImg = minusBtn.AddComponent<Image>();
-                minusBtnImg.color = new Color(0.8f, 0.6f, 0.4f, 0.9f);
-                var minusTextGo = new GameObject("MinusText");
-                minusTextGo.transform.SetParent(minusBtn.transform, false);
-                var minusTextRt = minusTextGo.AddComponent<RectTransform>();
-                minusTextRt.anchorMin = Vector2.zero;
-                minusTextRt.anchorMax = Vector2.one;
-                minusTextRt.offsetMin = Vector2.zero;
-                minusTextRt.offsetMax = Vector2.zero;
-                var minusTextTmp = minusTextGo.AddComponent<TextMeshProUGUI>();
-                minusTextTmp.text = "-";
-                minusTextTmp.alignment = TextAlignmentOptions.Center;
-                minusTextTmp.fontSize = 24;
-                minusTextTmp.color = Color.white;
-                minusTextTmp.raycastTarget = false;
+                // - 버튼 제거됨 (빨간색 원 요소)
                 
-                // 슬라이더 (5개 세그먼트)
+                // 슬라이더 (5개 세그먼트, 전체 너비 사용)
                 var sliderGo = new GameObject("Slider");
                 sliderGo.transform.SetParent(sliderContainer.transform, false);
                 var sliderRt = sliderGo.AddComponent<RectTransform>();
-                sliderRt.anchorMin = new Vector2(0.15f, 0.5f);
-                sliderRt.anchorMax = new Vector2(0.85f, 0.5f);
+                sliderRt.anchorMin = Vector2.zero;
+                sliderRt.anchorMax = Vector2.one;
                 sliderRt.offsetMin = Vector2.zero;
                 sliderRt.offsetMax = Vector2.zero;
                 
                 var slider = sliderGo.AddComponent<Slider>();
                 slider.minValue = 0f;
-                slider.maxValue = 5f; // 5개 세그먼트
-                slider.value = defaultValue * 5f; // 0.8 -> 4, 0.6 -> 3
-                slider.wholeNumbers = true; // 정수값만
+                slider.maxValue = 4f; // 5등분 (0, 1, 2, 3, 4)
+                slider.value = defaultValue * 4f; // 0.8 -> 3, 0.6 -> 2
+                slider.wholeNumbers = true; // 정수값만 (20%씩 조절)
                 
-                // 슬라이더 배경 (5개 세그먼트)
+                // 슬라이더 배경 (5등분 세그먼트 시각적 표시)
                 var bgGo = new GameObject("Background");
                 bgGo.transform.SetParent(sliderGo.transform, false);
                 var bgImg = bgGo.AddComponent<Image>();
@@ -460,6 +416,20 @@ namespace AFKS.Tools.Editor
                 bgRt.anchorMax = Vector2.one;
                 bgRt.offsetMin = Vector2.zero;
                 bgRt.offsetMax = Vector2.zero;
+                
+                // 5등분 세그먼트 구분선 추가
+                for (int i = 1; i < 5; i++)
+                {
+                    var segmentLine = new GameObject($"SegmentLine_{i}");
+                    segmentLine.transform.SetParent(bgGo.transform, false);
+                    var segmentLineImg = segmentLine.AddComponent<Image>();
+                    segmentLineImg.color = new Color(0.6f, 0.6f, 0.6f, 0.8f); // 밝은 회색 구분선
+                    var segmentLineRt = segmentLine.GetComponent<RectTransform>();
+                    segmentLineRt.anchorMin = new Vector2(i * 0.2f, 0);
+                    segmentLineRt.anchorMax = new Vector2(i * 0.2f, 1);
+                    segmentLineRt.sizeDelta = new Vector2(2, 0); // 2px 두께의 세로선
+                    segmentLineRt.anchoredPosition = Vector2.zero;
+                }
                 
                 // 슬라이더 채움 (세그먼트별)
                 var fillGo = new GameObject("Fill");
@@ -488,68 +458,9 @@ namespace AFKS.Tools.Editor
                 slider.fillRect = fillRt;
                 slider.handleRect = handleRt;
                 
-                // + 버튼
-                var plusBtn = new GameObject("PlusButton");
-                plusBtn.transform.SetParent(sliderContainer.transform, false);
-                var plusBtnRt = plusBtn.AddComponent<RectTransform>();
-                plusBtnRt.anchorMin = new Vector2(0.9f, 0.5f);
-                plusBtnRt.anchorMax = new Vector2(1, 0.5f);
-                plusBtnRt.sizeDelta = new Vector2(30, 30);
-                plusBtnRt.anchoredPosition = Vector2.zero;
-                var plusButton = plusBtn.AddComponent<Button>();
-                var plusBtnImg = plusBtn.AddComponent<Image>();
-                plusBtnImg.color = new Color(0.8f, 0.6f, 0.4f, 0.9f);
-                var plusTextGo = new GameObject("PlusText");
-                plusTextGo.transform.SetParent(plusBtn.transform, false);
-                var plusTextRt = plusTextGo.AddComponent<RectTransform>();
-                plusTextRt.anchorMin = Vector2.zero;
-                plusTextRt.anchorMax = Vector2.one;
-                plusTextRt.offsetMin = Vector2.zero;
-                plusTextRt.offsetMax = Vector2.zero;
-                var plusTextTmp = plusTextGo.AddComponent<TextMeshProUGUI>();
-                plusTextTmp.text = "+";
-                plusTextTmp.alignment = TextAlignmentOptions.Center;
-                plusTextTmp.fontSize = 24;
-                plusTextTmp.color = Color.white;
-                plusTextTmp.raycastTarget = false;
+                // + 버튼 제거됨 (빨간색 원 요소)
                 
-                // On/Off 컨테이너
-                var onOffContainer = new GameObject("OnOffContainer");
-                onOffContainer.transform.SetParent(container.transform, false);
-                var onOffContainerRt = onOffContainer.AddComponent<RectTransform>();
-                onOffContainerRt.anchorMin = new Vector2(0.75f, 0.5f);
-                onOffContainerRt.anchorMax = new Vector2(1, 0.5f);
-                onOffContainerRt.offsetMin = Vector2.zero;
-                onOffContainerRt.offsetMax = Vector2.zero;
-                
-                // On 라벨
-                var onLabelGo = new GameObject("OnLabel");
-                onLabelGo.transform.SetParent(onOffContainer.transform, false);
-                var onLabelRt = onLabelGo.AddComponent<RectTransform>();
-                onLabelRt.anchorMin = new Vector2(0, 0.5f);
-                onLabelRt.anchorMax = new Vector2(0.6f, 0.5f);
-                onLabelRt.offsetMin = Vector2.zero;
-                onLabelRt.offsetMax = Vector2.zero;
-                var onLabelTmp = onLabelGo.AddComponent<TextMeshProUGUI>();
-                onLabelTmp.text = "On";
-                onLabelTmp.alignment = TextAlignmentOptions.Right;
-                onLabelTmp.fontSize = 28;
-                onLabelTmp.color = new Color(0.9f, 0.8f, 0.6f);
-                if (labelFont != null) onLabelTmp.font = labelFont;
-                onLabelTmp.raycastTarget = false;
-                
-                // 체크박스
-                var checkboxGo = new GameObject("Checkbox");
-                checkboxGo.transform.SetParent(onOffContainer.transform, false);
-                var checkboxRt = checkboxGo.AddComponent<RectTransform>();
-                checkboxRt.anchorMin = new Vector2(0.7f, 0.5f);
-                checkboxRt.anchorMax = new Vector2(1, 0.5f);
-                checkboxRt.sizeDelta = new Vector2(20, 20);
-                checkboxRt.anchoredPosition = Vector2.zero;
-                var checkbox = checkboxGo.AddComponent<Toggle>();
-                checkbox.isOn = false; // 기본값 Off (이미지와 동일)
-                var checkboxImg = checkboxGo.AddComponent<Image>();
-                checkboxImg.color = Color.white;
+                // On/Off 컨테이너 제거됨 (이미지와 동일하게)
                 
                 // 레이아웃 요소
                 var le = container.AddComponent<LayoutElement>();
@@ -559,130 +470,7 @@ namespace AFKS.Tools.Editor
                 return slider;
             }
             
-            // 기존 게임옵션 스타일 슬라이더 (호환성 유지)
-            Slider CreateGameOptionsVolumeSlider(string name, string label, float defaultValue)
-            {
-                var container = new GameObject(name);
-                container.transform.SetParent(settingsButtons.transform, false);
-                var containerRt = container.AddComponent<RectTransform>();
-                
-                // 라벨과 On/Off 체크박스
-                var labelContainer = new GameObject("LabelContainer");
-                labelContainer.transform.SetParent(container.transform, false);
-                var labelContainerRt = labelContainer.AddComponent<RectTransform>();
-                labelContainerRt.anchorMin = new Vector2(0, 0.5f);
-                labelContainerRt.anchorMax = new Vector2(0.4f, 0.5f);
-                labelContainerRt.offsetMin = Vector2.zero;
-                labelContainerRt.offsetMax = Vector2.zero;
-                
-                // 라벨
-                var labelGo = new GameObject("Label");
-                labelGo.transform.SetParent(labelContainer.transform, false);
-                var labelRt = labelGo.AddComponent<RectTransform>();
-                labelRt.anchorMin = new Vector2(0, 0.5f);
-                labelRt.anchorMax = new Vector2(0.7f, 0.5f);
-                labelRt.offsetMin = Vector2.zero;
-                labelRt.offsetMax = Vector2.zero;
-                var labelTmp = labelGo.AddComponent<TextMeshProUGUI>();
-                labelTmp.text = label;
-                labelTmp.alignment = TextAlignmentOptions.Left;
-                labelTmp.fontSize = 32;
-                labelTmp.color = Color.white;
-                var labelFont = LoadTMPFontAsset(tmpFontAssetPath);
-                if (labelFont != null) labelTmp.font = labelFont;
-                labelTmp.raycastTarget = false;
-                
-                // On 라벨
-                var onLabelGo = new GameObject("OnLabel");
-                onLabelGo.transform.SetParent(labelContainer.transform, false);
-                var onLabelRt = onLabelGo.AddComponent<RectTransform>();
-                onLabelRt.anchorMin = new Vector2(0.75f, 0.5f);
-                onLabelRt.anchorMax = new Vector2(1, 0.5f);
-                onLabelRt.offsetMin = Vector2.zero;
-                onLabelRt.offsetMax = Vector2.zero;
-                var onLabelTmp = onLabelGo.AddComponent<TextMeshProUGUI>();
-                onLabelTmp.text = "On";
-                onLabelTmp.alignment = TextAlignmentOptions.Right;
-                onLabelTmp.fontSize = 28;
-                labelTmp.color = Color.white;
-                if (labelFont != null) onLabelTmp.font = labelFont;
-                onLabelTmp.raycastTarget = false;
-                
-                // 체크박스
-                var checkboxGo = new GameObject("Checkbox");
-                checkboxGo.transform.SetParent(labelContainer.transform, false);
-                var checkboxRt = checkboxGo.AddComponent<RectTransform>();
-                checkboxRt.anchorMin = new Vector2(0.8f, 0.5f);
-                checkboxRt.anchorMax = new Vector2(0.9f, 0.5f);
-                checkboxRt.sizeDelta = new Vector2(20, 20);
-                checkboxRt.anchoredPosition = Vector2.zero;
-                var checkbox = checkboxGo.AddComponent<Toggle>();
-                checkbox.isOn = true; // 기본값 On
-                var checkboxImg = checkboxGo.AddComponent<Image>();
-                checkboxImg.color = Color.white;
-                
-                // 슬라이더 (10개 세그먼트)
-                var sliderGo = new GameObject("Slider");
-                sliderGo.transform.SetParent(container.transform, false);
-                var sliderRt = sliderGo.AddComponent<RectTransform>();
-                sliderRt.anchorMin = new Vector2(0.45f, 0.5f);
-                sliderRt.anchorMax = new Vector2(1, 0.5f);
-                sliderRt.offsetMin = Vector2.zero;
-                sliderRt.offsetMax = Vector2.zero;
-                
-                var slider = sliderGo.AddComponent<Slider>();
-                slider.minValue = 0f;
-                slider.maxValue = 10f; // 10개 세그먼트
-                slider.value = defaultValue * 10f; // 0.8 -> 8, 0.6 -> 6
-                slider.wholeNumbers = true; // 정수값만
-                
-                // 슬라이더 배경 (10개 세그먼트)
-                var bgGo = new GameObject("Background");
-                bgGo.transform.SetParent(sliderGo.transform, false);
-                var bgImg = bgGo.AddComponent<Image>();
-                bgImg.color = new Color(0.3f, 0.3f, 0.3f, 0.9f);
-                var bgRt = bgGo.GetComponent<RectTransform>();
-                bgRt.anchorMin = Vector2.zero;
-                bgRt.anchorMax = Vector2.one;
-                bgRt.offsetMin = Vector2.zero;
-                bgRt.offsetMax = Vector2.zero;
-                
-                // 슬라이더 채움 (세그먼트별)
-                var fillGo = new GameObject("Fill");
-                fillGo.transform.SetParent(sliderGo.transform, false);
-                var fillImg = fillGo.AddComponent<Image>();
-                fillImg.color = new Color(0.2f, 0.8f, 0.2f, 0.9f); // 초록색
-                var fillRt = fillGo.GetComponent<RectTransform>();
-                fillRt.anchorMin = Vector2.zero;
-                fillRt.anchorMax = Vector2.one;
-                fillRt.offsetMin = Vector2.zero;
-                fillRt.offsetMax = Vector2.zero;
-                
-                // 슬라이더 핸들
-                var handleGo = new GameObject("Handle");
-                handleGo.transform.SetParent(sliderGo.transform, false);
-                var handleImg = handleGo.AddComponent<Image>();
-                handleImg.color = Color.white;
-                var handleRt = handleGo.GetComponent<RectTransform>();
-                handleRt.anchorMin = new Vector2(0.5f, 0.5f);
-                handleRt.anchorMax = new Vector2(0.5f, 0.5f);
-                handleRt.sizeDelta = new Vector2(25, 25);
-                handleRt.anchoredPosition = Vector2.zero;
-                
-                // 슬라이더 컴포넌트 연결
-                slider.targetGraphic = handleImg;
-                slider.fillRect = fillRt;
-                slider.handleRect = handleRt;
-                
-                // 레이아웃 요소
-                var le = container.AddComponent<LayoutElement>();
-                le.preferredHeight = 80f;
-                le.preferredHeight = 0f;
-                
-                return slider;
-            }
-            
-            // 기존 볼륨 슬라이더 생성 함수는 제거됨 (CreateGameOptionsVolumeSlider로 대체)
+            // 사용하지 않는 CreateGameOptionsVolumeSlider 함수 제거됨
             
             // 게임옵션 스타일 사운드 설정 패널 생성 함수
             GameObject CreateGameOptionsSoundPanel(string name)
@@ -690,11 +478,11 @@ namespace AFKS.Tools.Editor
                 var panel = new GameObject(name);
                 panel.transform.SetParent(settingsButtons.transform, false);
                 
-                // 패널 배경 (게임옵션 스타일)
+                // 패널 배경 (어두운 회색)
                 var panelImg = panel.AddComponent<Image>();
-                panelImg.color = new Color(0.7f, 0.5f, 0.3f, 0.9f); // 더 밝은 갈색
+                panelImg.color = new Color(0.3f, 0.3f, 0.3f, 0.9f); // 어두운 회색
                 var panelRt = panel.GetComponent<RectTransform>();
-                panelRt.sizeDelta = new Vector2(600, 250); // 옵션 창 안에 맞춤
+                panelRt.sizeDelta = new Vector2(600, 400); // 사운드 패널 길이 증가 (400px)
                 
                 // 패널 내부 레이아웃
                 var panelVlg = panel.AddComponent<VerticalLayoutGroup>();
@@ -879,7 +667,7 @@ namespace AFKS.Tools.Editor
             vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
 
             // 생성 함수
-            Button CreateButton(string name, string label, bool interactable = true)
+            Button CreateButton(string name, string label, bool interactable = true, Color? buttonColor = null)
             {
                 var go = new GameObject(name);
                 go.transform.SetParent(buttons.transform, false);
@@ -887,7 +675,7 @@ namespace AFKS.Tools.Editor
                 var b = go.AddComponent<Button>();
                 b.interactable = interactable;
                 var imgBtn = go.AddComponent<Image>();
-                imgBtn.color = new Color(1, 1, 1, 0.08f);
+                imgBtn.color = buttonColor ?? new Color(1, 1, 1, 0.08f); // 기본값 또는 지정된 색상
                 var labelGo = new GameObject("Label");
                 labelGo.transform.SetParent(go.transform, false);
                 var tr = labelGo.AddComponent<RectTransform>();
