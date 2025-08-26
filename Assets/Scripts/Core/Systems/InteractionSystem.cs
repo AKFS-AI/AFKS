@@ -1,6 +1,7 @@
 using UnityEngine;
 using AFKS.Core.Services;
 using AFKS.Core.Events;
+using AFKS.Core.Mono;
 
 namespace AFKS.Core.Systems
 {
@@ -31,11 +32,19 @@ namespace AFKS.Core.Systems
 
 		private void TryInteract(Vector3 screenPos)
 		{
-			// naive scan: find any StageHotspot whose rect contains normalized screen
-			var cam = Camera.main;
-			if (cam == null) return;
-			var viewport = cam.ScreenToViewportPoint(screenPos);
-			if (viewport.x < 0 || viewport.x > 1 || viewport.y < 0 || viewport.y > 1) return;
+			// Screen-space -> normalized viewport without relying on Camera.main
+			var viewport = new Vector2(
+				Mathf.Clamp01(screenPos.x / Mathf.Max(1f, Screen.width)),
+				Mathf.Clamp01(screenPos.y / Mathf.Max(1f, Screen.height))
+			);
+
+			// 씬 베이크 핫스팟 우선 탐색, 없으면 StageHotspot(FBX) 사용
+			var baked = GameObject.FindObjectsByType<HotspotRect>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+			for (int i = 0; i < baked.Length; i++)
+			{
+				var hs = baked[i];
+				if (hs != null && hs.rect.Contains(viewport)) { HandleHotspot(BakeToDef(hs)); return; }
+			}
 
 			var hotspots = _stage.GetComponentsInChildren<StageHotspot>(true);
 			for (int i = 0; i < hotspots.Length; i++)
@@ -47,6 +56,19 @@ namespace AFKS.Core.Systems
 					break;
 				}
 			}
+		}
+
+		private Data.HotspotDefinition BakeToDef(HotspotRect h)
+		{
+			return new Data.HotspotDefinition {
+				id = h.id,
+				rect = h.rect,
+				requiredItemIds = h.requiredItemIds,
+				setFlags = h.setFlags,
+				playSfx = h.playSfx,
+				showZoomId = h.showZoomId,
+				goToStageIndex = h.goToStageIndex
+			};
 		}
 
 		private void HandleHotspot(Data.HotspotDefinition def)

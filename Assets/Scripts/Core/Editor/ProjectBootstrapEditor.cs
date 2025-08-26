@@ -2,18 +2,21 @@ using UnityEditor;
 using UnityEngine;
 using AFKS.Core.Composition;
 using AFKS.Core.Data;
+using UnityEngine.EventSystems;
 
 namespace AFKS.Core.Editor
 {
 	public sealed class ProjectBootstrapEditor : UnityEditor.EditorWindow
 	{
-		[MenuItem("AFKS/Auto Setup/Generate Core Scene")] 
+		// Menu hidden; used internally by Setup Wizard
 		public static void GenerateCoreScene()
 		{
 			var scene = UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene);
 			var root = new GameObject("GameRuntime");
 			root.AddComponent<GameRuntime>();
 			UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+			System.IO.Directory.CreateDirectory("Assets/Scenes");
+			UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene, "Assets/Scenes/MainCore.unity");
 		}
 
 		[MenuItem("AFKS/Auto Setup/Create ProjectConfig + AudioDB")] 
@@ -29,7 +32,7 @@ namespace AFKS.Core.Editor
 			Selection.activeObject = config;
 		}
 
-		[MenuItem("AFKS/Auto Setup/Create Stage Template (FrontGate)")] 
+		// Menu hidden; used internally by Setup Wizard
 		public static void CreateStageTemplate()
 		{
 			var stage = ScriptableObject.CreateInstance<StageDefinition>();
@@ -62,13 +65,11 @@ namespace AFKS.Core.Editor
 			Selection.activeObject = stage;
 		}
 
-		[MenuItem("AFKS/Auto Setup/Generate All Scenes (Core/Menu/Stage1-6)")]
+		// Menu hidden; used internally by Setup Wizard
 		public static void GenerateAllScenes()
 		{
 			// Core scene
 			GenerateCoreScene();
-			var coreScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-			UnityEditor.SceneManagement.EditorSceneManager.SaveScene(coreScene, "Assets/Scenes/MainCore.unity");
 
 			// Main Menu (minimal stub)
 			var menu = UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene);
@@ -83,9 +84,137 @@ namespace AFKS.Core.Editor
 				UnityEditor.SceneManagement.EditorSceneManager.SaveScene(st, $"Assets/Scenes/Stage{i}.unity");
 			}
 
+			// Open MainCore at the end
+			UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/MainCore.unity");
 			AssetDatabase.Refresh();
+		}
+
+		// --- New: Attach GameRuntime to current scene (preview) ---
+		// Menu hidden; used internally by Setup Wizard
+		public static void AttachRuntimeToActiveScene()
+		{
+			var active = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+			if (!active.IsValid()) return;
+			EnsureRuntimeInScene(active);
+			EnsureServiceGameObjects();
+			UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(active);
+		}
+
+		// Menu hidden; used internally by Setup Wizard
+		public static void AttachRuntimeToAllStageScenes()
+		{
+			AttachRuntimeToAllScenesInFolder("Assets/Scenes");
+		}
+
+		// Generic: attach runtime/hierarchy to every scene in folder (recursively)
+		public static void AttachRuntimeToAllScenesInFolder(string folder)
+		{
+			var guids = AssetDatabase.FindAssets("t:Scene", new[] { folder });
+			string reopen = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().path;
+			for (int i = 0; i < guids.Length; i++)
+			{
+				var path = AssetDatabase.GUIDToAssetPath(guids[i]);
+				if (string.IsNullOrEmpty(path)) continue;
+				var scn = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(path);
+				EnsureRuntimeInScene(scn);
+				EnsureServiceGameObjects();
+				UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scn);
+			}
+			if (!string.IsNullOrEmpty(reopen))
+				UnityEditor.SceneManagement.EditorSceneManager.OpenScene(reopen);
+		}
+
+		private static void EnsureRuntimeInScene(UnityEngine.SceneManagement.Scene scn)
+		{
+			var existing = UnityEngine.Object.FindFirstObjectByType<GameRuntime>();
+			if (existing == null)
+			{
+				var root = new GameObject("GameRuntime");
+				existing = root.AddComponent<GameRuntime>();
+			}
+			// Try linking config/audio automatically if they exist
+			var config = AssetDatabase.LoadAssetAtPath<ProjectConfig>("Assets/Data/Hospital/ProjectConfig.asset");
+			var audio = AssetDatabase.LoadAssetAtPath<AudioDatabase>("Assets/Data/Hospital/AudioDatabase.asset");
+			var so = new SerializedObject(existing);
+			so.FindProperty("_projectConfig").objectReferenceValue = config;
+			so.FindProperty("_audioDatabase").objectReferenceValue = audio;
+
+			// Ensure UI hierarchy exists in the scene (so 런타임이 중복 생성하지 않도록 미리 주입)
+			Camera uiCam = null;
+			Canvas uiCanvas = null;
+			RectTransform uiRoot = null;
+			var existingCanvas = Object.FindFirstObjectByType<Canvas>();
+			if (existingCanvas != null)
+			{
+				uiCanvas = existingCanvas;
+				uiRoot = existingCanvas.GetComponent<RectTransform>();
+				uiCam = existingCanvas.worldCamera;
+			}
+			if (uiCanvas == null)
+			{
+				var camGo = new GameObject("UICamera");
+				camGo.transform.SetParent(existing.transform, false);
+				uiCam = camGo.AddComponent<Camera>();
+				uiCam.clearFlags = CameraClearFlags.Depth;
+				uiCam.orthographic = true;
+				uiCam.depth = 100;
+
+				var canvasGo = new GameObject("UICanvas", typeof(RectTransform));
+				canvasGo.transform.SetParent(existing.transform, false);
+				uiCanvas = canvasGo.AddComponent<Canvas>();
+				uiCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+				uiCanvas.worldCamera = uiCam;
+				canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+				canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+				uiRoot = canvasGo.GetComponent<RectTransform>();
+				uiRoot.anchorMin = Vector2.zero; uiRoot.anchorMax = Vector2.one; uiRoot.offsetMin = Vector2.zero; uiRoot.offsetMax = Vector2.zero;
+			}
+
+			// Inject to GameRuntime serialized fields so Awake에서 중복 생성 방지
+			so.FindProperty("_uiCamera").objectReferenceValue = uiCam;
+			so.FindProperty("_uiCanvas").objectReferenceValue = uiCanvas;
+			so.FindProperty("_uiRoot").objectReferenceValue = uiRoot;
+			so.ApplyModifiedPropertiesWithoutUndo();
+
+			// Ensure EventSystem exists for UI
+			if (Object.FindFirstObjectByType<EventSystem>() == null)
+			{
+				var es = new GameObject("EventSystem");
+				es.AddComponent<EventSystem>();
+				es.AddComponent<StandaloneInputModule>();
+			}
+		}
+
+		private static void EnsureServiceGameObjects()
+		{
+			// Create visible scene objects that expose services via components
+			if (Object.FindFirstObjectByType<AFKS.Core.Mono.InventoryServiceComponent>() == null)
+			{
+				var inv = new GameObject("InventoryService");
+				inv.AddComponent<AFKS.Core.Mono.InventoryServiceComponent>();
+			}
+			if (Object.FindFirstObjectByType<AFKS.Core.Mono.ProgressServiceComponent>() == null)
+			{
+				var prog = new GameObject("ProgressService");
+				prog.AddComponent<AFKS.Core.Mono.ProgressServiceComponent>();
+			}
+
+			// StageRoot + 레이어 구성 + 예시 핫스팟/오버레이 배치
+			var stageRoot = GameObject.Find("StageRoot") ?? new GameObject("StageRoot");
+			var background = GameObject.Find("Background") ?? new GameObject("Background");
+			background.transform.SetParent(stageRoot.transform, false);
+			if (background.GetComponent<SpriteRenderer>() == null)
+				background.AddComponent<SpriteRenderer>();
+
+			// 예시 핫스팟 1개(정문 중앙). 필요 시 삭제/이동 가능
+			if (Object.FindFirstObjectByType<AFKS.Core.Mono.HotspotRect>() == null)
+			{
+				var hs = new GameObject("Hotspot_front_gate");
+				hs.transform.SetParent(stageRoot.transform, false);
+				var comp = hs.AddComponent<AFKS.Core.Mono.HotspotRect>();
+				comp.id = "front_gate_chain";
+				comp.rect = new Rect(0.45f, 0.38f, 0.10f, 0.22f);
+			}
 		}
 	}
 }
-
-
