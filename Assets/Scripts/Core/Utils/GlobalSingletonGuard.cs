@@ -48,26 +48,41 @@ namespace AFKS.Core.Utils
         {
             if (enforceEventSystem)
             {
+                Debug.Log("EventSystem 중복 검사 시작");
                 var systems = UnityEngine.Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
                 if (systems != null && systems.Length > 1)
                 {
+                    Debug.LogWarning($"EventSystem이 {systems.Length}개 발견됨 - 중복 제거 시작");
                     EventSystem keep = null;
                     for (int i = 0; i < systems.Length; i++)
                     {
                         var es = systems[i];
                         if (es == null) continue;
+                        Debug.Log($"EventSystem {i}: {es.name} (씬: {es.gameObject.scene.name})");
                         if (es.gameObject.scene == coreScene)
                         {
-                            keep = es; break;
+                            keep = es; 
+                            Debug.Log($"코어 씬의 EventSystem을 유지: {es.name}");
+                            break;
                         }
                     }
-                    if (keep == null) keep = systems[0];
+                    if (keep == null) 
+                    {
+                        keep = systems[0];
+                        Debug.Log($"코어 씬 EventSystem을 찾을 수 없어 첫 번째 것을 유지: {keep.name}");
+                    }
                     for (int i = 0; i < systems.Length; i++)
                     {
                         var es = systems[i];
                         if (es == null) continue;
-                        es.enabled = (es == keep);
+                        bool shouldEnable = (es == keep);
+                        es.enabled = shouldEnable;
+                        Debug.Log($"EventSystem {es.name}: enabled = {shouldEnable}");
                     }
+                }
+                else
+                {
+                    Debug.Log($"EventSystem 개수: {systems?.Length ?? 0}");
                 }
             }
 

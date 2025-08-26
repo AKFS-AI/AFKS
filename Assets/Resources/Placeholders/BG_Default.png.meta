@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 29ad30fd2207c31409ccca0728da7037
+guid: f7338df31510f0046848978b7cbd4cb0
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3958309059165701015
-    second: InteractionDoor_1_2_0
+      213: 8444850205538134970
+    second: BG_Default_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: InteractionDoor_1_2_0
+      name: BG_Default_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1536
-        height: 1024
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 79348c60e1dbee630800000000000000
-      internalID: 3958309059165701015
+      spriteID: abb2c7ae482223570800000000000000
+      internalID: 8444850205538134970
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      InteractionDoor_1_2_0: 3958309059165701015
+      BG_Default_0: 8444850205538134970
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

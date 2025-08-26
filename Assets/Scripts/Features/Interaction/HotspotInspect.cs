@@ -22,7 +22,7 @@ namespace AFKS.Features.Interaction
         [SerializeField]
         [InspectorName("UI 프리팹 소환 사용")]
         [Tooltip("이미지 뷰어 대신 UI 프리팹을 소환하고 확대 애니메이션을 재생합니다.")]
-        private bool spawnUIPrefab = true;
+        private bool spawnUIPrefab = false;
 
         [SerializeField]
         [InspectorName("소환할 패널 프리팹")]

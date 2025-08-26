@@ -1,19 +1,22 @@
 Title: Stage3 - Office - Hierarchy & Wiring Guide
 SceneName: Stage_Office
-Purpose: 관리실 장면(왕복 이동/상호작용 기반)
+Purpose: 관리실(월드 스프라이트 상호작용 기반)
 
-1) 하이라키어 최종 구조도
+1) 하이라키어 최종 구조도(월드 모드)
 - World_Empty(-)
   - BG_2D/Sprite(SpriteRenderer)
 - Interaction_Empty(-)
   - Hotspots_Empty(-)
-    - BackDoor_Empty(HotspotMove, BoxCollider2D)
-- UI_Empty(-)
-  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
-- EventSystem_UI/Event System(-)
+    - BackDoor(HotspotMove, BoxCollider2D)
 - Services_Empty(-)
   - StageRoot_Empty(StageRoot)
 
-2) 하이라키어 제작 절차(생성 경로 포함)
-...
+2) 제작 절차
+- 컨테이너/배경 생성 → BackDoor에 콜라이더와 HotspotMove 부착
+
+3) 인스펙터 설정
+- BackDoor: HotspotMove.targetStageId = "Stage2" (예시)
+
+4) 변경 이력
+- v2.0: 월드 스프라이트 우선으로 간단 정리
 

@@ -1,4 +1,7 @@
 using UnityEngine;
+using AFKS.Core.Services;
+using AFKS.Core.Services.GameState;
+using AFKS.Core.Services.StageBackground;
 
 namespace AFKS.Features.Stage
 {
@@ -9,10 +12,31 @@ namespace AFKS.Features.Stage
     [AddComponentMenu("AFKS/Stage/Stage Root")]
     public sealed class StageRoot : MonoBehaviour
     {
+        [SerializeField]
+        [InspectorName("배경 스프라이트 (옵션)")]
+        private SpriteRenderer backgroundSprite;
+
         #region 공개 API
         public void Initialize()
         {
             // 스테이지 진입 시 카메라/오디오/핫스팟 등의 상태를 준비합니다.
+            // 현재 스테이지 ID 보고 및 배경 보고
+            if (ServiceLocator.TryGet<IGameStateService>(out var gs))
+            {
+                var sid = gameObject.scene.name; // 씬 이름을 스테이지 ID로 사용
+                gs.SetCurrentStage(sid);
+            }
+            if (ServiceLocator.TryGet<IStageBackgroundService>(out var bgSvc))
+            {
+                var sid = gameObject.scene.name;
+                Sprite sprite = null;
+                if (backgroundSprite == null)
+                {
+                    backgroundSprite = FindFirstObjectByType<SpriteRenderer>();
+                }
+                if (backgroundSprite != null) sprite = backgroundSprite.sprite;
+                bgSvc.ReportBackground(sid, sprite);
+            }
         }
 
         public void Teardown()
