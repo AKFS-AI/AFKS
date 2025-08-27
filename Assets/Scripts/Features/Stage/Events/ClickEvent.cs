@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using AFKS.Features.Stage.Animations;
 using AFKS.Core.Services.Save;
+using AFKS.Features.Stage.Effects;
 
 namespace AFKS.Features.Stage.Events
 {
@@ -22,6 +23,10 @@ namespace AFKS.Features.Stage.Events
         [SerializeField] private bool showNewObjects = false;
         [SerializeField] private List<string> objectsToShow = new List<string>();
 
+        [Header("클릭 시 피드백")]
+        [SerializeField] private List<StageEffect> onClickEffects = new List<StageEffect>();
+        [SerializeField] private bool showClickFeedback = true;
+        
         [Header("진행 저장(옵션)")]
         [SerializeField] private bool persistClickCount = false;
         [SerializeField] private string clickCountPersistKey = ""; // 예: "Stage1.Chain.Clicks"
@@ -54,14 +59,20 @@ namespace AFKS.Features.Stage.Events
         public override void Prepare()
         {
             Debug.Log($"ClickEvent: {eventName} 준비됨 - 트리거 오브젝트: {string.Join(", ", triggerObjectIds)}");
+            Debug.Log($"ClickEvent: {eventName} 상호작용 가능한 오브젝트: {string.Join(", ", interactableObjects)}");
             
-            // 트리거 오브젝트들을 상호작용 가능하게 설정
-            foreach (var triggerId in triggerObjectIds)
+            // interactableObjects가 비어있을 때만 트리거 오브젝트들을 추가
+            if (interactableObjects.Count == 0)
             {
-                if (!interactableObjects.Contains(triggerId))
+                foreach (var triggerId in triggerObjectIds)
                 {
                     interactableObjects.Add(triggerId);
                 }
+                Debug.Log($"ClickEvent: {eventName} interactableObjects가 비어있어서 triggerObjectIds를 추가했습니다.");
+            }
+            else
+            {
+                Debug.Log($"ClickEvent: {eventName} interactableObjects가 이미 설정되어 있어서 추가하지 않았습니다.");
             }
 
             // 클릭 수 복원
@@ -82,6 +93,69 @@ namespace AFKS.Features.Stage.Events
         {
             Debug.Log($"ClickEvent: {eventName} 정리됨");
             currentClickCount = 0;
+        }
+        
+        #endregion
+        
+        #region 오버라이드 메서드
+        
+        /// <summary>
+        /// 지정된 오브젝트 ID로 이벤트를 트리거할 수 있는지 확인합니다.
+        /// ClickEvent는 interactableObjects도 확인합니다.
+        /// </summary>
+        /// <param name="objectId">확인할 오브젝트 ID</param>
+        /// <returns>트리거 가능 여부</returns>
+        public override bool CanTriggerWith(string objectId)
+        {
+            bool inTriggerIds = triggerObjectIds.Contains(objectId);
+            bool inInteractableIds = interactableObjects.Contains(objectId);
+            bool result = inTriggerIds || inInteractableIds;
+            
+            Debug.Log($"ClickEvent.CanTriggerWith: {objectId} - triggerIds: {inTriggerIds}, interactableIds: {inInteractableIds}, 결과: {result}");
+            Debug.Log($"ClickEvent.CanTriggerWith: triggerObjectIds=[{string.Join(", ", triggerObjectIds)}], interactableObjects=[{string.Join(", ", interactableObjects)}]");
+            
+            return result;
+        }
+        
+        #endregion
+        
+        #region 클릭 피드백
+        
+        /// <summary>
+        /// 클릭 시 즉시 실행되는 피드백 효과를 실행합니다.
+        /// </summary>
+        /// <param name="objectId">클릭된 오브젝트 ID</param>
+        /// <param name="system">스테이지 이벤트 시스템</param>
+        public void ExecuteClickFeedback(string objectId, StageEventSystem system)
+        {
+            if (!showClickFeedback || onClickEffects == null || onClickEffects.Count == 0) return;
+            
+            Debug.Log($"ClickEvent: {objectId} 클릭 피드백 실행 - {onClickEffects.Count}개 효과");
+            
+            foreach (var effect in onClickEffects)
+            {
+                if (effect != null)
+                {
+                    // ObjectClickFeedbackEffect인 경우 체인 세트 피드백 또는 개별 피드백 적용
+                    if (effect is ObjectClickFeedbackEffect objectFeedback)
+                    {
+                        // 체인 클릭 시 체인 세트 피드백, 다른 오브젝트 클릭 시 개별 피드백
+                        if (objectId == "ChainTop" || objectId == "ChainBottom")
+                        {
+                            objectFeedback.ApplyFeedbackToChainSet(objectId, system);
+                        }
+                        else
+                        {
+                            objectFeedback.ApplyFeedbackToObject(objectId, system);
+                        }
+                    }
+                    else
+                    {
+                        // 다른 효과는 기존대로 실행
+                        effect.Apply(system);
+                    }
+                }
+            }
         }
         
         #endregion

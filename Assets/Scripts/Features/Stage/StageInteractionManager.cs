@@ -42,6 +42,9 @@ namespace AFKS.Features.Stage
         private void InitializeInteractableObjects()
         {
             if (isInitialized) return;
+            
+            Debug.Log($"StageInteractionManager: 초기화 시작 - {interactableObjects.Count}개 오브젝트");
+            
             // 맵 초기화 및 목록 동기화
             idToInteractable.Clear();
             for (int i = 0; i < interactableObjects.Count; i++)
@@ -51,8 +54,12 @@ namespace AFKS.Features.Stage
                 if (!idToInteractable.ContainsKey(io.objectId))
                 {
                     idToInteractable.Add(io.objectId, io);
+                    Debug.Log($"StageInteractionManager: {io.objectId} 등록됨 - {io.gameObject.name}");
                 }
             }
+            
+            Debug.Log($"StageInteractionManager: 초기화 완료 - 등록된 오브젝트: {string.Join(", ", idToInteractable.Keys)}");
+            
             // 자동 등록/연결은 사용하지 않습니다. 에디터에서 명시적으로 설정합니다.
             isInitialized = true;
         }
@@ -195,7 +202,23 @@ namespace AFKS.Features.Stage
         /// </summary>
         public GameObject GetObject(string objectId)
         {
-            return TryGet(objectId, out var io) ? io.gameObject : null;
+            if (TryGet(objectId, out var io))
+            {
+                if (io?.gameObject != null)
+                {
+                    Debug.Log($"StageInteractionManager.GetObject: {objectId} 발견 - {io.gameObject.name}");
+                    return io.gameObject;
+                }
+                else
+                {
+                    Debug.LogWarning($"StageInteractionManager.GetObject: {objectId}의 gameObject가 null입니다.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"StageInteractionManager.GetObject: {objectId}를 찾을 수 없습니다. 등록된 오브젝트: {string.Join(", ", idToInteractable.Keys)}");
+            }
+            return null;
         }
         
         // 클릭 이벤트 라우팅은 ClickHandler + ClickToEventRouter에서 전담합니다.

@@ -35,6 +35,8 @@ namespace AFKS.Features.Stage.Effects
 			var originalPosition = chainObj.transform.localPosition;
 			var startTime = Time.time;
 			
+			GameDebug.Info(GameDebug.Category.Event, $"체인 {chainObj.name} 흔들림 시작 - {shakeDuration}초 동안");
+			
 			// 흔들림 애니메이션
 			while (Time.time - startTime < shakeDuration)
 			{
@@ -44,11 +46,27 @@ namespace AFKS.Features.Stage.Effects
 					0f
 				);
 				chainObj.transform.localPosition = originalPosition + offset;
-				yield return null;
+				
+				// 색상 변화로 흔들림 강조
+				var spriteRenderer = chainObj.GetComponent<SpriteRenderer>();
+				if (spriteRenderer != null)
+				{
+					var alpha = 0.5f + 0.5f * Mathf.Sin((Time.time - startTime) * 20f);
+					spriteRenderer.color = new Color(1f, 1f, 1f, alpha);
+				}
+				
+				yield return new WaitForSeconds(0.05f); // 더 빠른 업데이트
 			}
 			
-			// 원래 위치로 복원
+			// 원래 위치와 색상으로 복원
 			chainObj.transform.localPosition = originalPosition;
+			var finalSpriteRenderer = chainObj.GetComponent<SpriteRenderer>();
+			if (finalSpriteRenderer != null)
+			{
+				finalSpriteRenderer.color = Color.white;
+			}
+			
+			GameDebug.Info(GameDebug.Category.Event, $"체인 {chainObj.name} 흔들림 완료, {breakDelay}초 후 끊어짐");
 			
 			// 끊어짐 애니메이션 대기
 			yield return new WaitForSeconds(breakDelay);

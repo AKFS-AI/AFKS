@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-5022600997537890807
+--- !u!114 &-80826428144950391
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -32,6 +32,8 @@ MonoBehaviour:
   hideTriggerObject: 0
   showNewObjects: 0
   objectsToShow: []
+  onClickEffects: []
+  showClickFeedback: 1
   persistClickCount: 0
   clickCountPersistKey: 
 --- !u!114 &11400000
@@ -49,4 +51,4 @@ MonoBehaviour:
   stageId: Stage4
   version: 1
   events:
-  - {fileID: -5022600997537890807}
+  - {fileID: -80826428144950391}

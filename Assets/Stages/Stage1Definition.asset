@@ -1,105 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8775628979259807681
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73fc6cc7f99691a4fbfd05444691418d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  eventName: "\uC2A4\uD14C\uC774\uC9C0 \uC804\uD658"
-  description: "\uBB38\uC744 \uD074\uB9AD\uD558\uBA74 \uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0\uB85C
-    \uC804\uD658\uB429\uB2C8\uB2E4."
-  autoProceed: 1
-  delayBeforeExecute: 0.2
-  triggerObjectIds:
-  - Door
-  triggerType: 0
-  animations: []
-  interactableObjects:
-  - Door
-  hiddenObjects: []
-  conditions:
-  - {fileID: 1173031911488442844}
-  effects:
-  - {fileID: -3169999378585825876}
-  requireSpecificClick: 0
-  requiredClickCount: 1
-  clickCooldown: 0.5
-  hideTriggerObject: 0
-  showNewObjects: 0
-  objectsToShow: []
-  persistClickCount: 0
-  clickCountPersistKey: 
---- !u!114 &-6371186392803570943
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73fc6cc7f99691a4fbfd05444691418d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  eventName: "\uCCB4\uC778 \uBD84\uB9AC"
-  description: "\uCCB4\uC778\uC774 \uD754\uB4E4\uB9B0 \uD6C4 \uBD84\uB9AC\uB429\uB2C8\uB2E4."
-  autoProceed: 1
-  delayBeforeExecute: 0
-  triggerObjectIds:
-  - ChainTop
-  - ChainBottom
-  triggerType: 0
-  animations: []
-  interactableObjects: []
-  hiddenObjects: []
-  conditions:
-  - {fileID: 1173031911488442844}
-  effects:
-  - {fileID: 2030602194203367767}
-  requireSpecificClick: 0
-  requiredClickCount: 1
-  clickCooldown: 0.5
-  hideTriggerObject: 0
-  showNewObjects: 0
-  objectsToShow: []
-  persistClickCount: 0
-  clickCountPersistKey: 
---- !u!114 &-3169999378585825876
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 612451b27eb441341a116562e460bacf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetStageId: Stage2
-  delay: 0.2
---- !u!114 &-1288854340489111206
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 728aef1f91b2a084093d68145bc792f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  objectId: ChainBottom
-  interactable: 1
---- !u!114 &-424505374004279619
+--- !u!114 &-8325807593284648910
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -116,25 +17,7 @@ MonoBehaviour:
   - ChainBottom
   showChains: 1
   enableClickable: 1
---- !u!114 &11400000
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5dea831855e406b47aaf06ce82c8c409, type: 3}
-  m_Name: Stage1Definition
-  m_EditorClassIdentifier: 
-  stageId: Stage1
-  version: 1
-  events:
-  - {fileID: 6318377654502302495}
-  - {fileID: -6371186392803570943}
-  - {fileID: -8775628979259807681}
---- !u!114 &1094301284029042037
+--- !u!114 &-8003808448146359352
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -148,7 +31,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectId: ChainTop
   interactable: 1
---- !u!114 &1173031911488442844
+--- !u!114 &-6082511849755915957
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -157,48 +40,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c06fd5492542a94c9189b1b621593f6, type: 3}
+  m_Script: {fileID: 11500000, guid: 6afe1d5c97212ec42ad50b7317cd4dec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  objectIds:
-  - ChainTop
-  - ChainBottom
-  requiredTotalCount: 5
---- !u!114 &2030602194203367767
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c51142776eacc2a4689828a77c8f4c7e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chainObjectIds:
-  - ChainTop
-  - ChainBottom
-  playOnBoth: 1
-  shakeDuration: 1
+  shakeDuration: 0.2
   shakeIntensity: 0.1
-  breakDelay: 0.5
---- !u!114 &3636338719027487124
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c83565a8ae2ad5447b5261aec70c923f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  stageId: Stage1
-  backgroundObjectId: Background
-  fallbackBackground: {fileID: 0}
---- !u!114 &6318377654502302495
+  highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  colorDuration: 0.3
+  targetObjectId: 
+--- !u!114 &-3841785029494903168
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -223,11 +73,11 @@ MonoBehaviour:
   hiddenObjects: []
   conditions: []
   effects:
-  - {fileID: 1094301284029042037}
-  - {fileID: -1288854340489111206}
-  - {fileID: 8000888013533389951}
-  - {fileID: -424505374004279619}
-  - {fileID: 3636338719027487124}
+  - {fileID: -8003808448146359352}
+  - {fileID: 1531977119018920614}
+  - {fileID: 8385450942708866250}
+  - {fileID: -8325807593284648910}
+  - {fileID: 965627240143705673}
   targetPosition: {x: 0, y: -1, z: -10}
   targetOrthographicSize: 3.3
   zoomDuration: 1.5
@@ -261,7 +111,181 @@ MonoBehaviour:
   objectsToHide: []
   autoProceedAfterZoom: 1
   delayAfterZoom: 0.5
---- !u!114 &8000888013533389951
+--- !u!114 &-2109049279288468893
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73fc6cc7f99691a4fbfd05444691418d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eventName: "\uCCB4\uC778 \uBD84\uB9AC"
+  description: "\uCCB4\uC778\uC774 \uD754\uB4E4\uB9B0 \uD6C4 \uBD84\uB9AC\uB429\uB2C8\uB2E4."
+  autoProceed: 0
+  delayBeforeExecute: 0
+  triggerObjectIds:
+  - ChainTop
+  - ChainBottom
+  triggerType: 0
+  animations: []
+  interactableObjects:
+  - ChainTop
+  - ChainBottom
+  hiddenObjects: []
+  conditions:
+  - {fileID: 4939773291382536389}
+  effects:
+  - {fileID: 3050992876307474075}
+  requireSpecificClick: 0
+  requiredClickCount: 1
+  clickCooldown: 0.5
+  hideTriggerObject: 0
+  showNewObjects: 0
+  objectsToShow: []
+  onClickEffects:
+  - {fileID: -6082511849755915957}
+  showClickFeedback: 1
+  persistClickCount: 0
+  clickCountPersistKey: 
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5dea831855e406b47aaf06ce82c8c409, type: 3}
+  m_Name: Stage1Definition
+  m_EditorClassIdentifier: 
+  stageId: Stage1
+  version: 1
+  events:
+  - {fileID: -3841785029494903168}
+  - {fileID: -2109049279288468893}
+  - {fileID: 5949695505985383959}
+--- !u!114 &965627240143705673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c83565a8ae2ad5447b5261aec70c923f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stageId: Stage1
+  backgroundObjectId: Background
+  fallbackBackground: {fileID: 0}
+--- !u!114 &1531977119018920614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728aef1f91b2a084093d68145bc792f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  objectId: ChainBottom
+  interactable: 1
+--- !u!114 &1874544263488909183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 612451b27eb441341a116562e460bacf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetStageId: Stage2
+  delay: 0.2
+--- !u!114 &3050992876307474075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c51142776eacc2a4689828a77c8f4c7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chainObjectIds:
+  - ChainTop
+  - ChainBottom
+  playOnBoth: 1
+  shakeDuration: 1
+  shakeIntensity: 0.1
+  breakDelay: 0.5
+--- !u!114 &4939773291382536389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c06fd5492542a94c9189b1b621593f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  objectIds:
+  - ChainTop
+  - ChainBottom
+  requiredTotalCount: 5
+--- !u!114 &5949695505985383959
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73fc6cc7f99691a4fbfd05444691418d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eventName: "\uC2A4\uD14C\uC774\uC9C0 \uC804\uD658"
+  description: "\uBB38\uC744 \uD074\uB9AD\uD558\uBA74 \uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0\uB85C
+    \uC804\uD658\uB429\uB2C8\uB2E4."
+  autoProceed: 1
+  delayBeforeExecute: 0.2
+  triggerObjectIds:
+  - Door
+  triggerType: 0
+  animations: []
+  interactableObjects:
+  - Door
+  hiddenObjects: []
+  conditions:
+  - {fileID: 4939773291382536389}
+  effects:
+  - {fileID: 1874544263488909183}
+  requireSpecificClick: 0
+  requiredClickCount: 1
+  clickCooldown: 0.5
+  hideTriggerObject: 0
+  showNewObjects: 0
+  objectsToShow: []
+  onClickEffects: []
+  showClickFeedback: 1
+  persistClickCount: 0
+  clickCountPersistKey: 
+--- !u!114 &8385450942708866250
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

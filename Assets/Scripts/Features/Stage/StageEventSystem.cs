@@ -151,22 +151,41 @@ namespace AFKS.Features.Stage
         {
             if (string.IsNullOrEmpty(objectId)) return null;
             
+            GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId} 검색 시작");
+            
             // StageInteractionManager에서 먼저 찾기
             var interactionManager = StageInteractionManager.Instance;
             if (interactionManager != null)
             {
                 var obj = interactionManager.GetObject(objectId);
-                if (obj != null) return obj;
+                if (obj != null)
+                {
+                    GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 StageInteractionManager에서 발견 - {obj.name}");
+                    return obj;
+                }
+            }
+            else
+            {
+                GameDebug.Warn(GameDebug.Category.Event, "StageEventSystem.GetObject: StageInteractionManager를 찾을 수 없습니다.");
             }
             
             // 씬에서 직접 찾기
             var foundObj = GameObject.Find(objectId);
-            if (foundObj != null) return foundObj;
+            if (foundObj != null)
+            {
+                GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 씬에서 직접 발견 - {foundObj.name}");
+                return foundObj;
+            }
             
             // 스테이지 ID를 접두사로 사용해서 찾기
             var stagePrefixedObj = GameObject.Find($"{stageId}_{objectId}");
-            if (stagePrefixedObj != null) return stagePrefixedObj;
+            if (stagePrefixedObj != null)
+            {
+                GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 스테이지 접두사로 발견 - {stagePrefixedObj.name}");
+                return stagePrefixedObj;
+            }
             
+            GameDebug.Warn(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 찾을 수 없습니다.");
             return null;
         }
         
@@ -193,13 +212,31 @@ namespace AFKS.Features.Stage
             if (currentEventIndex < eventSequence.Count)
             {
                 var currentEvent = eventSequence[currentEventIndex];
-                if (currentEvent.CanTriggerWith(objectId) && currentEvent.AreConditionsSatisfied(this))
+                bool canTrigger = currentEvent.CanTriggerWith(objectId);
+                bool conditionsSatisfied = currentEvent.AreConditionsSatisfied(this);
+                
+                Debug.Log($"StageEventSystem: {objectId} 클릭 처리 - CanTriggerWith: {canTrigger}, AreConditionsSatisfied: {conditionsSatisfied}");
+                
+                // 클릭 피드백 실행 (조건 만족 여부와 관계없이)
+                if (canTrigger && currentEvent is ClickEvent clickEvent)
+                {
+                    clickEvent.ExecuteClickFeedback(objectId, this);
+                }
+                
+                if (canTrigger && conditionsSatisfied)
                 {
                     ExecuteEvent(currentEvent);
                 }
                 else
                 {
-                    Debug.LogWarning($"StageEventSystem: {objectId}는 현재 이벤트에서 클릭할 수 없습니다.");
+                    if (!canTrigger)
+                    {
+                        Debug.LogWarning($"StageEventSystem: {objectId}는 현재 이벤트에서 클릭할 수 없습니다. (CanTriggerWith: {canTrigger})");
+                    }
+                    if (!conditionsSatisfied)
+                    {
+                        Debug.LogWarning($"StageEventSystem: {objectId} 클릭 조건이 만족되지 않았습니다. (AreConditionsSatisfied: {conditionsSatisfied})");
+                    }
                 }
             }
         }

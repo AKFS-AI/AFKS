@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections.Generic;
+using System.Linq;
 using AFKS.Features.Stage.Animations;
 
 namespace AFKS.Features.Stage.Events
@@ -40,8 +41,8 @@ namespace AFKS.Features.Stage.Events
                 SetAutoProceed(true);
             }
 
-            // 내장 줌 기능 사용
-            var targetCamera = FindFirstObjectByType<Camera>();
+            // 내장 줌 기능 사용 - 스테이지의 카메라를 우선적으로 찾기
+            var targetCamera = FindStageCamera();
             if (targetCamera != null)
             {
                 // StageEventSystem에서 코루틴 실행
@@ -58,7 +59,7 @@ namespace AFKS.Features.Stage.Events
             }
             else
             {
-                Debug.LogError("ZoomEvent: 카메라를 찾을 수 없습니다.");
+                Debug.LogError("ZoomEvent: 스테이지 카메라를 찾을 수 없습니다.");
                 onComplete?.Invoke();
             }
         }
@@ -85,6 +86,56 @@ namespace AFKS.Features.Stage.Events
         public override void Cleanup()
         {
             Debug.Log($"ZoomEvent: {eventName} 정리됨");
+        }
+        
+        #endregion
+        
+        #region 카메라 찾기
+        
+        /// <summary>
+        /// 스테이지의 카메라를 찾습니다. 스테이지 씬의 카메라를 우선적으로 찾고, 없으면 메인 카메라를 사용합니다.
+        /// </summary>
+        private Camera FindStageCamera()
+        {
+            // 1. 현재 활성 씬에서 "Stage"로 시작하는 이름의 카메라 찾기
+            var stageCameras = FindObjectsByType<Camera>(FindObjectsSortMode.None);
+            foreach (var cam in stageCameras)
+            {
+                if (cam.name.Contains("Stage") || cam.name.Contains("Camera"))
+                {
+                    // 스테이지 씬에 속한 카메라인지 확인
+                    if (cam.gameObject.scene.name.StartsWith("Stage"))
+                    {
+                        Debug.Log($"ZoomEvent: 스테이지 카메라 발견 - {cam.name} (씬: {cam.gameObject.scene.name})");
+                        return cam;
+                    }
+                }
+            }
+            
+            // 2. 현재 활성 씬의 메인 카메라 찾기
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            var activeSceneCameras = activeScene.GetRootGameObjects()
+                .SelectMany(go => go.GetComponentsInChildren<Camera>())
+                .Where(cam => cam != null)
+                .ToArray();
+            
+            if (activeSceneCameras.Length > 0)
+            {
+                var mainCam = activeSceneCameras.FirstOrDefault(cam => cam.CompareTag("MainCamera")) ?? activeSceneCameras[0];
+                Debug.Log($"ZoomEvent: 활성 씬 카메라 사용 - {mainCam.name} (씬: {mainCam.gameObject.scene.name})");
+                return mainCam;
+            }
+            
+            // 3. 마지막 수단으로 전체 씬의 메인 카메라 사용
+            var fallbackCamera = Camera.main;
+            if (fallbackCamera != null)
+            {
+                Debug.Log($"ZoomEvent: 메인 카메라 사용 - {fallbackCamera.name} (씬: {fallbackCamera.gameObject.scene.name})");
+                return fallbackCamera;
+            }
+            
+            Debug.LogWarning("ZoomEvent: 사용 가능한 카메라를 찾을 수 없습니다.");
+            return null;
         }
         
         #endregion

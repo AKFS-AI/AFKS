@@ -866,7 +866,7 @@ namespace AFKS.Tools.Editor
             simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
             
             // 배경 설정
-            var bg = new GameObject("BG");
+            var bg = new GameObject("Background");
             bg.transform.SetParent(world.transform, false);
             var bgSprite = bg.AddComponent<SpriteRenderer>();
             
@@ -1199,6 +1199,15 @@ namespace AFKS.Tools.Editor
             var cond = ScriptableObject.CreateInstance<AFKS.Features.Stage.Conditions.AggregateClickCountCondition>();
             // Effect 에셋: ChainShakeThenBreakEffect
             var breakFx = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ChainShakeThenBreakEffect>();
+            
+            // 클릭 시 즉시 피드백 효과 추가
+            var clickFeedback = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ObjectClickFeedbackEffect>();
+            var soClickFeedback = new SerializedObject(clickFeedback);
+            soClickFeedback.FindProperty("shakeDuration").floatValue = 0.2f;
+            soClickFeedback.FindProperty("shakeIntensity").floatValue = 0.1f;
+            soClickFeedback.FindProperty("highlightColor").colorValue = Color.yellow;
+            soClickFeedback.FindProperty("colorDuration").floatValue = 0.3f;
+            soClickFeedback.ApplyModifiedPropertiesWithoutUndo();
 
             // 3) 문 클릭 → 다음 스테이지로 이동
             var stageTransition = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
@@ -1224,6 +1233,7 @@ namespace AFKS.Tools.Editor
                 AssetDatabase.AddObjectToAsset(disableDoor, def);
                 AssetDatabase.AddObjectToAsset(showChains, def);
                 AssetDatabase.AddObjectToAsset(reportBackground, def);
+                AssetDatabase.AddObjectToAsset(clickFeedback, def);
             }
             // StageEvent 필드에 conditions/effects를 채워 넣는다
             var soChainBreak = new SerializedObject(chainBreak);
@@ -1234,17 +1244,27 @@ namespace AFKS.Tools.Editor
             var cbTriggerList = soChainBreak.FindProperty("triggerObjectIds"); cbTriggerList.ClearArray();
             int cb0 = cbTriggerList.arraySize; cbTriggerList.InsertArrayElementAtIndex(cb0); cbTriggerList.GetArrayElementAtIndex(cb0).stringValue = "ChainTop";
             int cb1 = cbTriggerList.arraySize; cbTriggerList.InsertArrayElementAtIndex(cb1); cbTriggerList.GetArrayElementAtIndex(cb1).stringValue = "ChainBottom";
+            // 상호작용 가능한 오브젝트 설정 (체인 클릭 가능하게)
+            var cbInteractableList = soChainBreak.FindProperty("interactableObjects"); cbInteractableList.ClearArray();
+            int cbI0 = cbInteractableList.arraySize; cbInteractableList.InsertArrayElementAtIndex(cbI0); cbInteractableList.GetArrayElementAtIndex(cbI0).stringValue = "ChainTop";
+            int cbI1 = cbInteractableList.arraySize; cbInteractableList.InsertArrayElementAtIndex(cbI1); cbInteractableList.GetArrayElementAtIndex(cbI1).stringValue = "ChainBottom";
             soChainBreak.FindProperty("triggerType").enumValueIndex = (int)AFKS.Features.Stage.Events.EventTriggerType.Click;
             var conditionsProp = soChainBreak.FindProperty("conditions");
             conditionsProp.ClearArray();
             int cidx = conditionsProp.arraySize; conditionsProp.InsertArrayElementAtIndex(cidx);
             conditionsProp.GetArrayElementAtIndex(cidx).objectReferenceValue = cond;
+            // onClickEffects에 클릭 피드백 추가
+            var onClickEffectsProp = soChainBreak.FindProperty("onClickEffects");
+            onClickEffectsProp.ClearArray();
+            int oce0 = onClickEffectsProp.arraySize; onClickEffectsProp.InsertArrayElementAtIndex(oce0);
+            onClickEffectsProp.GetArrayElementAtIndex(oce0).objectReferenceValue = clickFeedback;
+            
             var effectsProp = soChainBreak.FindProperty("effects");
             effectsProp.ClearArray();
             int eidx = effectsProp.arraySize; effectsProp.InsertArrayElementAtIndex(eidx);
             effectsProp.GetArrayElementAtIndex(eidx).objectReferenceValue = breakFx;
-            // 체인 분리 후 다음 이벤트 자동 진행
-            soChainBreak.FindProperty("autoProceed").boolValue = true;
+            // 체인 분리 후 다음 이벤트 자동 진행 (클릭 카운트 조건 만족 시에만)
+            soChainBreak.FindProperty("autoProceed").boolValue = false;
             soChainBreak.ApplyModifiedPropertiesWithoutUndo();
 
             // cond 설정: ChainTop/ChainBottom 합계 5회
@@ -1395,7 +1415,7 @@ namespace AFKS.Tools.Editor
             simGo.transform.SetParent(services.transform, false);
             simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
 
-            var bg = new GameObject("BG");
+            var bg = new GameObject("Background");
             bg.transform.SetParent(world.transform, false);
             var bgSr = bg.AddComponent<SpriteRenderer>();
             bgSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "BG_Default.png"), new Color32(30, 30, 30, 255));
@@ -1539,7 +1559,7 @@ namespace AFKS.Tools.Editor
             simGo.transform.SetParent(services.transform, false);
             simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
 
-            var bg = new GameObject("BG");
+            var bg = new GameObject("Background");
             bg.transform.SetParent(world.transform, false);
             var bgSr = bg.AddComponent<SpriteRenderer>();
             bgSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "BG_Default.png"), new Color32(30, 30, 30, 255));

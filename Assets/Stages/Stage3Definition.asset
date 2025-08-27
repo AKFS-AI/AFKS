@@ -15,8 +15,8 @@ MonoBehaviour:
   stageId: Stage3
   version: 1
   events:
-  - {fileID: 4257543707421022128}
---- !u!114 &4257543707421022128
+  - {fileID: 2075957292638975073}
+--- !u!114 &2075957292638975073
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -48,5 +48,7 @@ MonoBehaviour:
   hideTriggerObject: 0
   showNewObjects: 0
   objectsToShow: []
+  onClickEffects: []
+  showClickFeedback: 1
   persistClickCount: 0
   clickCountPersistKey: 

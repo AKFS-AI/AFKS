@@ -12,14 +12,23 @@ namespace AFKS.Features.Stage.Conditions
 		public override bool Evaluate(AFKS.Features.Stage.StageEventSystem system)
 		{
 			if (system == null || objectIds == null || objectIds.Count == 0) return false;
+			
+			Debug.Log($"AggregateClickCountCondition.Evaluate: {objectIds.Count}개 오브젝트, {requiredTotalCount}번 클릭 필요");
+			
 			int sum = 0;
 			for (int i = 0; i < objectIds.Count; i++)
 			{
 				var id = objectIds[i];
 				if (string.IsNullOrEmpty(id)) continue;
-				sum += system.GetClickCount(id);
+				int clickCount = system.GetClickCount(id);
+				sum += clickCount;
+				Debug.Log($"AggregateClickCountCondition: {id} 클릭 수 = {clickCount}");
 			}
-			return sum >= requiredTotalCount;
+			
+			bool result = sum >= requiredTotalCount;
+			Debug.Log($"AggregateClickCountCondition: 총 클릭 수 = {sum}, 조건 만족 = {result}");
+			
+			return result;
 		}
 	}
 }
