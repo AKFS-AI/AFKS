@@ -14,6 +14,7 @@ namespace AFKS.Core.Services.Audio
         [SerializeField] private AudioSource bgmA;
         [SerializeField] private AudioSource bgmB;
         [SerializeField] private AudioSource sfx;
+        [SerializeField] private AudioSource ambience;
 
         private bool usingA = true;
         #endregion
@@ -24,6 +25,7 @@ namespace AFKS.Core.Services.Audio
             if (bgmA == null) bgmA = gameObject.AddComponent<AudioSource>();
             if (bgmB == null) bgmB = gameObject.AddComponent<AudioSource>();
             if (sfx == null) sfx = gameObject.AddComponent<AudioSource>();
+            if (ambience == null) ambience = gameObject.AddComponent<AudioSource>();
 
             bgmA.loop = true; bgmB.loop = true;
             AFKS.Core.Services.ServiceLocator.Register<IAudioService>(this, overwriteExisting: true);
@@ -71,12 +73,39 @@ namespace AFKS.Core.Services.Audio
             sfx.PlayOneShot(clip, volume);
         }
 
-        public void SetVolume(float master = 1f, float bgm = 1f, float sfxVolume = 1f)
+        public void SetVolume(float master = 1f, float bgm = 1f, float sfxVolume = 1f, float ambienceVolume = 1f)
         {
             AudioListener.volume = Mathf.Clamp01(master);
             bgmA.volume = Mathf.Clamp01(bgm);
             bgmB.volume = Mathf.Clamp01(bgm);
             sfx.volume = Mathf.Clamp01(sfxVolume);
+            if (ambience != null) ambience.volume = Mathf.Clamp01(ambienceVolume);
+        }
+
+        public void StopBGM(float fadeSeconds = 0.3f)
+        {
+            var from = usingA ? bgmA : bgmB;
+            if (!from.isPlaying || fadeSeconds <= 0f)
+            {
+                from.Stop();
+                return;
+            }
+            StartCoroutine(FadeOutThenStop(from, fadeSeconds));
+        }
+
+        private IEnumerator FadeOutThenStop(AudioSource src, float seconds)
+        {
+            float t = 0f;
+            float start = src.volume;
+            while (t < seconds)
+            {
+                t += Time.unscaledDeltaTime;
+                float p = seconds > 0 ? Mathf.Clamp01(t / seconds) : 1f;
+                src.volume = Mathf.Lerp(start, 0f, p);
+                yield return null;
+            }
+            src.Stop();
+            src.volume = start;
         }
         #endregion
 

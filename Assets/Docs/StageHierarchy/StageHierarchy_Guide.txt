@@ -138,9 +138,13 @@ Owner: 기획/개발 공용
     - 예: 원본 1536×1024, 목표 1920×1080, PPU=100 → scaleX=1.25, scaleY≈1.0547
 
 5.11) 체인 상호작용 + 단계적 해금 패턴(문/쇠사슬)
-- 개요: 체인 클릭 → 흔들림 애니메이션 → N회 클릭으로 해금 → 배경 교체 + 체인 제거 + 문 활성화 → 전환
-- 구성(권장): ClickHandler(클릭 감지) + ChainController(N회 클릭/흔들림/해금) + Stage1Controller(배경 전환/상태 관리) + HotspotMove(전환)
-- 흐름: Chain 클릭 → 흔들림 → 3회 클릭 시 해금 → 배경 1_2로 교체 + 체인 제거 + Door 활성화 → Door 클릭 → StageChangeRequested(next)
+- 개요: 조건/효과 시스템을 사용해 ‘정확한 클릭 순서·횟수’로 이벤트를 해금한다.
+- 구성(권장):
+  - 입력/라우팅: ClickHandler + ClickToEventRouter → StageEventSystem.OnObjectClicked(objectId)
+  - 데이터: StageDefinition(StageEvent[]) + StageEvent(conditions[], effects[])
+  - 조건: ClickCountCondition, AggregateClickCountCondition, ClickSequenceCondition
+  - 효과: EnableInteractableEffect, ChainShakeThenBreakEffect, StageTransitionEffect
+- 흐름(예시, Stage1): Door 클릭→ZoomEvent 실행→효과로 체인 인터랙션 활성 → 체인 합계 5회 달성 후 체인 클릭 시 체인 분리 이벤트 실행(흔들림→분리)→ autoProceed로 다음 이벤트 준비 → Door 클릭 시 Stage2로 전환
 - 월드 스프라이트 기반: UI 체인 대신 월드 스프라이트 + 콜라이더로 직접 상호작용
 
 5.12) 씬별 MainCanvas 정책
@@ -188,14 +192,14 @@ Owner: 기획/개발 공용
         - 캔버스 그룹 = 자기 자신(CanvasGroup)
 
 7) 링크/참조(코드 개념)
-- 전환 이벤트 허브: GameEvents.StageChangeRequested(string)
 - 전환 서비스: SceneService(Fade.Out → LoadAdditive → Activate → Unload → Fade.In)
 - 페이드 UI: FadeCanvas(CanvasGroup 알파/입력 차단)
-- 입력: InputService(IInputService, Lock/Pointer/UI 오버 판정)
+- 입력/라우팅: ClickHandler → ClickToEventRouter → StageEventSystem.OnObjectClicked
+- 데이터: StageDefinition.LoadFromDefinition → StageEventSystem(eventSequence)
+- 조건/효과 유틸: StageEventSystem.GetClickCount / DoesClickHistoryMatch / SetObjectInteractable
+- 카메라 줌: CameraZoomEffect(표준)
 - 스테이지 루트: StageRoot(Initialize/Teardown 훅)
 - 스테이지 ID: StageIds(Menu=MainMenu, Front=Stage1, Lobby=Stage2, Office/Delivery/Nursery/Chapel)
-- 체인 상호작용: ClickHandler(클릭 감지) → ChainController(해금 로직) → Stage1Controller(배경 전환)
-- 배경 미러링: StageBackgroundService(마지막 배경 저장) → MainMenuBGMirror(메뉴 배경 동적 변경)
 
 8) 변경 시 원칙
 - 변경 시 해당 씬 문서의 관련 섹션을 즉시 업데이트한다.
@@ -344,7 +348,8 @@ Owner: 기획/개발 공용
 - 페이드 무효: SceneService.FadeCanvas 참조, Image Stretch 여부 확인
 - 전환 실패: 씬 미등록/ID 오타 로그 확인
 
-9) 변경 이력(Change Log)
+- v2.2: 조건/효과 시스템 도입(StageCondition/StageEffect), ZoomEvent 클릭 트리거화, SceneScaffolder 원클릭 생성 시 조건/효과 자동 연결
+        (ClickCount/Aggregate/Sequence 조건, EnableInteractable/ChainShakeThenBreak/StageTransition 효과)
 - v2.1: 체인 상호작용 시스템 추가, ClickHandler/ChainController/Stage1Controller 구현, 월드 스프라이트 기반 해금 시스템
 - v2.0: 씬별 MainCanvas 정책 도입, CloseupPanel 권장, EventSystem 단일 활성 원칙 갱신
 - v1.2: 씬별 MainCanvas 정책 도입, CloseupPanel 권장, EventSystem 단일 활성 원칙 갱신

@@ -160,7 +160,14 @@ namespace AFKS.Features.Interaction
 
 		private void LoadStateAndApply()
 		{
-			unlocked = PlayerPrefs.GetInt(stateKey, 0) == 1;
+			if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
+			{
+				unlocked = save.GetBool(stateKey, false);
+			}
+			else
+			{
+				unlocked = PlayerPrefs.GetInt(stateKey, 0) == 1;
+			}
 			if (unlocked)
 			{
 				// 해제 상태 즉시 반영
@@ -189,8 +196,15 @@ namespace AFKS.Features.Interaction
 
 		private void SaveState()
 		{
-			PlayerPrefs.SetInt(stateKey, unlocked ? 1 : 0);
-			PlayerPrefs.Save();
+			if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
+			{
+				save.SetBool(stateKey, unlocked);
+			}
+			else
+			{
+				PlayerPrefs.SetInt(stateKey, unlocked ? 1 : 0);
+				PlayerPrefs.Save();
+			}
 		}
 
 		#region 에디터/런타임 와이어링 지원 API

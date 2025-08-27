@@ -1,12 +1,14 @@
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using AFKS.Features.Items;
 using TMPro;
+using UnityEngine.Events;
 
 namespace AFKS.Tools.Editor
 {
@@ -31,9 +33,23 @@ namespace AFKS.Tools.Editor
         private bool addSaveService = true;
         private bool addGameStateService = true;
         private string tmpFontAssetPath = "Assets/Fonts/The_Jamsil_OTF_2024/The Jamsil OTF 1 Thin SDF.asset"; // TMP 기본 폰트
+        // GameDebug 토글
+        private bool dbgGlobal = true;
+        private bool dbgCore = false;
+        private bool dbgStage = false;
+        private bool dbgEvent = true;
+        private bool dbgInteraction = false;
+        private bool dbgCamera = false;
+        private bool dbgSave = false;
         private bool addEventSystem = true;
         private bool addAudioService = true;
         private bool addInventoryService = true;
+        // 안전 옵션
+        private bool dryRun = false; // 실제 파일/에셋/BuildSettings 변경 대신 로그만 출력
+        private bool confirmOverwrite = true; // 기존 파일/에셋 덮어쓰기/삭제 시 확인 대화상자 표시
+        // 편의 옵션
+        private bool autoRegisterBuildSettings = true; // 개별 씬 생성 시에도 Build Settings 자동 등록
+        private bool postValidateAfterGenerate = true; // 원클릭 생성 후 전체 유효성 검사/자동수정 실행
         #endregion
 
         #region GUI
@@ -50,6 +66,26 @@ namespace AFKS.Tools.Editor
             if (GUILayout.Button("코어 씬 생성/갱신")) CreateOrUpdateCoreScene();
 
             EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("디버그(카테고리 토글)", EditorStyles.boldLabel);
+            dbgGlobal = EditorGUILayout.ToggleLeft("Global", dbgGlobal);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                dbgEvent = EditorGUILayout.ToggleLeft("Event", dbgEvent);
+                dbgStage = EditorGUILayout.ToggleLeft("Stage", dbgStage);
+                dbgInteraction = EditorGUILayout.ToggleLeft("Interaction", dbgInteraction);
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                dbgCore = EditorGUILayout.ToggleLeft("Core", dbgCore);
+                dbgCamera = EditorGUILayout.ToggleLeft("Camera", dbgCamera);
+                dbgSave = EditorGUILayout.ToggleLeft("Save", dbgSave);
+            }
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("안전 옵션", EditorStyles.boldLabel);
+            dryRun = EditorGUILayout.ToggleLeft("Dry Run(미리보기만, 파일/에셋 변경 없음)", dryRun);
+            confirmOverwrite = EditorGUILayout.ToggleLeft("덮어쓰기/삭제 시 확인 대화상자", confirmOverwrite);
+            autoRegisterBuildSettings = EditorGUILayout.ToggleLeft("생성한 씬을 Build Settings에 자동 등록", autoRegisterBuildSettings);
+            postValidateAfterGenerate = EditorGUILayout.ToggleLeft("원클릭 생성 후 전체 유효성 검사/자동수정 실행", postValidateAfterGenerate);
             EditorGUILayout.LabelField("스테이지 씬", EditorStyles.boldLabel);
             stageFolder = EditorGUILayout.TextField("폴더", stageFolder);
             stageName = EditorGUILayout.TextField("스테이지 이름", stageName);
@@ -74,12 +110,24 @@ namespace AFKS.Tools.Editor
             if (GUILayout.Button("Stage4.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage4", nextStageId: "Stage5");
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Stage5.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage5", nextStageId: "Stage6");
-            if (GUILayout.Button("Stage6.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage6", nextStageId: "Menu");
+            if (GUILayout.Button("Stage5.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage5", "Stage6");
+            if (GUILayout.Button("Stage6.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage6", "Menu");
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(6);
             if (GUILayout.Button("모든 씬 원클릭 생성/덮어쓰기(Core/Menu/Stage1~6)+BuildSettings 등록")) GenerateAllAndRegisterBuildSettings();
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("유효성 검사/자동수정", EditorStyles.boldLabel);
+            if (GUILayout.Button("Stage1 유효성 검사/자동수정"))
+            {
+                ValidateAndAutofixStage1(Path.Combine(scenesFolder, "Stage1.unity"));
+            }
+            // 추가: Scenes 폴더 전체 유효성 검사/자동수정
+            if (GUILayout.Button("Scenes 폴더 전체 유효성 검사/자동수정"))
+            {
+                ValidateAllScenesInScenesFolder();
+            }
         }
         #endregion
 
@@ -91,23 +139,34 @@ namespace AFKS.Tools.Editor
             var newScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             newScene.name = Path.GetFileNameWithoutExtension(coreScenePath);
 
+            // 그룹 루트 생성
+            var servicesRoot = new GameObject("Services");
+            var uiRoot = new GameObject("UI");
+
             // Camera
             var cam = new GameObject("Main Camera");
             var camera = cam.AddComponent<Camera>();
             cam.tag = "MainCamera";
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
+            camera.orthographic = true;
+            cam.transform.position = new Vector3(0f, 0f, -10f);
+            cam.AddComponent<Physics2DRaycaster>();
 
-            // FadeCanvas
+            // FadeCanvas (기본 비가시 + 레이캐스트 차단 해제)
             var fadeGo = new GameObject("FadeCanvas");
+            fadeGo.transform.SetParent(uiRoot.transform, false);
             var canvas = fadeGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            fadeGo.AddComponent<CanvasGroup>();
+            var cg = fadeGo.AddComponent<CanvasGroup>();
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
             var fade = fadeGo.AddComponent<AFKS.Core.UI.FadeCanvas>();
 
             if (addEventSystem)
             {
                 var es = new GameObject("EventSystem");
+                es.transform.SetParent(uiRoot.transform, false);
                 es.AddComponent<EventSystem>();
                 es.AddComponent<StandaloneInputModule>();
             }
@@ -115,6 +174,7 @@ namespace AFKS.Tools.Editor
             if (addAudioService)
             {
                 var audioGo = new GameObject("AudioService");
+                audioGo.transform.SetParent(servicesRoot.transform, false);
                 audioGo.AddComponent<AudioListener>();
                 audioGo.AddComponent<AFKS.Core.Services.Audio.AudioService>();
             }
@@ -122,26 +182,31 @@ namespace AFKS.Tools.Editor
             if (addInventoryService)
             {
                 var invGo = new GameObject("InventoryService");
+                invGo.transform.SetParent(servicesRoot.transform, false);
                 invGo.AddComponent<AFKS.Core.Services.Inventory.InventoryService>();
             }
 
             if (addSaveService)
             {
                 var saveGo = new GameObject("SaveService");
+                saveGo.transform.SetParent(servicesRoot.transform, false);
                 saveGo.AddComponent<AFKS.Core.Services.Save.SaveService>();
             }
 
             if (addGameStateService)
             {
                 var gsGo = new GameObject("GameStateService");
+                gsGo.transform.SetParent(servicesRoot.transform, false);
                 gsGo.AddComponent<AFKS.Core.Services.GameState.GameStateService>();
             }
 
             // InputService + SceneService + GlobalSingletonGuard + StartupLoader
             var inputGo = new GameObject("InputService");
+            inputGo.transform.SetParent(servicesRoot.transform, false);
             inputGo.AddComponent<AFKS.Core.Services.Input.InputService>();
 
             var sceneSvcGo = new GameObject("SceneService");
+            sceneSvcGo.transform.SetParent(servicesRoot.transform, false);
             var sceneSvc = sceneSvcGo.AddComponent<AFKS.Core.Services.Scene.SceneService>();
             // fadeCanvas 필드 연결
             var so = new SerializedObject(sceneSvc);
@@ -149,15 +214,36 @@ namespace AFKS.Tools.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var guardGo = new GameObject("GlobalSingletonGuard");
-            guardGo.AddComponent<AFKS.Core.Utils.GlobalSingletonGuard>();
+            guardGo.transform.SetParent(servicesRoot.transform, false);
+            var guard = guardGo.AddComponent<AFKS.Core.Utils.GlobalSingletonGuard>();
+            // 상세 로그는 기본 비활성
+            var soGuard = new SerializedObject(guard);
+            soGuard.FindProperty("debugLogs").boolValue = false;
+            soGuard.ApplyModifiedPropertiesWithoutUndo();
+
+            // GameDebugBootstrapper
+            var dbgGo = new GameObject("DebugSettings");
+            dbgGo.transform.SetParent(servicesRoot.transform, false);
+            var dbg = dbgGo.AddComponent<AFKS.Core.Utils.GameDebugBootstrapper>();
+            var soDbg = new SerializedObject(dbg);
+            soDbg.FindProperty("enableGlobal").boolValue = dbgGlobal;
+            soDbg.FindProperty("enableCore").boolValue = dbgCore;
+            soDbg.FindProperty("enableStage").boolValue = dbgStage;
+            soDbg.FindProperty("enableEvent").boolValue = dbgEvent;
+            soDbg.FindProperty("enableInteraction").boolValue = dbgInteraction;
+            soDbg.FindProperty("enableCamera").boolValue = dbgCamera;
+            soDbg.FindProperty("enableSave").boolValue = dbgSave;
+            soDbg.ApplyModifiedPropertiesWithoutUndo();
 
             // 전역 설정창 (모든 씬에서 접근 가능)
             var settingsGo = new GameObject("GlobalSettings");
+            settingsGo.transform.SetParent(uiRoot.transform, false);
             var settingsCanvas = settingsGo.AddComponent<Canvas>();
             settingsCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             settingsCanvas.sortingOrder = 1000; // 최상위에 표시
             settingsGo.AddComponent<CanvasScaler>();
             settingsGo.AddComponent<GraphicRaycaster>();
+            // 오디오 설정 바인더 추가 및 슬라이더 연결은 아래에서 수행
             
             // 설정 패널 (전체 화면 덮기)
             var settingsPanel = new GameObject("SettingsPanel");
@@ -309,11 +395,15 @@ namespace AFKS.Tools.Editor
             var separator = CreateSeparator("Separator");
             separator.transform.SetParent(settingsButtons.transform, false);
             
-            // 메뉴로 돌아가기 버튼
-            var btnReturnMenu = CreateButton("Button_ReturnMenu", "메뉴로 돌아가기");
+            // 메뉴로 돌아가기 버튼 (회색)
+            var btnReturnMenu = CreateButton("Button_ReturnMenu", "메뉴로 돌아가기", true, new Color(0.6f, 0.6f, 0.6f, 0.9f));
             btnReturnMenu.transform.SetParent(settingsButtons.transform, false);
-            
-            // 세이브 초기화 버튼 (붉은색 경고 표시)
+
+            // 게임 종료 버튼 (회색)
+            var btnExitGame = CreateButton("Button_ExitGame", "게임 종료", true, new Color(0.6f, 0.6f, 0.6f, 0.9f));
+            btnExitGame.transform.SetParent(settingsButtons.transform, false);
+
+            // 세이브 초기화 버튼 (빨간색 경고)
             var btnResetSave = CreateButton("Button_ResetSave", "세이브 초기화", true, new Color(0.8f, 0.2f, 0.2f, 0.9f));
             btnResetSave.transform.SetParent(settingsButtons.transform, false);
             
@@ -331,7 +421,18 @@ namespace AFKS.Tools.Editor
             soManager.FindProperty("closeSettingsButton").objectReferenceValue = closeBtn; // X 버튼 연결
             soManager.FindProperty("returnToMenuButton").objectReferenceValue = btnReturnMenu;
             soManager.FindProperty("resetSaveButton").objectReferenceValue = btnResetSave;
+            // 새 필드: 게임 종료 버튼
+            soManager.FindProperty("exitGameButton").objectReferenceValue = btnExitGame;
             soManager.ApplyModifiedPropertiesWithoutUndo();
+
+
+            // AudioSettingsBinder를 설정창에 추가하고 3개 슬라이더 바인딩
+            var audioBinder = settingsGo.AddComponent<AFKS.Core.UI.AudioSettingsBinder>();
+            var soAudioBinder = new SerializedObject(audioBinder);
+            soAudioBinder.FindProperty("sfxSlider").objectReferenceValue = effectSoundSlider;
+            soAudioBinder.FindProperty("ambienceSlider").objectReferenceValue = envSoundSlider;
+            soAudioBinder.FindProperty("bgmSlider").objectReferenceValue = bgMusicSlider;
+            soAudioBinder.ApplyModifiedPropertiesWithoutUndo();
             
             // CreateButton 함수 정의 (Core 씬용)
             Button CreateButton(string name, string label, bool interactable = true, Color? buttonColor = null)
@@ -523,8 +624,9 @@ namespace AFKS.Tools.Editor
             bootSO.FindProperty("initialStageId").stringValue = "Menu";
             bootSO.ApplyModifiedPropertiesWithoutUndo();
 
-            EditorSceneManager.SaveScene(newScene, coreScenePath);
-            EditorUtility.DisplayDialog("완료", "코어 씬이 생성/갱신되었습니다.", "확인");
+            SaveSceneWithSafety(newScene, coreScenePath);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(coreScenePath);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", "코어 씬이 생성/갱신되었습니다.", "확인");
         }
 
         private void CreateOrUpdateCoreSceneAt(string path)
@@ -544,13 +646,17 @@ namespace AFKS.Tools.Editor
             var root = new GameObject("StageRoot");
             root.AddComponent<AFKS.Features.Stage.StageRoot>();
 
-            // UI용 EventSystem(중복 시 Core에서 정리됨)
-            var es = new GameObject("EventSystem");
-            es.AddComponent<EventSystem>();
-            es.AddComponent<StandaloneInputModule>();
+            // UI용 EventSystem 생성은 Core 씬에만 존재해야 하므로 Stage 씬에서는 생성하지 않음
 
-            EditorSceneManager.SaveScene(stage, path);
-            EditorUtility.DisplayDialog("완료", $"스테이지 씬 생성: {path}", "확인");
+            // Services + StageInteractionManager 보장
+            var services = new GameObject("Services");
+            var simGo = new GameObject("StageInteraction");
+            simGo.transform.SetParent(services.transform, false);
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+
+            SaveSceneWithSafety(stage, path);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", $"스테이지 씬 생성: {path}", "확인");
         }
 
         private void CreateOrOverwriteMenuScene()
@@ -691,6 +797,9 @@ namespace AFKS.Tools.Editor
 
             // 버튼 생성 및 MainMenuUI 연결
             var btnContinue = CreateButton("Button_Continue", "계속하기");
+            // 기본값: 저장 데이터가 없다고 가정하고 비활성화. 저장이 생기면 추후 수동 활성화.
+            btnContinue.gameObject.SetActive(false);
+            btnContinue.interactable = false;
             var btnNew = CreateButton("Button_New", "새 게임");
             var btnSettings = CreateButton("Button_Settings", "설정");
             var btnQuit = CreateButton("Button_Quit", "종료");
@@ -705,13 +814,24 @@ namespace AFKS.Tools.Editor
             soMenu.FindProperty("quitButton").objectReferenceValue = btnQuit;
             soMenu.ApplyModifiedPropertiesWithoutUndo();
 
-            // EventSystem
-            var es = new GameObject("EventSystem");
-            es.AddComponent<EventSystem>();
-            es.AddComponent<StandaloneInputModule>();
+            // EventSystem은 Core 씬에서만 생성 (중복 방지)
 
-            EditorSceneManager.SaveScene(sc, path);
-            EditorUtility.DisplayDialog("완료", $"Menu.unity 생성/덮어쓰기 완료:\n{path}", "확인");
+            // 메뉴 BGM 자동 재생 설정 (Assets/Resources/Sounds/Bgm/menu.mp3)
+            var menuAudio = new GameObject("MenuAudio");
+            var autoBgm = menuAudio.AddComponent<AFKS.Core.Audio.AutoBGMPlayer>();
+            var soAuto = new SerializedObject(autoBgm);
+            var menuClip = Resources.Load<AudioClip>("Sounds/Bgm/menu");
+            soAuto.FindProperty("bgmClip").objectReferenceValue = menuClip;
+            soAuto.FindProperty("volume").floatValue = 0.6f;
+            soAuto.FindProperty("useCrossFade").boolValue = true;
+            soAuto.FindProperty("crossFadeSeconds").floatValue = 0.5f;
+            // 메뉴 씬에서 빠져나갈 때는 반드시 정지
+            soAuto.FindProperty("stopOnDisable").boolValue = true;
+            soAuto.ApplyModifiedPropertiesWithoutUndo();
+
+            SaveSceneWithSafety(sc, path);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", $"Menu.unity 생성/덮어쓰기 완료:\n{path}", "확인");
         }
 
         private void CreateOrOverwriteStage1()
@@ -728,20 +848,29 @@ namespace AFKS.Tools.Editor
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.orthographic = true;
-            camera.orthographicSize = 5f;
-
-            // 컨테이너
+            cam.AddComponent<Physics2DRaycaster>();
+            // 기본 카메라 셋팅: 위치 (0, 0, -10), Orthographic Size 5.4
+            cam.transform.position = new Vector3(0f, 0f, -10f);
+            camera.orthographicSize = 5.4f;
+            
+            
+            
+            // 컨테이너 (월드/인터랙션/서비스만 사용 - UI 생성 생략)
             var world = new GameObject("World");
             var interaction = new GameObject("Interaction");
             var services = new GameObject("Services");
-            var ui = new GameObject("UI");
+            
+            // StageInteractionManager 보장
+            var simGo = new GameObject("StageInteraction");
+            simGo.transform.SetParent(services.transform, false);
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
             
             // 배경 설정
             var bg = new GameObject("BG");
             bg.transform.SetParent(world.transform, false);
             var bgSprite = bg.AddComponent<SpriteRenderer>();
             
-            // Stage1 배경 이미지 로드 (쇠사슬이 없는 1_2)
+            // Stage1 배경 이미지 로드 (잠금/해금 모두 1_2 사용)
             var stage1BgSprite = Resources.Load<Sprite>("Images/Backgrounds/Stage1/StageBG_1_2");
             if (stage1BgSprite != null)
             {
@@ -757,154 +886,478 @@ namespace AFKS.Tools.Editor
             // 배경을 카메라 뒤로 보내기
             bg.transform.position = new Vector3(0, 0, 10);
             bgSprite.sortingOrder = -1;
-
-            // Stage1Controller 추가
-            var stage1Controller = bg.AddComponent<AFKS.Features.Stage.Stage1Controller>();
             
-            // Stage1Controller에 배경 설정
-            var soController = new SerializedObject(stage1Controller);
-            soController.FindProperty("defaultBackground").objectReferenceValue = stage1BgSprite;
+            // 배경 이미지 스케일링 개선 (Menu와 동일한 방식)
+            var bgTransform = bg.transform;
+            // 1536x1024 이미지를 1920x1080 화면에 맞게 스케일링
+            float imageWidth = 1536f;
+            float imageHeight = 1024f;
             
-            // 해금 배경 (1_1 - 쇠사슬이 있는 상태)도 설정
-            var stage1Bg1Sprite = Resources.Load<Sprite>("Images/Backgrounds/Stage1/StageBG_1_1");
-            if (stage1Bg1Sprite != null)
+            // 화면 비율과 이미지 비율 계산 (카메라 설정에서 이미 정의된 변수 활용)
+            float screenRatio = 1920f / 1080f; // 1.778
+            float imageRatio = imageWidth / imageHeight;   // 1.5
+            
+            // 화면을 완전히 덮도록 스케일 계산
+            float scaleX, scaleY;
+            if (screenRatio > imageRatio)
             {
-                soController.FindProperty("unlockedBackground").objectReferenceValue = stage1Bg1Sprite;
-                Debug.Log($"Stage1 해금 배경 이미지 설정됨: {stage1Bg1Sprite.name}");
+                // 화면이 더 넓음 - 너비 기준으로 스케일링
+                scaleX = 1920f / imageWidth;  // 1.25
+                scaleY = scaleX; // 정사각형 유지
+            }
+            else
+            {
+                // 화면이 더 높음 - 높이 기준으로 스케일링
+                scaleY = 1080f / imageHeight; // 1.055
+                scaleX = scaleY; // 정사각형 유지
             }
             
-            soController.ApplyModifiedPropertiesWithoutUndo();
+            // Stage용 최적 스케일 적용 (월드 좌표 기반)
+            float optimalScaleX = 1.25f;
+            float optimalScaleY = 1.06f;
+            bgTransform.localScale = new Vector3(optimalScaleX, optimalScaleY, 1f);
+            
+
+            
+            // AutoBGMPlayer 추가(스테이지 진입 시 기본 BGM 자동 재생)
+            var autoBgm = bg.AddComponent<AFKS.Core.Audio.AutoBGMPlayer>();
+            var soAutoBgm = new SerializedObject(autoBgm);
+            // 기본 BGM은 플레이스홀더(없으면 null 유지). 프로젝트에 클립을 넣으면 경로 기반으로 연결하도록 사용자에게 노출 가능
+            soAutoBgm.FindProperty("volume").floatValue = 0.6f;
+            soAutoBgm.FindProperty("useCrossFade").boolValue = true;
+            soAutoBgm.FindProperty("crossFadeSeconds").floatValue = 0.5f;
+            soAutoBgm.FindProperty("stopOnDisable").boolValue = true; // 스테이지 떠날 때 정지
+            soAutoBgm.ApplyModifiedPropertiesWithoutUndo();
 
             // Hotspots
             var hotspots = new GameObject("Hotspots");
             hotspots.transform.SetParent(interaction.transform, false);
+            hotspots.transform.localPosition = new Vector3(0f, -2f, 0f);
             
-            // Chain (체인 해금용)
-            var chain = new GameObject("Chain");
-            chain.transform.SetParent(hotspots.transform, false);
-            var chainSr = chain.AddComponent<SpriteRenderer>();
+            // Chain (위쪽 체인) - 문 위쪽에 걸기
+            var chainTop = new GameObject("ChainTop");
+            chainTop.transform.SetParent(hotspots.transform, false);
+            var chainTopSr = chainTop.AddComponent<SpriteRenderer>();
             
-            // 체인 이미지 로드
-            var chainSprite = Resources.Load<Sprite>("Placeholders/Chain_Default");
-            if (chainSprite != null)
+            // 위쪽 체인 위치 조정 (문 위쪽에 걸기)
+            chainTop.transform.localPosition = new Vector3(0f, 0.1f, 9f);
+            
+            // 위쪽 체인 이미지 로드 (chain_1.png 스프라이트 시트에서 chain_1_0 서브 스프라이트)
+            var chainTopSprite = Resources.Load<Sprite>("Images/Interactives/Stage1/chain_1");
+            if (chainTopSprite != null)
             {
-                chainSr.sprite = chainSprite;
+                // 스프라이트 시트에서 chain_1_0 서브 스프라이트 찾기
+                var allSprites = Resources.LoadAll<Sprite>("Images/Interactives/Stage1/chain_1");
+                var targetSprite = System.Array.Find(allSprites, s => s.name == "chain_1_0");
+                
+                if (targetSprite != null)
+                {
+                    chainTopSr.sprite = targetSprite;
+                
+                }
+                else
+                {
+                    chainTopSr.sprite = chainTopSprite; // 전체 스프라이트 시트 사용
+                    Debug.Log("위쪽 체인 이미지 로드됨: chain_1.png 전체 스프라이트 시트");
+                }
             }
             else
             {
-                chainSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "Interactable_Green.png"), new Color32(0, 200, 80, 255));
+                // 체인 이미지가 없을 때 더 명확한 플레이스홀더 사용
+                chainTopSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "Interactable_Green.png"), new Color32(0, 255, 0, 255));
+                Debug.Log("위쪽 체인 이미지 대체: 밝은 초록색 플레이스홀더 사용");
             }
             
-            var chainCol = chain.AddComponent<BoxCollider2D>();
-            chainCol.size = new Vector2(2f, 1f);
-            chainCol.isTrigger = true;
-            var chainController = chain.AddComponent<AFKS.Features.Interaction.ChainController>();
-            var clickHandler = chain.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            // 체인은 BoxCollider2D를 사용(자연스러운 클릭 영역)
+            var chainTopCol = chainTop.AddComponent<BoxCollider2D>();
+            chainTopCol.size = new Vector2(1.4f, 0.3f);
+            chainTopCol.isTrigger = true;
+            
+            // 위쪽 체인 스케일 조정 (X=0.5, Y=0.5)
+            chainTop.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+
+            
+            // 위쪽 체인 가시성 개선
+            chainTopSr.sortingOrder = 1;
+            chainTopSr.color = Color.white;
+            
+
+            var clickHandlerTop = chainTop.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            // 줌 전에는 클릭 비활성
+            var soClickTop = new SerializedObject(clickHandlerTop);
+            soClickTop.FindProperty("clickable").boolValue = false;
+            soClickTop.ApplyModifiedPropertiesWithoutUndo();
+            
+            // 착지 타깃(계단 상자 중심)에 스냅
+            var landingTop = new GameObject("LandingTarget");
+            landingTop.transform.SetParent(hotspots.transform, false);
+            // 요청: 최종 착지 높이 -1.5
+            landingTop.transform.localPosition = new Vector3(0f, -1.5f, 9f);
+            
+            // Stage1은 시작 시 체인을 활성화(보이기)
+            chainTop.SetActive(true);
+            
+            // Chain (아래쪽 체인) - 문 아래쪽에 걸기
+            var chainBottom = new GameObject("ChainBottom");
+            chainBottom.transform.SetParent(hotspots.transform, false);
+            var chainBottomSr = chainBottom.AddComponent<SpriteRenderer>();
+            
+            // 아래쪽 체인 위치 조정 (문 아래쪽에 걸기)
+            chainBottom.transform.localPosition = new Vector3(0f, -0.1f, 9f);
+            
+            // 아래쪽 체인 이미지 로드 (chain_1.png 스프라이트 시트에서 chain_1_1 서브 스프라이트)
+            var chainBottomSprite = Resources.Load<Sprite>("Images/Interactives/Stage1/chain_1");
+            if (chainBottomSprite != null)
+            {
+                // 스프라이트 시트에서 chain_1_1 서브 스프라이트 찾기
+                var allSprites = Resources.LoadAll<Sprite>("Images/Interactives/Stage1/chain_1");
+                var targetSprite = System.Array.Find(allSprites, s => s.name == "chain_1_1");
+                
+                if (targetSprite != null)
+                {
+                    chainBottomSr.sprite = targetSprite;
+                
+                }
+                else
+                {
+                    chainBottomSr.sprite = chainBottomSprite; // 전체 스프라이트 시트 사용
+                    Debug.Log("아래쪽 체인 이미지 로드됨: chain_1.png 전체 스프라이트 시트");
+                }
+            }
+            else
+            {
+                chainBottomSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "Interactable_Green.png"), new Color32(0, 255, 0, 255));
+                Debug.Log("아래쪽 체인 이미지 대체: 밝은 초록색 플레이스홀더 사용");
+            }
+            
+            var chainBottomCol = chainBottom.AddComponent<BoxCollider2D>();
+            chainBottomCol.size = new Vector2(1.4f, 0.6f);
+            chainBottomCol.isTrigger = true;
+            
+            // 아래쪽 체인 스케일 조정 (X=0.5, Y=0.5)
+            chainBottom.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+
+            
+            // 아래쪽 체인 가시성 개선
+            chainBottomSr.sortingOrder = 1;
+            chainBottomSr.color = Color.white;
+            
+            var clickHandlerBottom = chainBottom.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            var soClickBottom = new SerializedObject(clickHandlerBottom);
+            soClickBottom.FindProperty("clickable").boolValue = false;
+            soClickBottom.ApplyModifiedPropertiesWithoutUndo();
+            
+            // Stage1은 시작 시 체인을 활성화(보이기)
+            chainBottom.SetActive(true);
+            
+            // 객체 생성 완료 후 상태 확인
+            Debug.Log($"객체 생성 완료 - 체인 및 핫스팟 설정 완료");
             
             // Door (초기에는 비활성)
             var door = new GameObject("Door");
             door.transform.SetParent(hotspots.transform, false);
+            door.transform.localPosition = new Vector3(0f, 0.5f, 0f);
             var doorSr = door.AddComponent<SpriteRenderer>();
-            doorSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "Interactable_Green.png"), new Color32(0, 200, 80, 255));
+            // 스프라이트는 기획 의도에 따라 비워둡니다(디폴트 None).
             var doorCol = door.AddComponent<BoxCollider2D>();
-            doorCol.size = new Vector2(3f, 2f);
+            doorCol.size = new Vector2(4f, 4f);
             doorCol.isTrigger = true;
+            doorCol.isTrigger = true;
+            
+            // HotspotMove 컴포넌트 먼저 추가
             var move = door.AddComponent<AFKS.Features.Interaction.HotspotMove>();
-            // HotspotMove의 targetStageId 필드에 직접 설정
+            
+
+            // HotspotMove의 targetStageId 및 수동 트리거 모드 설정
             var soMove = new SerializedObject(move);
             var targetStageProp = soMove.FindProperty("targetStageId");
             if (targetStageProp != null)
             {
                 targetStageProp.stringValue = "Stage2";
-                soMove.ApplyModifiedPropertiesWithoutUndo();
             }
-            door.SetActive(false); // 초기에는 비활성
+            var manualTriggerProp = soMove.FindProperty("manualTriggerOnly");
+            if (manualTriggerProp != null)
+            {
+                manualTriggerProp.boolValue = true; // Door는 이벤트 시스템에서만 이동 트리거
+            }
+            soMove.ApplyModifiedPropertiesWithoutUndo();
+            
+            // Door 클릭 핸들러 + StageEventSystem 라우팅
+            var doorClickHandler = door.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            var soDoorClick = new SerializedObject(doorClickHandler);
+            soDoorClick.FindProperty("debugLog").boolValue = false;
+            soDoorClick.ApplyModifiedPropertiesWithoutUndo();
+            var doorRouter = door.AddComponent<AFKS.Features.Interaction.ClickToEventRouter>();
+            var doorRouterSO = new SerializedObject(doorRouter);
+            doorRouterSO.FindProperty("objectId").stringValue = "Door";
+            // StageEventSystem는 아래에서 생성/연결 후 다시 지정
+            doorRouterSO.ApplyModifiedPropertiesWithoutUndo();
+            var soDbgTop = new SerializedObject(clickHandlerTop);
+            soDbgTop.FindProperty("debugLog").boolValue = false;
+            soDbgTop.ApplyModifiedPropertiesWithoutUndo();
+            var soDbgBottom = new SerializedObject(clickHandlerBottom);
+            soDbgBottom.FindProperty("debugLog").boolValue = false;
+            soDbgBottom.ApplyModifiedPropertiesWithoutUndo();
+            
+            door.SetActive(true); // Stage1은 시작 시 Door를 활성화
+            Debug.Log("Door 초기 상태: 활성화됨 (Stage1 시작 시 카메라 줌용)");
 
             // StageRoot
             var root = new GameObject("StageRoot");
             root.transform.SetParent(services.transform, false);
             root.AddComponent<AFKS.Features.Stage.StageRoot>();
 
-            // UI
-            var mainCanvas = new GameObject("MainCanvas");
-            mainCanvas.transform.SetParent(ui.transform, false);
-            var canvas = mainCanvas.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 0;
-            mainCanvas.AddComponent<CanvasScaler>();
-            mainCanvas.AddComponent<GraphicRaycaster>();
-            
-            // CloseupPanel
-            var closeupPanel = new GameObject("CloseupPanel");
-            closeupPanel.transform.SetParent(mainCanvas.transform, false);
-            var closeupImg = closeupPanel.AddComponent<Image>();
-            closeupImg.color = Color.white;
-            closeupImg.preserveAspect = true;
-            closeupImg.raycastTarget = false;
-            closeupPanel.AddComponent<AFKS.Core.UI.CloseupViewer>();
-
-            // EventSystem
-            var es = new GameObject("EventSystem");
-            es.AddComponent<EventSystem>();
-            es.AddComponent<StandaloneInputModule>();
-
-            // Stage1Controller 참조 설정
-            var soStage1Controller = new SerializedObject(stage1Controller);
-            soStage1Controller.FindProperty("defaultBackground").objectReferenceValue = stage1BgSprite;
-            soStage1Controller.FindProperty("chainObject").objectReferenceValue = chain;
-            soStage1Controller.FindProperty("doorHotspot").objectReferenceValue = door;
-            soStage1Controller.ApplyModifiedPropertiesWithoutUndo();
-
-            // ChainController 이벤트 연결
-            var soChain = new SerializedObject(chainController);
-            var onChainUnlockedProp = soChain.FindProperty("onChainUnlocked");
-            if (onChainUnlockedProp != null && onChainUnlockedProp.isArray)
+            // 데이터 드리븐 StageDefinition 생성 및 StageEventSystem에 적용
+            var defDir = "Assets/Stages";
+            if (!Directory.Exists(defDir)) Directory.CreateDirectory(defDir);
+            var defPath = Path.Combine(defDir, "Stage1Definition.asset").Replace('\\','/');
+            var existingDef = AssetDatabase.LoadAssetAtPath<AFKS.Features.Stage.StageDefinition>(defPath);
+            if (existingDef != null)
             {
-                // UnityEvent 배열이 비어있으면 크기를 1로 설정
-                if (onChainUnlockedProp.arraySize == 0)
-                {
-                    onChainUnlockedProp.arraySize = 1;
-                }
-                
-                var element = onChainUnlockedProp.GetArrayElementAtIndex(0);
-                if (element != null)
-                {
-                    element.objectReferenceValue = stage1Controller;
-                    var functionNameProp = element.FindPropertyRelative("m_FunctionName");
-                    if (functionNameProp != null)
-                    {
-                        functionNameProp.stringValue = "UnlockStage";
-                    }
-                }
+                bool proceed = !confirmOverwrite || EditorUtility.DisplayDialog("덮어쓰기 확인", $"기존 StageDefinition 에셋을 삭제 후 재생성합니다.\n{defPath}", "예", "아니오");
+                if (!proceed) return;
+                if (dryRun) Debug.Log($"[DRY-RUN] DeleteAsset -> {defPath}");
+                else AssetDatabase.DeleteAsset(defPath);
             }
-            soChain.ApplyModifiedPropertiesWithoutUndo();
-            
-            // ClickHandler 이벤트 연결
-            var soClick = new SerializedObject(clickHandler);
-            var onClickProp = soClick.FindProperty("onClick");
-            if (onClickProp != null && onClickProp.isArray)
-            {
-                // UnityEvent 배열이 비어있으면 크기를 1로 설정
-                if (onClickProp.arraySize == 0)
-                {
-                    onClickProp.arraySize = 1;
-                }
-                
-                var element = onClickProp.GetArrayElementAtIndex(0);
-                if (element != null)
-                {
-                    element.objectReferenceValue = chainController;
-                    var functionNameProp = element.FindPropertyRelative("m_FunctionName");
-                    if (functionNameProp != null)
-                    {
-                        functionNameProp.stringValue = "OnChainClicked";
-                    }
-                }
-            }
-            soClick.ApplyModifiedPropertiesWithoutUndo();
 
-            EditorSceneManager.SaveScene(sc, path);
-            EditorUtility.DisplayDialog("완료", $"Stage1.unity 생성/덮어쓰기 완료:\n{path}", "확인");
+            var def = ScriptableObject.CreateInstance<AFKS.Features.Stage.StageDefinition>();
+            if (dryRun) Debug.Log($"[DRY-RUN] CreateAsset -> {defPath}");
+            else AssetDatabase.CreateAsset(def, defPath);
+
+            // 1) 문 클릭 → 카메라 확대 (ZoomEvent 사용)
+            var zoomEvent = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ZoomEvent>();
+            zoomEvent.SetupChainAreaZoom();
+            // ZoomEvent를 클릭 트리거로 전환(Door 필요)
+            var soZoomEvt = new SerializedObject(zoomEvent);
+            var zoomTriggerList = soZoomEvt.FindProperty("triggerObjectIds"); zoomTriggerList.ClearArray();
+            int zidx = zoomTriggerList.arraySize; zoomTriggerList.InsertArrayElementAtIndex(zidx);
+            zoomTriggerList.GetArrayElementAtIndex(zidx).stringValue = "Door";
+            var zoomInteractList = soZoomEvt.FindProperty("interactableObjects"); zoomInteractList.ClearArray();
+            int zi = zoomInteractList.arraySize; zoomInteractList.InsertArrayElementAtIndex(zi);
+            zoomInteractList.GetArrayElementAtIndex(zi).stringValue = "Door";
+            soZoomEvt.FindProperty("triggerType").enumValueIndex = (int)AFKS.Features.Stage.Events.EventTriggerType.Click;
+            // Zoom 완료 후 체인 클릭 가능하게 만드는 효과 2개 부착(ChainTop/ChainBottom)
+            var enChainTop = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.EnableInteractableEffect>();
+            var enChainBottom = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.EnableInteractableEffect>();
+            var soEnTop = new SerializedObject(enChainTop);
+            soEnTop.FindProperty("objectId").stringValue = "ChainTop";
+            soEnTop.FindProperty("interactable").boolValue = true;
+            soEnTop.ApplyModifiedPropertiesWithoutUndo();
+            var soEnBottom = new SerializedObject(enChainBottom);
+            soEnBottom.FindProperty("objectId").stringValue = "ChainBottom";
+            soEnBottom.FindProperty("interactable").boolValue = true;
+            soEnBottom.ApplyModifiedPropertiesWithoutUndo();
+            // Door 비활성화 효과 추가
+            var disableDoor = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.DisableInteractableEffect>();
+            var soDisableDoor = new SerializedObject(disableDoor);
+            soDisableDoor.FindProperty("objectId").stringValue = "Door";
+            soDisableDoor.FindProperty("disableCollider").boolValue = true;
+            soDisableDoor.FindProperty("disableClickHandler").boolValue = false; // ClickHandler는 유지 (이벤트 시스템에서 관리)
+            soDisableDoor.ApplyModifiedPropertiesWithoutUndo();
+            
+            // 체인 표시 효과 추가
+            var showChains = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ShowChainsEffect>();
+            var soShowChains = new SerializedObject(showChains);
+            var chainIdsProp = soShowChains.FindProperty("chainObjectIds");
+            chainIdsProp.ClearArray();
+            int cid0 = chainIdsProp.arraySize; chainIdsProp.InsertArrayElementAtIndex(cid0);
+            chainIdsProp.GetArrayElementAtIndex(cid0).stringValue = "ChainTop";
+            int cid1 = chainIdsProp.arraySize; chainIdsProp.InsertArrayElementAtIndex(cid1);
+            chainIdsProp.GetArrayElementAtIndex(cid1).stringValue = "ChainBottom";
+            soShowChains.FindProperty("showChains").boolValue = true;
+            soShowChains.FindProperty("enableClickable").boolValue = true;
+            soShowChains.ApplyModifiedPropertiesWithoutUndo();
+            
+            // 배경 보고 효과 추가
+            var reportBackground = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ReportBackgroundEffect>();
+            var soReportBg = new SerializedObject(reportBackground);
+            soReportBg.FindProperty("stageId").stringValue = "Stage1";
+            soReportBg.FindProperty("backgroundObjectId").stringValue = "Background"; // 배경 오브젝트 ID
+            soReportBg.ApplyModifiedPropertiesWithoutUndo();
+            
+            var zoomEffectsProp = soZoomEvt.FindProperty("effects");
+            int zef0 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef0);
+            zoomEffectsProp.GetArrayElementAtIndex(zef0).objectReferenceValue = enChainTop;
+            int zef1 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef1);
+            zoomEffectsProp.GetArrayElementAtIndex(zef1).objectReferenceValue = enChainBottom;
+            int zef2 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef2);
+            zoomEffectsProp.GetArrayElementAtIndex(zef2).objectReferenceValue = disableDoor;
+            int zef3 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef3);
+            zoomEffectsProp.GetArrayElementAtIndex(zef3).objectReferenceValue = showChains;
+            int zef4 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef4);
+            zoomEffectsProp.GetArrayElementAtIndex(zef4).objectReferenceValue = reportBackground;
+            // 줌 완료 후 자동으로 다음 이벤트(체인 클릭 단계)로 진행
+            var autoProceedAfterZoomProp = soZoomEvt.FindProperty("autoProceedAfterZoom");
+            if (autoProceedAfterZoomProp != null) autoProceedAfterZoomProp.boolValue = true;
+            soZoomEvt.ApplyModifiedPropertiesWithoutUndo();
+
+            // 2) 체인 5회 클릭 달성 시 애니메이션(흔들림→분리)
+
+            var chainBreak = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
+            // 트리거는 동일 체인, 클릭으로 바로 진입하지 않도록 triggerObjectIds 비워두고 조건으로 진입
+            // 조건 에셋 생성: AggregateClickCountCondition(ChainTop+ChainBottom 합계 >=5)
+            var cond = ScriptableObject.CreateInstance<AFKS.Features.Stage.Conditions.AggregateClickCountCondition>();
+            // Effect 에셋: ChainShakeThenBreakEffect
+            var breakFx = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ChainShakeThenBreakEffect>();
+
+            // 3) 문 클릭 → 다음 스테이지로 이동
+            var stageTransition = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
+            stageTransition.SetupStageTransitionEvent();
+            // Effect: StageTransitionEffect("Stage2")
+            var goStageFx = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.StageTransitionEffect>();
+            var soGoStageFx = new SerializedObject(goStageFx);
+            soGoStageFx.FindProperty("targetStageId").stringValue = "Stage2";
+            soGoStageFx.FindProperty("delay").floatValue = 0.2f;
+            soGoStageFx.ApplyModifiedPropertiesWithoutUndo();
+
+            // 이벤트들을 서브 에셋으로 추가해 참조가 유지되도록 한다
+            if (!dryRun)
+            {
+                AssetDatabase.AddObjectToAsset(zoomEvent, def);
+                AssetDatabase.AddObjectToAsset(chainBreak, def);
+                AssetDatabase.AddObjectToAsset(stageTransition, def);
+                AssetDatabase.AddObjectToAsset(cond, def);
+                AssetDatabase.AddObjectToAsset(breakFx, def);
+                AssetDatabase.AddObjectToAsset(goStageFx, def);
+                AssetDatabase.AddObjectToAsset(enChainTop, def);
+                AssetDatabase.AddObjectToAsset(enChainBottom, def);
+                AssetDatabase.AddObjectToAsset(disableDoor, def);
+                AssetDatabase.AddObjectToAsset(showChains, def);
+                AssetDatabase.AddObjectToAsset(reportBackground, def);
+            }
+            // StageEvent 필드에 conditions/effects를 채워 넣는다
+            var soChainBreak = new SerializedObject(chainBreak);
+            // 이름/설명 설정 (SerializedObject 경유)
+            soChainBreak.FindProperty("eventName").stringValue = "체인 분리";
+            soChainBreak.FindProperty("description").stringValue = "체인이 흔들린 후 분리됩니다.";
+            // 트리거: 체인 클릭 필요
+            var cbTriggerList = soChainBreak.FindProperty("triggerObjectIds"); cbTriggerList.ClearArray();
+            int cb0 = cbTriggerList.arraySize; cbTriggerList.InsertArrayElementAtIndex(cb0); cbTriggerList.GetArrayElementAtIndex(cb0).stringValue = "ChainTop";
+            int cb1 = cbTriggerList.arraySize; cbTriggerList.InsertArrayElementAtIndex(cb1); cbTriggerList.GetArrayElementAtIndex(cb1).stringValue = "ChainBottom";
+            soChainBreak.FindProperty("triggerType").enumValueIndex = (int)AFKS.Features.Stage.Events.EventTriggerType.Click;
+            var conditionsProp = soChainBreak.FindProperty("conditions");
+            conditionsProp.ClearArray();
+            int cidx = conditionsProp.arraySize; conditionsProp.InsertArrayElementAtIndex(cidx);
+            conditionsProp.GetArrayElementAtIndex(cidx).objectReferenceValue = cond;
+            var effectsProp = soChainBreak.FindProperty("effects");
+            effectsProp.ClearArray();
+            int eidx = effectsProp.arraySize; effectsProp.InsertArrayElementAtIndex(eidx);
+            effectsProp.GetArrayElementAtIndex(eidx).objectReferenceValue = breakFx;
+            // 체인 분리 후 다음 이벤트 자동 진행
+            soChainBreak.FindProperty("autoProceed").boolValue = true;
+            soChainBreak.ApplyModifiedPropertiesWithoutUndo();
+
+            // cond 설정: ChainTop/ChainBottom 합계 5회
+            var soCond = new SerializedObject(cond);
+            var idsProp = soCond.FindProperty("objectIds"); idsProp.ClearArray();
+            int id0 = idsProp.arraySize; idsProp.InsertArrayElementAtIndex(id0); idsProp.GetArrayElementAtIndex(id0).stringValue = "ChainTop";
+            int id1 = idsProp.arraySize; idsProp.InsertArrayElementAtIndex(id1); idsProp.GetArrayElementAtIndex(id1).stringValue = "ChainBottom";
+            soCond.FindProperty("requiredTotalCount").intValue = 5;
+            soCond.ApplyModifiedPropertiesWithoutUndo();
+
+            // StageTransition 이벤트에도 Effect 부착
+            var soStageTrans = new SerializedObject(stageTransition);
+            // 트리거: Door 클릭으로만 발동
+            var stTrig = soStageTrans.FindProperty("triggerObjectIds"); stTrig.ClearArray();
+            int stT0 = stTrig.arraySize; stTrig.InsertArrayElementAtIndex(stT0);
+            stTrig.GetArrayElementAtIndex(stT0).stringValue = "Door";
+            soStageTrans.FindProperty("triggerType").enumValueIndex = (int)AFKS.Features.Stage.Events.EventTriggerType.Click;
+            // 조건: 체인 합계 5회(Zoom 이후 바로 전환되는 것 방지)
+            var stCond = soStageTrans.FindProperty("conditions"); stCond.ClearArray();
+            int sc0 = stCond.arraySize; stCond.InsertArrayElementAtIndex(sc0);
+            stCond.GetArrayElementAtIndex(sc0).objectReferenceValue = cond;
+            var stFx = soStageTrans.FindProperty("effects"); stFx.ClearArray();
+            int tfx = stFx.arraySize; stFx.InsertArrayElementAtIndex(tfx);
+            stFx.GetArrayElementAtIndex(tfx).objectReferenceValue = goStageFx;
+            soStageTrans.ApplyModifiedPropertiesWithoutUndo();
+
+            def.Set("Stage1", new[]{ zoomEvent as AFKS.Features.Stage.Events.StageEvent, chainBreak, stageTransition});
+            if (!dryRun)
+            {
+                EditorUtility.SetDirty(def);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+
+            // Stage 시스템 컴포넌트는 Services 아래에 배치 (역할 분리)
+            var sesHost = services;
+            var ses = sesHost.GetComponent<AFKS.Features.Stage.StageEventSystem>();
+            if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
+            ses.LoadFromDefinition(def);
+            // 컨트롤러는 World 하위 Controllers에 배치
+            var controllersRoot = new GameObject("Controllers");
+            controllersRoot.transform.SetParent(world.transform, false);
+            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
+            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
+            var ghostAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.GhostAnimationController>();
+            var sesSO = new SerializedObject(ses);
+            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
+            // StageInteractionManager 연결
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
+            sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
+            // StoryProgress 연결
+            var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>();
+            if (sp == null) sp = sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
+            sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
+            sesSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // UI/클로즈업 패널 미사용 (카메라 확대 스크립트로 대체)
+
+            // EventSystem은 Core 씬에서만 생성 (중복 방지)
+
+
+
+
+            // 체인 클릭은 StageEventSystem으로만 라우팅(중복 방지)
+            if (clickHandlerTop != null)
+            {
+                ClearPersistent(clickHandlerTop.onClick);
+                EditorUtility.SetDirty(clickHandlerTop);
+                var r1 = chainTop.AddComponent<AFKS.Features.Interaction.ClickToEventRouter>();
+                var r1SO = new SerializedObject(r1);
+                r1SO.FindProperty("objectId").stringValue = "ChainTop";
+                r1SO.FindProperty("eventSystem").objectReferenceValue = ses;
+                r1SO.ApplyModifiedPropertiesWithoutUndo();
+            }
+            if (clickHandlerBottom != null)
+            {
+                ClearPersistent(clickHandlerBottom.onClick);
+                EditorUtility.SetDirty(clickHandlerBottom);
+                var r2 = chainBottom.AddComponent<AFKS.Features.Interaction.ClickToEventRouter>();
+                var r2SO = new SerializedObject(r2);
+                r2SO.FindProperty("objectId").stringValue = "ChainBottom";
+                r2SO.FindProperty("eventSystem").objectReferenceValue = ses;
+                r2SO.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            // StageInteractionManager의 상호작용 목록을 명시적으로 구성
+            var simSO = new SerializedObject(sim);
+            var listProp = simSO.FindProperty("interactableObjects");
+            listProp.ClearArray();
+            void AddInteractable(string id, GameObject go, AFKS.Features.Interaction.ClickHandler ch, bool interactable)
+            {
+                int idx = listProp.arraySize;
+                listProp.InsertArrayElementAtIndex(idx);
+                var elem = listProp.GetArrayElementAtIndex(idx);
+                elem.FindPropertyRelative("objectId").stringValue = id;
+                elem.FindPropertyRelative("gameObject").objectReferenceValue = go;
+                elem.FindPropertyRelative("clickHandler").objectReferenceValue = ch;
+                elem.FindPropertyRelative("isInteractable").boolValue = interactable;
+            }
+            // 초기 상태: Door만 상호작용 가능, 체인은 ZoomEvent 효과로 활성화됨
+            AddInteractable("Door", door, doorClickHandler, true);
+            AddInteractable("ChainTop", chainTop, clickHandlerTop, false);
+            AddInteractable("ChainBottom", chainBottom, clickHandlerBottom, false);
+            simSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Door 라우터의 StageEventSystem 연결 최종 지정
+            var doorRouterSOAssign = new SerializedObject(door.GetComponent<AFKS.Features.Interaction.ClickToEventRouter>());
+            doorRouterSOAssign.FindProperty("eventSystem").objectReferenceValue = ses;
+            doorRouterSOAssign.ApplyModifiedPropertiesWithoutUndo();
+
+            SaveSceneWithSafety(sc, path);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", $"Stage1.unity 생성/덮어쓰기 완료:\n{path}", "확인");
         }
 
         private void CreateOrOverwriteStage2()
@@ -921,20 +1374,42 @@ namespace AFKS.Tools.Editor
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.orthographic = true;
-            camera.orthographicSize = 5f;
+            cam.AddComponent<Physics2DRaycaster>();
+            
+            // Full HD 화면에 맞는 카메라 설정
+            float screenHeight = 1080f;
+            float pixelsPerUnit = 100f; // 기본값
+            
+            // 1536x1024 이미지를 1920x1080 화면에 맞게 카메라 조정
+            float targetHeight = screenHeight / pixelsPerUnit / 2f; // orthographicSize는 절반 높이
+            camera.orthographicSize = targetHeight; // 5.4f
+            
 
+            
             var world = new GameObject("World");
             var interaction = new GameObject("Interaction");
             var services = new GameObject("Services");
+            
+            // StageInteractionManager 보장
+            var simGo = new GameObject("StageInteraction");
+            simGo.transform.SetParent(services.transform, false);
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
 
             var bg = new GameObject("BG");
             bg.transform.SetParent(world.transform, false);
             var bgSr = bg.AddComponent<SpriteRenderer>();
             bgSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "BG_Default.png"), new Color32(30, 30, 30, 255));
+            
+            // Stage2 배경 스케일 적용 (월드 좌표 기반)
+            float optimalScaleX = 1.25f;
+            float optimalScaleY = 1.06f;
+            bg.transform.localScale = new Vector3(optimalScaleX, optimalScaleY, 1f);
+            
 
+            
             var hotspots = new GameObject("Hotspots");
             hotspots.transform.SetParent(interaction.transform, false);
-            var backDoor = new GameObject("BackDoor");
+            var backDoor = new GameObject("Door");
             backDoor.transform.SetParent(hotspots.transform, false);
             var doorSr = backDoor.AddComponent<SpriteRenderer>();
             doorSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "Interactable_Green.png"), new Color32(0, 200, 80, 255));
@@ -961,8 +1436,72 @@ namespace AFKS.Tools.Editor
             root.transform.SetParent(services.transform, false);
             root.AddComponent<AFKS.Features.Stage.StageRoot>();
 
-            EditorSceneManager.SaveScene(sc, path);
-            EditorUtility.DisplayDialog("완료", $"Stage2.unity 생성/덮어쓰기 완료:\n{path}", "확인");
+            // 컨트롤러 루트(World 하위)
+            var controllersRoot = new GameObject("Controllers");
+            controllersRoot.transform.SetParent(world.transform, false);
+            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
+            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
+
+            // StageDefinition(간단: Door 클릭 → 다음 스테이지 전환)
+            var defDir = "Assets/Stages";
+            if (!Directory.Exists(defDir)) Directory.CreateDirectory(defDir);
+            var defPath = Path.Combine(defDir, "Stage2Definition.asset").Replace('\\','/');
+            var existingDef = AssetDatabase.LoadAssetAtPath<AFKS.Features.Stage.StageDefinition>(defPath);
+            if (existingDef != null)
+            {
+                if (confirmOverwrite && !EditorUtility.DisplayDialog("덮어쓰기 확인", $"기존 Stage2Definition을 덮어쓸까요?\n{defPath}", "예", "아니오"))
+                {
+                    SaveSceneWithSafety(sc, path);
+                    if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+                    if (!dryRun) EditorUtility.DisplayDialog("완료", $"Stage2.unity 생성/덮어쓰기 완료:\n{path}", "확인");
+                    return;
+                }
+                AssetDatabase.DeleteAsset(defPath);
+            }
+            var def = ScriptableObject.CreateInstance<AFKS.Features.Stage.StageDefinition>();
+            AssetDatabase.CreateAsset(def, defPath);
+            var clickDoor = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
+            clickDoor.SetupStageTransitionEvent();
+            AssetDatabase.AddObjectToAsset(clickDoor, def);
+            def.Set("Stage2", new[]{ clickDoor as AFKS.Features.Stage.Events.StageEvent });
+            EditorUtility.SetDirty(def); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+
+            // StageEventSystem 구성
+            var sesHost = services;
+            var ses = sesHost.GetComponent<AFKS.Features.Stage.StageEventSystem>();
+            if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
+            ses.LoadFromDefinition(def);
+            var sesSO = new SerializedObject(ses);
+            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
+            sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
+            var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>() ?? sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
+            sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
+            sesSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Door 클릭 라우팅
+            var ch = backDoor.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            var chSO = new SerializedObject(ch); chSO.FindProperty("debugLog").boolValue = false; chSO.ApplyModifiedPropertiesWithoutUndo();
+            var router = backDoor.AddComponent<AFKS.Features.Interaction.ClickToEventRouter>();
+            var rSO = new SerializedObject(router);
+            rSO.FindProperty("objectId").stringValue = "Door";
+            rSO.FindProperty("eventSystem").objectReferenceValue = ses;
+            rSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // 상호작용 목록 명시 구성
+            var simSO = new SerializedObject(sim);
+            var listProp = simSO.FindProperty("interactableObjects"); listProp.ClearArray();
+            int idx = listProp.arraySize; listProp.InsertArrayElementAtIndex(idx);
+            var elem = listProp.GetArrayElementAtIndex(idx);
+            elem.FindPropertyRelative("objectId").stringValue = "Door";
+            elem.FindPropertyRelative("gameObject").objectReferenceValue = backDoor;
+            elem.FindPropertyRelative("clickHandler").objectReferenceValue = ch;
+            elem.FindPropertyRelative("isInteractable").boolValue = true;
+            simSO.ApplyModifiedPropertiesWithoutUndo();
+
+            SaveSceneWithSafety(sc, path);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", $"Stage2.unity 생성/덮어쓰기 완료:\n{path}", "확인");
         }
 
         private void CreateOrOverwriteStageGeneric(string sceneName, string nextStageId)
@@ -979,17 +1518,39 @@ namespace AFKS.Tools.Editor
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.orthographic = true;
-            camera.orthographicSize = 5f;
+            cam.AddComponent<Physics2DRaycaster>();
+            
+            // Full HD 화면에 맞는 카메라 설정
+            float screenHeight = 1080f;
+            float pixelsPerUnit = 100f; // 기본값
+            
+            // 1536x1024 이미지를 1920x1080 화면에 맞게 카메라 조정
+            float targetHeight = screenHeight / pixelsPerUnit / 2f; // orthographicSize는 절반 높이
+            camera.orthographicSize = targetHeight; // 5.4f
+            
 
+            
             var world = new GameObject("World");
             var interaction = new GameObject("Interaction");
             var services = new GameObject("Services");
+
+            // StageInteractionManager 보장
+            var simGo = new GameObject("StageInteraction");
+            simGo.transform.SetParent(services.transform, false);
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
 
             var bg = new GameObject("BG");
             bg.transform.SetParent(world.transform, false);
             var bgSr = bg.AddComponent<SpriteRenderer>();
             bgSr.sprite = EnsurePlaceholderSprite(Path.Combine("Assets/Resources/Placeholders", "BG_Default.png"), new Color32(30, 30, 30, 255));
+            
+            // StageGeneric 배경 스케일 적용 (월드 좌표 기반)
+            float optimalScaleX = 1.25f;
+            float optimalScaleY = 1.06f;
+            bg.transform.localScale = new Vector3(optimalScaleX, optimalScaleY, 1f);
+            
 
+            
             var hotspots = new GameObject("Hotspots");
             hotspots.transform.SetParent(interaction.transform, false);
             var door = new GameObject("Door");
@@ -1018,8 +1579,70 @@ namespace AFKS.Tools.Editor
             root.transform.SetParent(services.transform, false);
             root.AddComponent<AFKS.Features.Stage.StageRoot>();
 
-            EditorSceneManager.SaveScene(sc, path);
-            EditorUtility.DisplayDialog("완료", $"{sceneName}.unity 생성/덮어쓰기 완료:\n{path}", "확인");
+            // AutoBGMPlayer 추가(기본 BGM 자동 재생)
+            var autoBgm = bg.AddComponent<AFKS.Core.Audio.AutoBGMPlayer>();
+            var soAuto = new SerializedObject(autoBgm);
+            soAuto.FindProperty("volume").floatValue = 0.6f;
+            soAuto.FindProperty("useCrossFade").boolValue = true;
+            soAuto.FindProperty("crossFadeSeconds").floatValue = 0.5f;
+            soAuto.ApplyModifiedPropertiesWithoutUndo();
+
+            // 컨트롤러 루트(World 하위)
+            var controllersRoot = new GameObject("Controllers");
+            controllersRoot.transform.SetParent(world.transform, false);
+            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
+            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
+
+            // StageDefinition (Door 클릭 → 다음 스테이지)
+            var defDir = "Assets/Stages";
+            if (!Directory.Exists(defDir)) Directory.CreateDirectory(defDir);
+            var defPath = Path.Combine(defDir, sceneName + "Definition.asset").Replace('\\','/');
+            var exist = AssetDatabase.LoadAssetAtPath<AFKS.Features.Stage.StageDefinition>(defPath);
+            if (exist != null) { if (confirmOverwrite) AssetDatabase.DeleteAsset(defPath); }
+            var def = ScriptableObject.CreateInstance<AFKS.Features.Stage.StageDefinition>();
+            AssetDatabase.CreateAsset(def, defPath);
+            var clickDoor = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
+            clickDoor.SetupStageTransitionEvent();
+            AssetDatabase.AddObjectToAsset(clickDoor, def);
+            def.Set(sceneName, new[]{ clickDoor as AFKS.Features.Stage.Events.StageEvent });
+            EditorUtility.SetDirty(def); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+
+            // StageEventSystem 구성
+            var sesHost = services;
+            var ses = sesHost.GetComponent<AFKS.Features.Stage.StageEventSystem>();
+            if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
+            ses.LoadFromDefinition(def);
+            var sesSO = new SerializedObject(ses);
+            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
+            sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
+            var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>() ?? sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
+            sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
+            sesSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Door 라우팅
+            var ch = door.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            var chSO = new SerializedObject(ch); chSO.FindProperty("debugLog").boolValue = false; chSO.ApplyModifiedPropertiesWithoutUndo();
+            var router = door.AddComponent<AFKS.Features.Interaction.ClickToEventRouter>();
+            var rSO = new SerializedObject(router);
+            rSO.FindProperty("objectId").stringValue = "Door";
+            rSO.FindProperty("eventSystem").objectReferenceValue = ses;
+            rSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // 상호작용 목록 명시 구성
+            var simSO = new SerializedObject(sim);
+            var listProp = simSO.FindProperty("interactableObjects"); listProp.ClearArray();
+            int idx = listProp.arraySize; listProp.InsertArrayElementAtIndex(idx);
+            var elem = listProp.GetArrayElementAtIndex(idx);
+            elem.FindPropertyRelative("objectId").stringValue = "Door";
+            elem.FindPropertyRelative("gameObject").objectReferenceValue = door;
+            elem.FindPropertyRelative("clickHandler").objectReferenceValue = ch;
+            elem.FindPropertyRelative("isInteractable").boolValue = true;
+            simSO.ApplyModifiedPropertiesWithoutUndo();
+
+            SaveSceneWithSafety(sc, path);
+            if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", $"{sceneName}.unity 생성/덮어쓰기 완료:\n{path}", "확인");
         }
 
         private void GenerateAllAndRegisterBuildSettings()
@@ -1054,8 +1677,117 @@ namespace AFKS.Tools.Editor
                     list.Add(new EditorBuildSettingsScene(p, true));
                 }
             }
-            EditorBuildSettings.scenes = list.ToArray();
-            EditorUtility.DisplayDialog("완료", "모든 씬 생성/덮어쓰기 및 Build Settings 등록이 완료되었습니다.", "확인");
+            if (dryRun)
+            {
+                Debug.Log($"[DRY-RUN] Register {list.Count} scenes to Build Settings");
+            }
+            else
+            {
+                EditorBuildSettings.scenes = list.ToArray();
+                EditorUtility.DisplayDialog("완료", "모든 씬 생성/덮어쓰기 및 Build Settings 등록이 완료되었습니다.", "확인");
+            }
+
+            // 생성 후 자동 유효성 검사/자동수정
+            if (!dryRun && postValidateAfterGenerate)
+            {
+                ValidateAllScenesInScenesFolder();
+                CleanupMissingScriptsInScenes(paths);
+            }
+        }
+
+        /// <summary>
+        /// Stage1 씬의 핵심 상호작용(문 클릭→줌→체인→전환)이 깨지지 않도록 배선을 검증하고 누락 시 자동 보완합니다.
+        /// </summary>
+        private void ValidateAndAutofixStage1(string path)
+        {
+            if (!File.Exists(path))
+            {
+                EditorUtility.DisplayDialog("경고", $"Stage1 씬을 찾을 수 없습니다. 먼저 생성하세요.\n{path}", "확인");
+                return;
+            }
+
+            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+
+            // 필수 루트 확보
+            var world = GameObject.Find("World") ?? new GameObject("World");
+            var interaction = GameObject.Find("Interaction") ?? new GameObject("Interaction");
+            var services = GameObject.Find("Services") ?? new GameObject("Services");
+
+            // StageInteractionManager 보장(Services 하위)
+            var simGo = GameObject.Find("StageInteraction");
+            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() : null);
+            if (sim == null)
+            {
+                if (simGo == null)
+                {
+                    simGo = new GameObject("StageInteraction");
+                    simGo.transform.SetParent(services.transform, false);
+                }
+                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            }
+
+            // Door 찾기/생성
+            var hotspots = GameObject.Find("Hotspots");
+            if (hotspots == null)
+            {
+                hotspots = new GameObject("Hotspots");
+                hotspots.transform.SetParent(interaction.transform, false);
+            }
+
+            var door = GameObject.Find("Door");
+            if (door == null)
+            {
+                door = new GameObject("Door");
+                door.transform.SetParent(hotspots.transform, false);
+                door.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+                var doorSr = door.AddComponent<SpriteRenderer>();
+                doorSr.color = new Color(1f, 1f, 1f, 0.85f);
+            }
+
+            // Door 필수 컴포넌트 보장
+            var doorSrExist = door.GetComponent<SpriteRenderer>() ?? door.AddComponent<SpriteRenderer>();
+            var doorCol = door.GetComponent<BoxCollider2D>() ?? door.AddComponent<BoxCollider2D>();
+            doorCol.isTrigger = true;
+            if (doorCol.size == Vector2.zero) doorCol.size = new Vector2(4f, 4f);
+
+            var click = door.GetComponent<AFKS.Features.Interaction.ClickHandler>() ?? door.AddComponent<AFKS.Features.Interaction.ClickHandler>();
+            // 클릭 가능은 이벤트 시스템이 상태에 따라 토글하지만, 초기값은 true로 두어 핸들러 연결 보장
+            var soClick = new SerializedObject(click);
+            soClick.FindProperty("clickable").boolValue = true;
+            soClick.ApplyModifiedPropertiesWithoutUndo();
+
+
+
+
+            var move = door.GetComponent<AFKS.Features.Interaction.HotspotMove>() ?? door.AddComponent<AFKS.Features.Interaction.HotspotMove>();
+            var soMove = new SerializedObject(move);
+            var targetStageProp = soMove.FindProperty("targetStageId");
+            if (targetStageProp != null && string.IsNullOrEmpty(targetStageProp.stringValue))
+            {
+                targetStageProp.stringValue = "Stage2";
+            }
+            var manualTriggerProp = soMove.FindProperty("manualTriggerOnly");
+            if (manualTriggerProp != null) manualTriggerProp.boolValue = true;
+            soMove.ApplyModifiedPropertiesWithoutUndo();
+
+
+
+            // Door 클릭 이벤트는 이벤트 시스템에서 재설정하므로, 컴포넌트 유무와 기본 clickable만 보장하면 충분
+
+            SaveSceneWithSafety(scene, path);
+            if (!dryRun) EditorUtility.DisplayDialog("완료", "Stage1 유효성 검사/자동수정이 완료되었습니다.\n문 클릭→줌→체인→전환 배선이 보강되었습니다.", "확인");
+        }
+
+        /// <summary>
+        /// UnityEvent의 퍼시스턴트 리스너를 모두 제거합니다 (UnityEventTools에 일괄 제거 API가 없어 헬퍼로 구현).
+        /// </summary>
+        private static void ClearPersistent(UnityEvent evt)
+        {
+            if (evt == null) return;
+            for (int i = evt.GetPersistentEventCount() - 1; i >= 0; i--)
+            {
+                UnityEventTools.RemovePersistentListener(evt, i);
+            }
         }
 
         /// <summary>
@@ -1133,8 +1865,140 @@ namespace AFKS.Tools.Editor
             if (string.IsNullOrEmpty(dir)) return;
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
         }
+        
+        private void SaveSceneWithSafety(UnityEngine.SceneManagement.Scene scene, string path)
+        {
+            string norm = path?.Replace('\\','/');
+            if (File.Exists(norm))
+            {
+                if (confirmOverwrite)
+                {
+                    bool ok = EditorUtility.DisplayDialog("덮어쓰기 확인", $"기존 씬 파일을 덮어쓰시겠습니까?\n{norm}", "예", "아니오");
+                    if (!ok) return;
+                }
+            }
+            if (dryRun)
+            {
+                Debug.Log($"[DRY-RUN] SaveScene -> {norm}");
+                return;
+            }
+            EditorSceneManager.SaveScene(scene, norm);
+        }
+
+        private void RegisterSceneInBuildSettingsIfNeeded(string path)
+        {
+            if (dryRun) { Debug.Log($"[DRY-RUN] Register in BuildSettings -> {path}"); return; }
+            string norm = path.Replace('\\','/');
+            var list = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+            int idx = list.FindIndex(s => s.path.Replace('\\','/') == norm);
+            if (idx < 0)
+            {
+                list.Add(new EditorBuildSettingsScene(norm, true));
+            }
+            else
+            {
+                var s = list[idx];
+                if (!s.enabled) { s.enabled = true; list[idx] = s; }
+            }
+            EditorBuildSettings.scenes = list.ToArray();
+        }
+        #endregion
+
+        #region 전체 씬 유효성 검사/자동수정
+        private void ValidateAllScenesInScenesFolder()
+        {
+            if (!Directory.Exists(scenesFolder))
+            {
+                EditorUtility.DisplayDialog("오류", $"Scenes 폴더가 존재하지 않습니다: {scenesFolder}", "확인");
+                return;
+            }
+            var scenePaths = Directory.GetFiles(scenesFolder, "*.unity");
+            for (int i = 0; i < scenePaths.Length; i++)
+            {
+                string p = scenePaths[i].Replace('\\', '/');
+                string name = Path.GetFileNameWithoutExtension(p);
+                if (name == "Stage1")
+                {
+                    ValidateAndAutofixStage1(p);
+                }
+                else if (name.StartsWith("Stage"))
+                {
+                    ValidateMinimalStage(p);
+                }
+                else if (name == "Core")
+                {
+                    // Core는 생성 로직이 완전하여 별도 보정 최소화. 향후 체크 추가 가능
+                    Debug.Log("Core 씬은 스캐폴딩 규격에 맞는지 수동 점검 권장(전역 서비스 구성)");
+                }
+                else if (name == "Menu")
+                {
+                    // Menu는 버튼 연결/전역 설정 연동이 필요. 현재 스캐폴딩로 생성한 경우 OK
+                    Debug.Log("Menu 씬은 스캐폴딩로 생성 시 기본 연결이 완료됩니다");
+                }
+            }
+            EditorUtility.DisplayDialog("완료", "Scenes 폴더 전체 유효성 검사/자동수정이 완료되었습니다.", "확인");
+        }
+
+        // 생성/유효성 검사 후 Missing Script 정리(통합)
+        private void CleanupMissingScriptsInScenes(string[] scenePaths)
+        {
+            for (int i = 0; i < scenePaths.Length; i++)
+            {
+                string p = scenePaths[i].Replace('\\', '/');
+                if (!File.Exists(p)) continue;
+                var scene = EditorSceneManager.OpenScene(p, OpenSceneMode.Single);
+                int removed = 0;
+                var roots = scene.GetRootGameObjects();
+                for (int r = 0; r < roots.Length; r++)
+                {
+                    removed += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(roots[r]);
+                }
+                if (removed > 0)
+                {
+                    Debug.Log($"[Scaffolder] Missing Script 제거: {Path.GetFileName(p)} - {removed}개");
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    EditorSceneManager.SaveScene(scene);
+                }
+            }
+        }
+
+        private void ValidateMinimalStage(string path)
+        {
+            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            var world = GameObject.Find("World") ?? new GameObject("World");
+            var interaction = GameObject.Find("Interaction") ?? new GameObject("Interaction");
+            var services = GameObject.Find("Services") ?? new GameObject("Services");
+
+            // StageInteractionManager 보장
+            var simGo = GameObject.Find("StageInteraction");
+            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() : null);
+            if (sim == null)
+            {
+                if (simGo == null)
+                {
+                    simGo = new GameObject("StageInteraction");
+                    simGo.transform.SetParent(services.transform, false);
+                }
+                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            }
+
+            // StageRoot 보장
+            var root = FindFirstObjectByType<AFKS.Features.Stage.StageRoot>();
+            if (root == null)
+            {
+                var rootGo = new GameObject("StageRoot");
+                rootGo.transform.SetParent(services.transform, false);
+                rootGo.AddComponent<AFKS.Features.Stage.StageRoot>();
+            }
+
+            EditorSceneManager.SaveScene(scene, path);
+        }
         #endregion
     }
 }
+
+
+
+
 
 

@@ -5,15 +5,22 @@ Purpose: 병원 앞(체인 해금→문 열림→Stage2). 월드 스프라이트
 1) 하이라키어 최종 구조도(월드 모드)
 - World_Empty(-)
   - BG_2D/Sprite(SpriteRenderer, Stage1Controller)
+  - Controllers_Empty(-)
+    - StageAnimationController_Empty(StageAnimationController)
+    - ObjectAnimationController_Empty(ObjectAnimationController)
+    - GhostAnimationController_Empty(GhostAnimationController)
 - Interaction_Empty(-)
   - Hotspots_Empty(-)
-    - Chain_Empty(BoxCollider2D, ChainController)
-    - Door_Empty(HotspotMove, BoxCollider2D)
+    - ChainTop_2D/Sprite(SpriteRenderer, BoxCollider2D, ClickHandler, ChainController, ChainAnimationController)
+    - ChainBottom_2D/Sprite(SpriteRenderer, BoxCollider2D, ClickHandler, ChainController, ChainAnimationController)
+    - Door_2D/Sprite(SpriteRenderer, BoxCollider2D, ClickHandler, ClickToEventRouter, HotspotMove, CameraZoomEffect)
 - Services_Empty(-)
   - StageRoot_Empty(StageRoot)
+  - StageInteraction_Empty(StageInteractionManager)
+  - StageEventSystem_Empty(StageEventSystem)
+  - StoryProgress_Empty(StoryProgress)
 - UI_Empty(-)
-  - MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
-    - CloseupPanel_UI/Image(Image, CloseupViewer)
+  - (옵션) MainCanvas_UI/Canvas(Canvas, CanvasScaler, GraphicRaycaster)
 - EventSystem_UI/Event System(-)
 
 2) 하이라키어 제작 절차(월드 모드)
@@ -59,23 +66,24 @@ Purpose: 병원 앞(체인 해금→문 열림→Stage2). 월드 스프라이트
   - Sprite = StageBG_1_1 (기본 상태)
   - Order in Layer = 0
 - BG(Stage1Controller)
-  - 기본 배경 = StageBG_1_1
-  - 해금 배경 = StageBG_1_2
-  - 체인 오버레이 = Chain_Empty
-  - 문 핫스팟 = Door_Empty
-- Chain(BoxCollider2D)
-  - Size = 체인 영역 (예: 2, 1)
-  - Is Trigger = On
-- Chain(ChainController)
-  - 클릭 횟수 = 3
-  - 해금 시 배경 교체 = On
-  - 체인 제거 = On
+  - defaultBackground = StageBG_1_1
+  - unlockedBackground = StageBG_1_2(옵션)
+- ChainTop/ChainBottom(SpriteRenderer)
+  - sortingOrder = 1, color = White
+- ChainTop/ChainBottom(BoxCollider2D)
+  - Size = (예: Top 1.4×0.3, Bottom 1.4×0.6), Is Trigger=On
+- ChainTop/ChainBottom(ClickHandler)
+  - clickable = false(초기, 줌 후 EnableInteractableEffect로 true)
+- ChainTop/ChainBottom(ChainAnimationController)
+  - shakeDuration=0.25, shakeIntensity=0.05, breakDuration=1.0, breakFallDistance=0.8
 - Door(BoxCollider2D)
-  - Size = 문 영역 (예: 3, 2)
-  - Is Trigger = On
+  - Size = (예: 4, 4), Is Trigger=On
+- Door(ClickToEventRouter)
+  - objectId = "Door"
+- Door(CameraZoomEffect)
+  - zoomDuration=1.5, targetOrthographicSize=3.0, targetPosition=(0,-1,-10)
 - Door(HotspotMove)
-  - 목표 스테이지 ID = Stage2
-  - 디버그 로그 = Off
+  - targetStageId = "Stage2", manualTriggerOnly = On
 - MainCanvas(Canvas)
   - Render Mode = Screen Space - Overlay
   - Sort Order = 0
@@ -89,19 +97,31 @@ Purpose: 병원 앞(체인 해금→문 열림→Stage2). 월드 스프라이트
   - Raycast Target = Off
 
 4) Components & Wiring
-- Chain(ChainController).OnChainUnlocked → BG(Stage1Controller).UnlockStage
-- Chain(ChainController).OnChainUnlocked → Door(BoxCollider2D).enabled = true
-- Chain(ChainController).OnChainUnlocked → Chain(BoxCollider2D).enabled = false
-- Door(HotspotMove).OnClick → Stage2 전환
-- StageRoot.OnStageActivated → BG(Stage1Controller).InitializeStage
+- 라우팅: ClickHandler → ClickToEventRouter → StageEventSystem.OnObjectClicked(objectId)
+- StageEventSystem
+  - LoadFromDefinition(Stage1Definition)
+  - Execute 완료 시 StageEvent.ApplyEffects(system)
+  - 유틸: GetClickCount/DoesClickHistoryMatch/SetObjectInteractable
+- StageDefinition(Stage1Definition)
+  - Event[0] ZoomEvent
+    - trigger: Click on "Door"
+    - effects: EnableInteractable("ChainTop", true), EnableInteractable("ChainBottom", true)
+  - Event[1] ClickEvent "체인 분리"
+    - trigger: Click on "ChainTop","ChainBottom"
+    - conditions: AggregateClickCount(["ChainTop","ChainBottom"], >=5)
+    - effects: ChainShakeThenBreakEffect, autoProceed=true
+  - Event[2] ClickEvent "문 클릭 → 다음 스테이지"
+    - trigger: Click on "Door"
+    - conditions: AggregateClickCount(["ChainTop","ChainBottom"], >=5)
+    - effects: StageTransitionEffect("Stage2")
 
 5) Build Settings
 - 순서: 1) Core  2) MainMenu  3) Stage1  4) Stage2
 
 6) Tests
-- 체인 클릭 → 흔들림 애니메이션 → 3회 클릭 시 해금
-- 체인 해금 → 배경 1_2로 교체 + 체인 제거 + 문 활성화
-- 문 클릭 → Stage2 전환 OK, 연타 시 1회만 동작
+- Door 클릭 → ZoomEvent 실행(카메라 확대) → 체인 인터랙션 활성화
+- 체인 합계 5회 클릭, 5번째 클릭 시 체인 흔들림→분리 애니메이션
+- 이후 Door 클릭 → Stage2 전환(Fade/입력락 정상)
 
 7) 체크리스트
 - [ ] BG 스프라이트 적용 및 카메라 프레이밍 확인

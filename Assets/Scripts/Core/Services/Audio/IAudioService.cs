@@ -11,7 +11,8 @@ namespace AFKS.Core.Services.Audio
         void PlayBGM(AudioClip clip, float volume = 1f, bool loop = true);
         IEnumerator CrossFadeBGMAsync(AudioClip nextClip, float seconds = 0.5f, float nextVolume = 1f, bool loop = true);
         void PlaySFX(AudioClip clip, float volume = 1f);
-        void SetVolume(float master = 1f, float bgm = 1f, float sfx = 1f);
+        void SetVolume(float master = 1f, float bgm = 1f, float sfx = 1f, float ambience = 1f);
+        void StopBGM(float fadeSeconds = 0.3f);
     }
 }
 

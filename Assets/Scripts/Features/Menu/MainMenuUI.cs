@@ -42,59 +42,43 @@ namespace AFKS.Features.Menu
         #region 유니티 수명주기
         private void Awake()
         {
-            Debug.Log("MainMenuUI Awake 시작");
-            
             if (newGameButton != null) 
             {
                 newGameButton.onClick.AddListener(OnClickNewGame);
-                Debug.Log("새 게임 버튼 이벤트 연결됨");
             }
-            else Debug.LogWarning("새 게임 버튼이 null입니다!");
             
             if (continueButton != null) 
             {
                 continueButton.onClick.AddListener(OnClickContinue);
-                Debug.Log("계속하기 버튼 이벤트 연결됨");
             }
-            else Debug.LogWarning("계속하기 버튼이 null입니다!");
             
             if (settingsButton != null) 
             {
                 settingsButton.onClick.AddListener(OnClickSettings);
-                Debug.Log("설정 버튼 이벤트 연결됨");
             }
-            else Debug.LogWarning("설정 버튼이 null입니다!");
             
             if (quitButton != null) 
             {
                 quitButton.onClick.AddListener(OnClickQuit);
-                Debug.Log("종료 버튼 이벤트 연결됨");
             }
-            else Debug.LogWarning("종료 버튼이 null입니다!");
 
             // 설정 패널 초기 상태 설정
             if (settingsPanel != null)
             {
                 settingsPanel.SetActive(false);
-                Debug.Log("설정 패널이 비활성화됨");
             }
-            else Debug.LogWarning("설정 패널이 null입니다!");
 
             // 저장 유무에 따라 '계속하기' 표시/활성 제어
             TrySetupContinueVisibility();
-            
-            Debug.Log("MainMenuUI Awake 완료");
         }
 
-        private void Update()
+        private void OnEnable()
         {
-            // ESC 키는 이제 Core의 GlobalSettingsManager에서 처리됩니다.
-            // 디버그: 다른 키 입력도 확인
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                Debug.Log("스페이스바가 눌렸습니다 - 입력 시스템 작동 확인");
-            }
+            // 씬 재진입/초기화 이후에도 표시 상태 보정
+            TrySetupContinueVisibility();
         }
+
+        // 불필요한 Update 제거: 입력은 Core의 GlobalSettingsManager와 InputService에서 처리됩니다.
 
         private void OnDestroy()
         {
@@ -108,38 +92,40 @@ namespace AFKS.Features.Menu
         #region 이벤트 핸들러
         private void OnClickNewGame()
         {
+            // 새 게임: 진행 데이터 초기화(설정은 유지)
+            if (ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
+            {
+                try { save.ResetProgress(keepSettings: true); }
+                catch (System.Exception e) { Debug.LogWarning($"새 게임 초기화 중 오류: {e.Message}"); }
+            }
             // MVP 단계에서는 바로 Stage_Front로 이동
             GameEvents.RaiseStageChangeRequested(StageIds.Front);
         }
 
         private void OnClickContinue()
         {
-            // SaveService가 있다면 로드 후 저장된 진행으로 이동하도록 확장 여지
+            // 저장된 진행으로 이어하기
+            if (ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save) &&
+                ServiceLocator.TryGet<AFKS.Core.Services.GameState.IGameStateService>(out var gs))
+            {
+                // 로드 실패시에는 기본값으로 Stage1
+                save.TryLoadAll();
+                string target = string.IsNullOrEmpty(gs.CurrentStageId) ? StageIds.Front : gs.CurrentStageId;
+                GameEvents.RaiseStageChangeRequested(target);
+                return;
+            }
             GameEvents.RaiseStageChangeRequested(StageIds.Front);
         }
 
         private void OnClickSettings()
         {
-            // 전역 설정창 열기
+            // 전역 설정창 열기 (없으면 조용히 무시 - Core 씬 이동 금지)
             if (ServiceLocator.TryGet<AFKS.Core.Systems.GlobalSettingsManager>(out var settingsManager))
             {
                 settingsManager.OpenSettings();
+                return;
             }
-            else
-            {
-                // GlobalSettingsManager가 없으면 Core 씬으로 이동하여 설정창 열기
-                Debug.Log("GlobalSettingsManager를 찾을 수 없습니다. Core 씬으로 이동합니다.");
-                
-                // 사용자에게 안내 메시지 표시
-#if UNITY_EDITOR
-                UnityEditor.EditorUtility.DisplayDialog("설정", "설정창을 열기 위해 Core 씬으로 이동합니다.", "확인");
-#else
-                // 런타임에서는 간단한 로그로 대체
-                Debug.Log("설정창을 열기 위해 Core 씬으로 이동합니다.");
-#endif
-                
-                GameEvents.RaiseStageChangeRequested("Core");
-            }
+            Debug.LogWarning("GlobalSettingsManager가 없어 설정창을 열 수 없습니다. Core 씬 이동은 수행하지 않습니다.");
         }
 
         private void OnClickQuit()
@@ -238,25 +224,19 @@ namespace AFKS.Features.Menu
         #region 내부 메서드
         private void TrySetupContinueVisibility()
         {
-            Debug.Log("TrySetupContinueVisibility 시작");
-            
             if (continueButton == null) 
             {
                 Debug.LogWarning("continueButton이 null입니다!");
                 return;
             }
-
-            Debug.Log("저장 서비스 확인 중...");
             
             // 저장 서비스가 등록되어 있으면 이를 사용, 없으면 보수적으로 숨김
             if (ServiceLocator.TryGet<ISaveService>(out var save))
             {
-                Debug.Log("저장 서비스 발견됨");
                 bool hasSave = false;
                 try 
                 { 
                     hasSave = save.HasAnySave(); 
-                    Debug.Log($"저장 데이터 존재 여부: {hasSave}");
                 }
                 catch (System.Exception e) 
                 { 
@@ -266,16 +246,12 @@ namespace AFKS.Features.Menu
 
                 continueButton.gameObject.SetActive(hasSave);
                 continueButton.interactable = hasSave;
-                Debug.Log($"계속하기 버튼 상태: Active={hasSave}, Interactable={hasSave}");
             }
             else
             {
-                Debug.Log("저장 서비스를 찾을 수 없음 - 계속하기 버튼 비활성화");
                 // 저장 시스템 미구현: 계속하기 숨김
                 continueButton.gameObject.SetActive(false);
             }
-            
-            Debug.Log("TrySetupContinueVisibility 완료");
         }
         #endregion
     }

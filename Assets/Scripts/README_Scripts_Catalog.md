@@ -60,6 +60,8 @@
 ### Stage
 - `Features/Stage/StageIds.cs`: 스테이지 식별자 상수 모음.
 - `Features/Stage/StageRoot.cs`: 스테이지 진입/종료 라이프사이클 훅(Initialize/Teardown).
+- `Features/Stage/StageEventSystem.cs`: 데이터 드리븐 이벤트 시퀀스 제어(표준 경로).
+- `Features/Stage/Animations/StageAnimationController.cs`: 체인/귀신/오브젝트 애니메이션 통합. 카메라 줌은 미포함.
 
 ### Items
 - `Features/Items/ItemData.cs`: 아이템 데이터 ScriptableObject(표시명/설명/이미지 포함).
@@ -78,6 +80,8 @@
 - `Features/Interaction/DocumentCloseup.cs`: 문서형 클로즈업 열기/닫기.
 - `Features/Interaction/DoorLocked.cs`: 잠긴 문 상호작용(키 필요/메시지 표시 등).
 - `Features/Interaction/JumpscareTrigger.cs`: 점프스케어 트리거(이벤트 발행/연출 진입점).
+- `Features/Interaction/CameraZoomEffect.cs`: 카메라 줌 표준 컴포넌트(유일 경로). CameraZoomController는 제거됨.
+- `Features/Interaction/ClickHandler.cs` + `ClickToEventRouter.cs`: 클릭→StageEventSystem 라우팅 표준 경로.
 
 ---
 

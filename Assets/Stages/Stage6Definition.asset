@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7994059291488996357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73fc6cc7f99691a4fbfd05444691418d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eventName: "\uC2A4\uD14C\uC774\uC9C0 \uC804\uD658"
+  description: "\uBB38\uC744 \uD074\uB9AD\uD558\uBA74 \uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0\uB85C
+    \uC804\uD658\uB429\uB2C8\uB2E4."
+  autoProceed: 1
+  delayBeforeExecute: 0.2
+  triggerObjectIds:
+  - Door
+  triggerType: 0
+  animations: []
+  interactableObjects:
+  - Door
+  hiddenObjects: []
+  conditions: []
+  effects: []
+  requireSpecificClick: 0
+  requiredClickCount: 1
+  clickCooldown: 0.5
+  hideTriggerObject: 0
+  showNewObjects: 0
+  objectsToShow: []
+  persistClickCount: 0
+  clickCountPersistKey: 
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5dea831855e406b47aaf06ce82c8c409, type: 3}
+  m_Name: Stage6Definition
+  m_EditorClassIdentifier: 
+  stageId: Stage6
+  version: 1
+  events:
+  - {fileID: -7994059291488996357}

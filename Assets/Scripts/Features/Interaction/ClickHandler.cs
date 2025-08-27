@@ -14,7 +14,7 @@ namespace AFKS.Features.Interaction
     {
         [Header("클릭 이벤트")]
         [SerializeField]
-        [InspectorName("클릭 이벤트")] private UnityEvent onClick = new UnityEvent();
+        [InspectorName("클릭 이벤트")] public UnityEvent onClick = new UnityEvent();
         
         [SerializeField]
         [InspectorName("마우스 다운 이벤트")] private UnityEvent onPointerDown = new UnityEvent();
@@ -72,6 +72,11 @@ namespace AFKS.Features.Interaction
         {
             clickable = enabled;
         }
+
+        /// <summary>
+        /// 현재 클릭 가능 여부를 반환합니다.
+        /// </summary>
+        public bool IsClickable => clickable;
 
         /// <summary>
         /// 클릭 이벤트에 리스너를 추가합니다.

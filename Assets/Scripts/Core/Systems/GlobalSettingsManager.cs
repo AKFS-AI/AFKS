@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using AFKS.Core.Services;
 using AFKS.Core.Services.Scene;
 using AFKS.Core.Services.Save;
@@ -30,9 +31,15 @@ namespace AFKS.Core.Systems
         [InspectorName("세이브 초기화 버튼")]
         private Button resetSaveButton;
 
+        [SerializeField]
+        [InspectorName("게임 종료 버튼")]
+        private Button exitGameButton;
+
         private void Awake()
         {
             Debug.Log("GlobalSettingsManager 초기화");
+            // ServiceLocator에 등록하여 어디서든 조회 가능하게 함
+            AFKS.Core.Services.ServiceLocator.Register<GlobalSettingsManager>(this, overwriteExisting: true);
             
             // 설정 패널 초기 상태
             if (settingsPanel != null)
@@ -55,6 +62,16 @@ namespace AFKS.Core.Systems
             {
                 resetSaveButton.onClick.AddListener(ResetSave);
             }
+
+            if (exitGameButton != null)
+            {
+                exitGameButton.onClick.AddListener(ExitGame);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            AFKS.Core.Services.ServiceLocator.Unregister<GlobalSettingsManager>();
         }
 
         private void Update()
@@ -100,6 +117,12 @@ namespace AFKS.Core.Systems
             {
                 settingsPanel.SetActive(false);
                 Debug.Log("전역 설정창이 닫혔습니다");
+                // 오디오 설정을 즉시 저장(슬라이더 값 → 키/서비스 적용)
+                var binder = FindFirstObjectByType<AFKS.Core.UI.AudioSettingsBinder>(FindObjectsInactive.Include);
+                if (binder != null)
+                {
+                    binder.SaveCurrentImmediately();
+                }
             }
         }
 
@@ -113,6 +136,26 @@ namespace AFKS.Core.Systems
             
             // GameEvents를 통해 메뉴로 이동 요청
             GameEvents.RaiseStageChangeRequested("Menu");
+            // 진행 저장은 스테이지 전환 완료 훅(SceneService)에서만 수행. 메뉴 이동 직전에는 저장하지 않음.
+        }
+
+        private void ExitGame()
+        {
+            Debug.Log("게임 종료 요청됨");
+            // 종료 전에 저장 시도(안전)
+            if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
+            {
+                try { save.SaveAll(); }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"설정 종료 전 저장 실패: {e.Message}");
+                }
+            }
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         /// <summary>
@@ -136,19 +179,25 @@ namespace AFKS.Core.Systems
 
             if (shouldReset)
             {
+                // 완전 초기화: 저장소/백업/PlayerPrefs 전체 삭제
                 if (ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var saveService))
                 {
                     saveService.DeleteAll();
-                    Debug.Log("모든 저장 데이터가 삭제되었습니다.");
                 }
-                else
-                {
-                    PlayerPrefs.DeleteAll();
-                    PlayerPrefs.Save();
-                    Debug.Log("PlayerPrefs가 초기화되었습니다.");
-                }
-                
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                Debug.Log("모든 저장 데이터가 삭제되었습니다.");
+
+                // 설정창 닫기 후 코어 씬으로 복귀(싱글 로드)
                 CloseSettings();
+                try
+                {
+                    SceneManager.LoadScene("Core", LoadSceneMode.Single);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"코어 씬 로드 실패: {e.Message}");
+                }
             }
         }
         

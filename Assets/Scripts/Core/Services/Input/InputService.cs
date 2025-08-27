@@ -66,23 +66,16 @@ namespace AFKS.Core.Services.Input
             GameEvents.StageUnloaded -= OnStageUnloaded;
         }
 
-        private void Update()
+        // Update 폴링 제거: Input System 또는 StandaloneInputModule 이벤트에서 호출할 수 있는 공개 메서드 제공
+        public void NotifyPointerPrimaryDown()
         {
             if (IsLocked) return;
-
-            // 클릭 에지 검출 후 UI 위 체크로 할당/비용 최소화
-            bool mouseClicked = UnityEngine.Input.GetMouseButtonDown(0);
-            bool touchClicked = UnityEngine.Input.touchCount > 0 && UnityEngine.Input.GetTouch(0).phase == TouchPhase.Began;
-            if (!(mouseClicked || touchClicked)) return;
-
             if (ignoreClicksWhenPointerOverUI && IsPointerOverUI())
             {
                 if (debugLogging) Debug.Log("[InputService] Click blocked by UI raycast.");
                 return;
             }
-
             Clicked?.Invoke();
-
             if (TryRaycast(out var go))
             {
                 ObjectClicked?.Invoke(go);

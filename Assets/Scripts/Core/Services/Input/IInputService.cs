@@ -29,6 +29,14 @@ namespace AFKS.Core.Services.Input
         /// <summary>좌클릭으로 특정 오브젝트가 클릭되었을 때 발생.</summary>
         event System.Action<GameObject> ObjectClicked;
         #endregion
+
+        #region 통합 입력 훅
+        /// <summary>
+        /// Input System(또는 StandaloneInputModule)에서 PrimaryDown 발생 시 호출하여
+        /// 내부 Clicked/ObjectClicked 이벤트를 발생시킵니다.
+        /// </summary>
+        void NotifyPointerPrimaryDown();
+        #endregion
     }
 }
 

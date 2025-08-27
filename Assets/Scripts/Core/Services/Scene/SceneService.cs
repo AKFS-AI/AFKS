@@ -86,6 +86,11 @@ namespace AFKS.Core.Services.Scene
                 string prevStage = string.IsNullOrEmpty(currentStageId) ? GetActiveStageName() : currentStageId;
                 if (!string.IsNullOrEmpty(targetStageId))
                 {
+                    // 씬 전환 직전, 이전 씬의 배경/환경 사운드를 정리해 누수 방지
+                    if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Audio.IAudioService>(out var audioSvc))
+                    {
+                        audioSvc.StopBGM(0.25f);
+                    }
                     if (debugLog) Log.Info($"[SceneService] LoadAdditive -> {targetStageId}");
                     yield return LoadStageAdditiveAsync(targetStageId, activateOnLoad: true);
                     if (!lastLoadSucceeded)
@@ -108,6 +113,19 @@ namespace AFKS.Core.Services.Scene
                 if (debugLog) Log.Info("[SceneService] FadeIn start");
                 yield return FadeInAsync(defaultFadeSeconds);
                 if (inputService != null) inputService.Lock(false);
+
+                // 전환 완료 시점에 세이브(진행 저장). 메뉴로 이동/메뉴 도착 시에는 스킵
+                if (!string.Equals(currentStageId, "Menu", System.StringComparison.Ordinal))
+                {
+                    if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
+                    {
+                        try { save.SaveAll(); }
+                        catch (System.Exception e)
+                        {
+                            Log.Warn($"[SceneService] 전환 완료 후 저장 실패: {e.Message}");
+                        }
+                    }
+                }
             }
             finally
             {
@@ -183,8 +201,21 @@ namespace AFKS.Core.Services.Scene
             if (scene.IsValid())
             {
                 SceneManager.SetActiveScene(scene);
+                // 진행 상태 업데이트(스테이지 ID 보고)
+                if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.GameState.IGameStateService>(out var gs))
+                {
+                    gs.SetCurrentStage(stageId);
+                }
                 DisableDuplicatedGlobalComponents(scene);
                 InvokeStageInitialize(scene);
+                // 만약 새 씬에 AutoBGMPlayer가 없다면 잔여 BGM을 강제 정지해 메뉴 BGM이 이어지지 않도록 한다
+                if (!SceneContainsComponent<AFKS.Core.Audio.AutoBGMPlayer>(scene))
+                {
+                    if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Audio.IAudioService>(out var audioSvc))
+                    {
+                        audioSvc.StopBGM(0.0f);
+                    }
+                }
                 if (debugLog) Log.Info("[SceneService] Stage activated and initialized");
             }
             yield break;
@@ -291,6 +322,17 @@ namespace AFKS.Core.Services.Scene
                     }
                 }
             }
+        }
+
+        private static bool SceneContainsComponent<T>(UnityEngine.SceneManagement.Scene scene) where T : Component
+        {
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var comps = roots[i].GetComponentsInChildren<T>(true);
+                if (comps != null && comps.Length > 0) return true;
+            }
+            return false;
         }
         #endregion
     }

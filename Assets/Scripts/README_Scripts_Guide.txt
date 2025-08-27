@@ -24,4 +24,8 @@ Version: v1.0
 - try/catch 최소화, 빈 catch 금지
 - 문서(StageHierarchy)와 동기화 유지
 
+6) 상호작용/줌 표준
+- 클릭 라우팅: `ClickHandler` + `ClickToEventRouter` 조합만 사용. 중앙 매니저는 레지스트리/토글 용도.
+- 카메라 줌: `CameraZoomEffect`만 사용. 레거시 `CameraZoomController`는 제거됨.
+
 
