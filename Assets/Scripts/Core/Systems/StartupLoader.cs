@@ -14,7 +14,7 @@ namespace AFKS.Core.Systems
         [SerializeField]
         [InspectorName("초기 스테이지 ID")]
         [Tooltip("게임 시작 시 로드할 스테이지의 ID (예: Stage_Menu, Stage_Front)")]
-        private string initialStageId = StageIds.Menu;
+        private string initialStageId = "Stage_Menu";
 
         [SerializeField]
         [InspectorName("시작 시 자동 로드")]

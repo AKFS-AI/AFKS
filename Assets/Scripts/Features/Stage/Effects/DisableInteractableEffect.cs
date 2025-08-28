@@ -18,14 +18,14 @@ namespace AFKS.Features.Stage.Effects
         {
             if (string.IsNullOrEmpty(objectId))
             {
-                GameDebug.Warn(GameDebug.Category.Event, "DisableInteractableEffect: objectId가 설정되지 않았습니다.");
+                Debug.LogWarning("DisableInteractableEffect: objectId가 설정되지 않았습니다.");
                 return;
             }
             
             var obj = eventSystem.GetObject(objectId);
             if (obj == null)
             {
-                GameDebug.Warn(GameDebug.Category.Event, $"DisableInteractableEffect: {objectId} 오브젝트를 찾을 수 없습니다.");
+                Debug.LogWarning($"DisableInteractableEffect: {objectId} 오브젝트를 찾을 수 없습니다.");
                 return;
             }
             
@@ -36,7 +36,6 @@ namespace AFKS.Features.Stage.Effects
                 if (collider != null)
                 {
                     collider.enabled = false;
-                    GameDebug.Info(GameDebug.Category.Event, $"DisableInteractableEffect: {objectId} Collider 비활성화됨");
                 }
             }
             
@@ -47,18 +46,15 @@ namespace AFKS.Features.Stage.Effects
                 if (clickHandler != null)
                 {
                     clickHandler.SetClickable(false);
-                    GameDebug.Info(GameDebug.Category.Event, $"DisableInteractableEffect: {objectId} ClickHandler 비활성화됨");
                 }
             }
             
-            // StageInteractionManager에도 반영
-            var interactionManager = AFKS.Features.Stage.StageInteractionManager.Instance;
+            // StageInteractionSystem에도 반영
+            var interactionManager = AFKS.Features.Stage.StageInteractionSystem.Instance;
             if (interactionManager != null)
             {
                 interactionManager.SetObjectInteractable(objectId, false);
             }
-            
-            GameDebug.Info(GameDebug.Category.Event, $"DisableInteractableEffect: {objectId} 상호작용 비활성화 완료");
         }
     }
 }

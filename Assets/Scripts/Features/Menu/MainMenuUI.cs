@@ -98,8 +98,8 @@ namespace AFKS.Features.Menu
                 try { save.ResetProgress(keepSettings: true); }
                 catch (System.Exception e) { Debug.LogWarning($"새 게임 초기화 중 오류: {e.Message}"); }
             }
-            // MVP 단계에서는 바로 Stage_Front로 이동
-            GameEvents.RaiseStageChangeRequested(StageIds.Front);
+            // MVP 단계에서는 바로 Stage1로 이동
+            GameEvents.RaiseStageChangeRequested("Stage1");
         }
 
         private void OnClickContinue()
@@ -110,22 +110,22 @@ namespace AFKS.Features.Menu
             {
                 // 로드 실패시에는 기본값으로 Stage1
                 save.TryLoadAll();
-                string target = string.IsNullOrEmpty(gs.CurrentStageId) ? StageIds.Front : gs.CurrentStageId;
+                string target = string.IsNullOrEmpty(gs.CurrentStageId) ? "Stage1" : gs.CurrentStageId;
                 GameEvents.RaiseStageChangeRequested(target);
                 return;
             }
-            GameEvents.RaiseStageChangeRequested(StageIds.Front);
+            GameEvents.RaiseStageChangeRequested("Stage1");
         }
 
         private void OnClickSettings()
         {
             // 전역 설정창 열기 (없으면 조용히 무시 - Core 씬 이동 금지)
-            if (ServiceLocator.TryGet<AFKS.Core.Systems.GlobalSettingsManager>(out var settingsManager))
+            if (ServiceLocator.TryGet<AFKS.Core.Systems.GlobalSettingsService>(out var settingsManager))
             {
                 settingsManager.OpenSettings();
                 return;
             }
-            Debug.LogWarning("GlobalSettingsManager가 없어 설정창을 열 수 없습니다. Core 씬 이동은 수행하지 않습니다.");
+            Debug.LogWarning("GlobalSettingsService가 없어 설정창을 열 수 없습니다. Core 씬 이동은 수행하지 않습니다.");
         }
 
         private void OnClickQuit()

@@ -12,8 +12,6 @@ namespace AFKS.Features.Stage.Effects
     {
         [Header("피드백 설정")]
         [SerializeField] private float shakeDuration = 0.15f;
-        [SerializeField] private float verticalShakeIntensity = 0.0125f; // 위아래 흔들림 (1/4 - 진짜 조금만)
-        [SerializeField] private float horizontalShakeIntensity = 0.025f; // 좌우 흔들림 (절반)
         
         [Header("대상 오브젝트")]
         [SerializeField] private string targetObjectId = ""; // 비어있으면 클릭된 오브젝트에 적용
@@ -63,31 +61,16 @@ namespace AFKS.Features.Stage.Effects
         {
             if (chainObject == null) return;
             
-            // 코루틴으로 흔들림 효과 실행
-            AFKS.Core.Utils.CoroutineRunner.Start(ShakeCoroutine(chainObject));
+            // 실제 흔들림 효과 실행
+            var shakeEffect = chainObject.GetComponent<ChainShakeEffect>();
+            if (shakeEffect == null)
+            {
+                shakeEffect = chainObject.AddComponent<ChainShakeEffect>();
+            }
+            shakeEffect.StartShake(shakeDuration);
         }
         
-        private System.Collections.IEnumerator ShakeCoroutine(GameObject chainObject)
-        {
-            if (chainObject == null) yield break;
-            
-            Vector3 originalPosition = chainObject.transform.localPosition;
-            float elapsed = 0f;
-            
-            while (elapsed < shakeDuration)
-            {
-                // X(좌우)는 절반, Y(위아래)는 진짜 조금만 흔들림
-                float x = originalPosition.x + Random.Range(-horizontalShakeIntensity, horizontalShakeIntensity);
-                float y = originalPosition.y + Random.Range(-verticalShakeIntensity, verticalShakeIntensity);
-                chainObject.transform.localPosition = new Vector3(x, y, originalPosition.z);
-                
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-            
-            // 원래 위치로 복원
-            chainObject.transform.localPosition = originalPosition;
-        }
+
         
 
     }

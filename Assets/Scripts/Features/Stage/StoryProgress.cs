@@ -16,9 +16,13 @@ namespace AFKS.Features.Stage
         [SerializeField] private string currentStage = "";
         [SerializeField] private int totalStages = 6;
         
+        [Header("아이템 수집")]
+        [SerializeField] private List<string> collectedItems = new List<string>();
+        
         [Header("저장 설정")]
         [SerializeField] private const string SAVE_KEY_COMPLETED_STAGES = "Story.CompletedStages";
         [SerializeField] private const string SAVE_KEY_CURRENT_STAGE = "Story.CurrentStage";
+        [SerializeField] private const string SAVE_KEY_COLLECTED_ITEMS = "Story.CollectedItems";
         
         #region Unity 수명주기
         
@@ -101,6 +105,39 @@ namespace AFKS.Features.Stage
         }
         
         /// <summary>
+        /// 아이템을 수집합니다.
+        /// </summary>
+        /// <param name="itemId">수집할 아이템 ID</param>
+        public void CollectItem(string itemId)
+        {
+            if (!collectedItems.Contains(itemId))
+            {
+                collectedItems.Add(itemId);
+                SaveProgress();
+                Debug.Log($"StoryProgress: 아이템 수집됨 - {itemId}");
+            }
+        }
+        
+        /// <summary>
+        /// 특정 아이템이 수집되었는지 확인합니다.
+        /// </summary>
+        /// <param name="itemId">확인할 아이템 ID</param>
+        /// <returns>수집 여부</returns>
+        public bool IsItemCollected(string itemId)
+        {
+            return collectedItems.Contains(itemId);
+        }
+        
+        /// <summary>
+        /// 수집된 아이템 목록을 반환합니다.
+        /// </summary>
+        /// <returns>수집된 아이템 ID 목록</returns>
+        public List<string> GetCollectedItems()
+        {
+            return new List<string>(collectedItems);
+        }
+        
+        /// <summary>
         /// 현재 스테이지 ID를 반환합니다.
         /// </summary>
         /// <returns>현재 스테이지 ID</returns>
@@ -132,15 +169,19 @@ namespace AFKS.Features.Stage
             {
                 // 완료된 스테이지 목록을 JSON으로 직렬화
                 var completedStagesJson = JsonUtility.ToJson(new StageList { stages = completedStages });
+                var collectedItemsJson = JsonUtility.ToJson(new ItemList { items = collectedItems });
                 saveService.SetString(SAVE_KEY_COMPLETED_STAGES, completedStagesJson);
                 saveService.SetString(SAVE_KEY_CURRENT_STAGE, currentStage);
+                saveService.SetString(SAVE_KEY_COLLECTED_ITEMS, collectedItemsJson);
             }
             else
             {
                 // PlayerPrefs 사용
                 var completedStagesJson = JsonUtility.ToJson(new StageList { stages = completedStages });
+                var collectedItemsJson = JsonUtility.ToJson(new ItemList { items = collectedItems });
                 PlayerPrefs.SetString(SAVE_KEY_COMPLETED_STAGES, completedStagesJson);
                 PlayerPrefs.SetString(SAVE_KEY_CURRENT_STAGE, currentStage);
+                PlayerPrefs.SetString(SAVE_KEY_COLLECTED_ITEMS, collectedItemsJson);
                 PlayerPrefs.Save();
             }
         }
@@ -152,6 +193,7 @@ namespace AFKS.Features.Stage
             {
                 var completedStagesJson = saveService.GetString(SAVE_KEY_COMPLETED_STAGES, "");
                 var currentStageSaved = saveService.GetString(SAVE_KEY_CURRENT_STAGE, "");
+                var collectedItemsJson = saveService.GetString(SAVE_KEY_COLLECTED_ITEMS, "");
                 
                 if (!string.IsNullOrEmpty(completedStagesJson))
                 {
@@ -162,6 +204,12 @@ namespace AFKS.Features.Stage
                 if (!string.IsNullOrEmpty(currentStageSaved))
                 {
                     currentStage = currentStageSaved;
+                }
+                
+                if (!string.IsNullOrEmpty(collectedItemsJson))
+                {
+                    var itemList = JsonUtility.FromJson<ItemList>(collectedItemsJson);
+                    collectedItems = itemList.items;
                 }
             }
             else
@@ -169,6 +217,7 @@ namespace AFKS.Features.Stage
                 // PlayerPrefs 사용
                 var completedStagesJson = PlayerPrefs.GetString(SAVE_KEY_COMPLETED_STAGES, "");
                 var currentStageSaved = PlayerPrefs.GetString(SAVE_KEY_CURRENT_STAGE, "");
+                var collectedItemsJson = PlayerPrefs.GetString(SAVE_KEY_COLLECTED_ITEMS, "");
                 
                 if (!string.IsNullOrEmpty(completedStagesJson))
                 {
@@ -180,9 +229,15 @@ namespace AFKS.Features.Stage
                 {
                     currentStage = currentStageSaved;
                 }
+                
+                if (!string.IsNullOrEmpty(collectedItemsJson))
+                {
+                    var itemList = JsonUtility.FromJson<ItemList>(collectedItemsJson);
+                    collectedItems = itemList.items;
+                }
             }
             
-            Debug.Log($"StoryProgress: 진행 상태 불러오기 완료 - 완료된 스테이지: {completedStages.Count}, 현재 스테이지: {currentStage}");
+            Debug.Log($"StoryProgress: 진행 상태 불러오기 완료 - 완료된 스테이지: {completedStages.Count}, 현재 스테이지: {currentStage}, 수집된 아이템: {collectedItems.Count}");
         }
         
         #endregion
@@ -194,6 +249,7 @@ namespace AFKS.Features.Stage
         {
             completedStages.Clear();
             currentStage = "";
+            collectedItems.Clear();
             SaveProgress();
             Debug.Log("StoryProgress: 진행 상태 리셋 완료");
         }
@@ -223,5 +279,14 @@ namespace AFKS.Features.Stage
     public class StageList
     {
         public List<string> stages = new List<string>();
+    }
+    
+    /// <summary>
+    /// 아이템 목록을 JSON 직렬화하기 위한 헬퍼 클래스입니다.
+    /// </summary>
+    [System.Serializable]
+    public class ItemList
+    {
+        public List<string> items = new List<string>();
     }
 }

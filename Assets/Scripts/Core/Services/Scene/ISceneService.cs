@@ -21,6 +21,8 @@ namespace AFKS.Core.Services.Scene
         IEnumerator ActivateLoadedStageAsync(string stageId);
         /// <summary>스테이지 씬을 언로드합니다.</summary>
         IEnumerator UnloadStageAsync(string stageId);
+        /// <summary>씬을 지정된 모드로 로드합니다.</summary>
+        void LoadScene(string sceneName, UnityEngine.SceneManagement.LoadSceneMode mode);
         #endregion
     }
 }

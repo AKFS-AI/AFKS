@@ -116,8 +116,13 @@ namespace AFKS.Features.Interaction
                 if (debugLog) Debug.Log($"[HotspotMove] Raise StageChangeRequested -> {targetStageId}");
                 GameEvents.RaiseStageChangeRequested(targetStageId);
 
-                // 코어( SceneService )가 없는 스탠드얼론 스테이지에서도 동작하도록 폴백
-                if (!ServiceLocator.TryGet<ISceneService>(out _))
+                // SceneService를 통한 안전한 씬 전환
+                if (ServiceLocator.TryGet<ISceneService>(out var sceneService))
+                {
+                    if (debugLog) Debug.Log("[HotspotMove] SceneService를 통한 씬 전환");
+                    sceneService.LoadScene(targetStageId, LoadSceneMode.Single);
+                }
+                else
                 {
                     if (debugLog) Debug.Log("[HotspotMove] SceneService missing. Fallback to SceneManager.LoadScene");
                     SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
@@ -134,8 +139,16 @@ namespace AFKS.Features.Interaction
             if (!enabled || !gameObject.activeInHierarchy) return;
             if (debugLog) Debug.Log($"[HotspotMove] OnMouseDown Fallback -> {targetStageId}");
             GameEvents.RaiseStageChangeRequested(targetStageId);
-            if (!ServiceLocator.TryGet<ISceneService>(out _))
+            
+            // SceneService를 통한 안전한 씬 전환
+            if (ServiceLocator.TryGet<ISceneService>(out var sceneService))
             {
+                if (debugLog) Debug.Log("[HotspotMove] SceneService를 통한 씬 전환");
+                sceneService.LoadScene(targetStageId, LoadSceneMode.Single);
+            }
+            else
+            {
+                if (debugLog) Debug.Log("[HotspotMove] SceneService missing. Fallback to SceneManager.LoadScene");
                 SceneManager.LoadScene(targetStageId, LoadSceneMode.Single);
             }
         }

@@ -16,11 +16,9 @@ namespace AFKS.Features.Stage.Effects
         
         public override void Apply(StageEventSystem eventSystem)
         {
-            GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: 실행 시작 - chainObjectIds: {string.Join(", ", chainObjectIds ?? new string[0])}");
-            
             if (chainObjectIds == null || chainObjectIds.Length == 0)
             {
-                GameDebug.Warn(GameDebug.Category.Event, "ShowChainsEffect: chainObjectIds가 설정되지 않았습니다.");
+                Debug.LogWarning("ShowChainsEffect: chainObjectIds가 설정되지 않았습니다.");
                 return;
             }
             
@@ -28,22 +26,17 @@ namespace AFKS.Features.Stage.Effects
             {
                 if (string.IsNullOrEmpty(chainId)) continue;
                 
-                GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} 처리 시작");
-                
                 var chainObj = eventSystem.GetObject(chainId);
                 if (chainObj == null)
                 {
-                    GameDebug.Warn(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} 오브젝트를 찾을 수 없습니다.");
+                    Debug.LogWarning($"ShowChainsEffect: {chainId} 오브젝트를 찾을 수 없습니다.");
                     return;
                 }
-                
-                GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} 오브젝트 발견 - {chainObj.name}");
                 
                 // 체인 표시
                 if (showChains)
                 {
                     chainObj.SetActive(true);
-                    GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} 활성화됨");
                 }
                 
                 // 클릭 가능하게 설정
@@ -54,28 +47,24 @@ namespace AFKS.Features.Stage.Effects
                     {
                         clickHandler.enabled = true;
                         clickHandler.SetClickable(true);
-                        GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} ClickHandler 활성화됨");
                     }
                     else
                     {
-                        GameDebug.Warn(GameDebug.Category.Event, $"ShowChainsEffect: {chainId}에 ClickHandler가 없습니다.");
+                        Debug.LogWarning($"ShowChainsEffect: {chainId}에 ClickHandler가 없습니다.");
                     }
                     
-                    // StageInteractionManager에도 반영
-                    var interactionManager = AFKS.Features.Stage.StageInteractionManager.Instance;
+                    // StageInteractionSystem에도 반영
+                    var interactionManager = AFKS.Features.Stage.StageInteractionSystem.Instance;
                     if (interactionManager != null)
                     {
                         interactionManager.SetObjectInteractable(chainId, true);
-                        GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainId} StageInteractionManager에 반영됨");
                     }
                     else
                     {
-                        GameDebug.Warn(GameDebug.Category.Event, "ShowChainsEffect: StageInteractionManager를 찾을 수 없습니다.");
+                        Debug.LogWarning("ShowChainsEffect: StageInteractionSystem를 찾을 수 없습니다.");
                     }
                 }
             }
-            
-            GameDebug.Info(GameDebug.Category.Event, $"ShowChainsEffect: {chainObjectIds.Length}개 체인 표시 및 활성화 완료");
         }
     }
 }

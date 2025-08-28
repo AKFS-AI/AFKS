@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using AFKS.Features.Stage.Events;
 using AFKS.Core.Utils;
-using AFKS.Features.Stage.Animations;
 using AFKS.Core.Services.Save;
 using AFKS.Core.Services;
 
@@ -24,15 +23,20 @@ namespace AFKS.Features.Stage
         [SerializeField] private int currentEventIndex = 0;
         
         [Header("애니메이션 컨트롤러")]
-        [SerializeField] private StageAnimationController animationController;
+        [SerializeField] private MonoBehaviour animationController;
         
         [Header("상호작용 관리")]
-        [SerializeField] private StageInteractionManager interactionManager;
+        [SerializeField] private StageInteractionSystem interactionManager;
         [Header("실행기")]
         [SerializeField] private IStageEventRunner eventRunner;
         
         [Header("스토리 진행")]
         [SerializeField] private StoryProgress storyProgress;
+        
+        /// <summary>
+        /// 스토리 진행 상태에 접근할 수 있는 public 속성입니다.
+        /// </summary>
+        public StoryProgress StoryProgress => storyProgress;
         
         [Header("상태")]
         [SerializeField] private StageState currentState = StageState.Initial;
@@ -123,13 +127,13 @@ namespace AFKS.Features.Stage
                     if (spriteRenderer != null && spriteRenderer.sprite != null)
                     {
                         bgService.ReportBackground(stageId, spriteRenderer.sprite);
-                        GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem: {stageId} 초기 배경 보고 완료");
+                        Debug.Log($"StageEventSystem: {stageId} 초기 배경 보고 완료");
                         return;
                     }
                 }
                 
                 // 배경을 찾지 못한 경우 기본 배경 사용
-                GameDebug.Warn(GameDebug.Category.Event, $"StageEventSystem: {stageId} 배경을 찾을 수 없습니다. 기본 배경 사용");
+                Debug.LogWarning($"StageEventSystem: {stageId} 배경을 찾을 수 없습니다. 기본 배경 사용");
             }
         }
         
@@ -151,29 +155,29 @@ namespace AFKS.Features.Stage
         {
             if (string.IsNullOrEmpty(objectId)) return null;
             
-            GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId} 검색 시작");
+            Debug.Log($"StageEventSystem.GetObject: {objectId} 검색 시작");
             
-            // StageInteractionManager에서 먼저 찾기
-            var interactionManager = StageInteractionManager.Instance;
+            // StageInteractionSystem에서 먼저 찾기
+            var interactionManager = StageInteractionSystem.Instance;
             if (interactionManager != null)
             {
                 var obj = interactionManager.GetObject(objectId);
                 if (obj != null)
                 {
-                    GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 StageInteractionManager에서 발견 - {obj.name}");
+                    Debug.Log($"StageEventSystem.GetObject: {objectId}를 StageInteractionSystem에서 발견 - {obj.name}");
                     return obj;
                 }
             }
             else
             {
-                GameDebug.Warn(GameDebug.Category.Event, "StageEventSystem.GetObject: StageInteractionManager를 찾을 수 없습니다.");
+                Debug.LogWarning("StageEventSystem.GetObject: StageInteractionSystem를 찾을 수 없습니다.");
             }
             
             // 씬에서 직접 찾기
             var foundObj = GameObject.Find(objectId);
             if (foundObj != null)
             {
-                GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 씬에서 직접 발견 - {foundObj.name}");
+                Debug.Log($"StageEventSystem.GetObject: {objectId}를 씬에서 직접 발견 - {foundObj.name}");
                 return foundObj;
             }
             
@@ -181,11 +185,11 @@ namespace AFKS.Features.Stage
             var stagePrefixedObj = GameObject.Find($"{stageId}_{objectId}");
             if (stagePrefixedObj != null)
             {
-                GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 스테이지 접두사로 발견 - {stagePrefixedObj.name}");
+                Debug.Log($"StageEventSystem.GetObject: {objectId}를 스테이지 접두사로 발견 - {stagePrefixedObj.name}");
                 return stagePrefixedObj;
             }
             
-            GameDebug.Warn(GameDebug.Category.Event, $"StageEventSystem.GetObject: {objectId}를 찾을 수 없습니다.");
+            Debug.LogWarning($"StageEventSystem.GetObject: {objectId}를 찾을 수 없습니다.");
             return null;
         }
         
@@ -196,8 +200,6 @@ namespace AFKS.Features.Stage
         public void OnObjectClicked(string objectId)
         {
             if (isEventPlaying) return;
-            
-            GameDebug.Info(GameDebug.Category.Event, $"StageEventSystem: {objectId} 클릭됨");
             
             // 클릭 카운트/히스토리 갱신
             if (!string.IsNullOrEmpty(objectId))
@@ -215,8 +217,6 @@ namespace AFKS.Features.Stage
                 bool canTrigger = currentEvent.CanTriggerWith(objectId);
                 bool conditionsSatisfied = currentEvent.AreConditionsSatisfied(this);
                 
-                Debug.Log($"StageEventSystem: {objectId} 클릭 처리 - CanTriggerWith: {canTrigger}, AreConditionsSatisfied: {conditionsSatisfied}");
-                
                 // 클릭 피드백 실행 (조건 만족 여부와 관계없이)
                 if (canTrigger && currentEvent is ClickEvent clickEvent)
                 {
@@ -226,17 +226,6 @@ namespace AFKS.Features.Stage
                 if (canTrigger && conditionsSatisfied)
                 {
                     ExecuteEvent(currentEvent);
-                }
-                else
-                {
-                    if (!canTrigger)
-                    {
-                        Debug.LogWarning($"StageEventSystem: {objectId}는 현재 이벤트에서 클릭할 수 없습니다. (CanTriggerWith: {canTrigger})");
-                    }
-                    if (!conditionsSatisfied)
-                    {
-                        Debug.LogWarning($"StageEventSystem: {objectId} 클릭 조건이 만족되지 않았습니다. (AreConditionsSatisfied: {conditionsSatisfied})");
-                    }
                 }
             }
         }
@@ -305,9 +294,9 @@ namespace AFKS.Features.Stage
                 Debug.LogWarning($"StageEventSystem: 이벤트 인스턴스가 null입니다. index={currentEventIndex}");
                 return;
             }
-            GameDebug.Info(GameDebug.Category.Event, $"PrepareNextEvent: index={currentEventIndex}, name={nextEvent.EventName}");
+            Debug.Log($"PrepareNextEvent: index={currentEventIndex}, name={nextEvent.EventName}");
             eventRunner.Prepare(nextEvent, interactionManager);
-            GameDebug.Info(GameDebug.Category.Event, $"이벤트 준비됨 - {nextEvent.EventName}");
+            Debug.Log($"이벤트 준비됨 - {nextEvent.EventName}");
 
             // 클릭 트리거가 아니거나, 클릭 트리거지만 트리거 오브젝트가 없는 경우 즉시 실행
             if (nextEvent.TriggerType != Events.EventTriggerType.Click || !nextEvent.HasTriggerObjects)
@@ -322,7 +311,7 @@ namespace AFKS.Features.Stage
             currentState = StageState.EventPlaying;
             
             // Debug 축소: 핵심 진행만 유지
-            GameDebug.Info(GameDebug.Category.Event, $"이벤트 실행 시작 - {stageEvent.EventName}");
+            Debug.Log($"이벤트 실행 시작 - {stageEvent.EventName}");
             
             // 이벤트 실행
             EnsureEventRunner();
@@ -334,7 +323,7 @@ namespace AFKS.Features.Stage
             isEventPlaying = false;
             currentState = StageState.EventComplete;
             
-            GameDebug.Info(GameDebug.Category.Event, $"이벤트 완료 - {eventSequence[currentEventIndex].EventName}");
+            Debug.Log($"이벤트 완료 - {eventSequence[currentEventIndex].EventName}");
             // 효과 적용
             var ev = eventSequence[currentEventIndex];
             if (ev != null) ev.ApplyEffects(this);
@@ -342,16 +331,16 @@ namespace AFKS.Features.Stage
             
             // 자동 진행 여부 확인
             var shouldAutoProceed = eventRunner.ShouldAutoProceed(eventSequence[currentEventIndex]);
-            GameDebug.Info(GameDebug.Category.Event, $"자동 진행 확인: {shouldAutoProceed}, 이벤트 AutoProceed: {ev?.AutoProceed}");
+            Debug.Log($"자동 진행 확인: {shouldAutoProceed}, 이벤트 AutoProceed: {ev?.AutoProceed}");
             
             if (shouldAutoProceed)
             {
-                GameDebug.Info(GameDebug.Category.Event, "자동으로 다음 이벤트로 진행합니다.");
+                Debug.Log("자동으로 다음 이벤트로 진행합니다.");
                 ProceedToNextEvent();
             }
             else
             {
-                GameDebug.Info(GameDebug.Category.Event, "자동 진행이 비활성화되어 있습니다. 사용자 입력을 기다립니다.");
+                Debug.Log("자동 진행이 비활성화되어 있습니다. 사용자 입력을 기다립니다.");
             }
         }
         
@@ -410,7 +399,7 @@ namespace AFKS.Features.Stage
             }
             currentEventIndex = 0;
             
-            GameDebug.Info(GameDebug.Category.Event, $"이벤트 시퀀스 설정됨 - {eventSequence.Count}개 이벤트");
+            Debug.Log($"이벤트 시퀀스 설정됨 - {eventSequence.Count}개 이벤트");
             
             // 첫 번째 이벤트 준비
             if (eventSequence.Count > 0)
@@ -443,10 +432,10 @@ namespace AFKS.Features.Stage
         {
             if (interactionManager == null)
             {
-                interactionManager = gameObject.GetComponent<StageInteractionManager>();
+                interactionManager = gameObject.GetComponent<StageInteractionSystem>();
                 if (interactionManager == null)
                 {
-                    interactionManager = gameObject.AddComponent<StageInteractionManager>();
+                    interactionManager = gameObject.AddComponent<StageInteractionSystem>();
                 }
             }
         }

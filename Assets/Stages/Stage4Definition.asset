@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-80826428144950391
+--- !u!114 &-7353371327758009382
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -51,4 +51,4 @@ MonoBehaviour:
   stageId: Stage4
   version: 1
   events:
-  - {fileID: -80826428144950391}
+  - {fileID: -7353371327758009382}

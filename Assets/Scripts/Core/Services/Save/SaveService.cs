@@ -38,27 +38,19 @@ namespace AFKS.Core.Services.Save
             serializer = new JsonUnitySaveSerializer();
             storage = new FileSystemSaveStorage();
             // 부팅 시 저장 파일을 먼저 로드해(오디오 설정 포함) 초기값이 튀지 않도록 함
-            try { TryLoadAll(); }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[SaveService] 초기 로드 실패: {e.Message}");
-            }
+            TryLoadAll();
         }
 
         private void OnApplicationQuit()
         {
             if (autoSaveOnQuit)
             {
-                try
+                // 메뉴에서는 저장하지 않습니다
+                if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.GameState.IGameStateService>(out var gs))
                 {
-                    // 메뉴에서는 저장하지 않습니다
-                    if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.GameState.IGameStateService>(out var gs))
-                    {
-                        if (string.Equals(gs.CurrentStageId, "Menu", StringComparison.Ordinal)) return;
-                    }
-                    SaveAll();
+                    if (string.Equals(gs.CurrentStageId, "Menu", StringComparison.Ordinal)) return;
                 }
-                catch (Exception e) { Debug.LogWarning($"[SaveService] AutoSave 실패: {e.Message}"); }
+                SaveAll();
             }
         }
 

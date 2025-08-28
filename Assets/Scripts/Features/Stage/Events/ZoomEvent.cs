@@ -1,8 +1,8 @@
 using UnityEngine;
-using UnityEngine.Events;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using AFKS.Features.Stage.Animations;
+using AFKS.Features.Stage.Events;
+using AFKS.Core.Services;
 
 namespace AFKS.Features.Stage.Events
 {
@@ -114,14 +114,41 @@ namespace AFKS.Features.Stage.Events
             
             // 2. 현재 활성 씬의 메인 카메라 찾기
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            var activeSceneCameras = activeScene.GetRootGameObjects()
-                .SelectMany(go => go.GetComponentsInChildren<Camera>())
-                .Where(cam => cam != null)
-                .ToArray();
+            var rootObjects = activeScene.GetRootGameObjects();
+            var activeSceneCameras = new List<Camera>();
             
-            if (activeSceneCameras.Length > 0)
+            // LINQ 대신 for 루프 사용으로 성능 개선
+            for (int i = 0; i < rootObjects.Length; i++)
             {
-                var mainCam = activeSceneCameras.FirstOrDefault(cam => cam.CompareTag("MainCamera")) ?? activeSceneCameras[0];
+                var cameras = rootObjects[i].GetComponentsInChildren<Camera>();
+                for (int j = 0; j < cameras.Length; j++)
+                {
+                    if (cameras[j] != null)
+                    {
+                        activeSceneCameras.Add(cameras[j]);
+                    }
+                }
+            }
+            
+            if (activeSceneCameras.Count > 0)
+            {
+                Camera mainCam = null;
+                // MainCamera 태그를 가진 카메라 찾기
+                for (int i = 0; i < activeSceneCameras.Count; i++)
+                {
+                    if (activeSceneCameras[i].CompareTag("MainCamera"))
+                    {
+                        mainCam = activeSceneCameras[i];
+                        break;
+                    }
+                }
+                
+                // MainCamera가 없으면 첫 번째 카메라 사용
+                if (mainCam == null)
+                {
+                    mainCam = activeSceneCameras[0];
+                }
+                
                 Debug.Log($"ZoomEvent: 활성 씬 카메라 사용 - {mainCam.name} (씬: {mainCam.gameObject.scene.name})");
                 return mainCam;
             }
@@ -149,7 +176,7 @@ namespace AFKS.Features.Stage.Events
             // 줌 후 오브젝트 표시
             if (showObjectsAfterZoom)
             {
-                var sim = AFKS.Features.Stage.StageInteractionManager.Instance;
+                var sim = AFKS.Features.Stage.StageInteractionSystem.Instance;
                 foreach (var objectId in objectsToShow)
                 {
                     var obj = sim != null ? sim.GetObject(objectId) : null;
@@ -164,7 +191,7 @@ namespace AFKS.Features.Stage.Events
             // 줌 후 오브젝트 숨김
             if (hideObjectsAfterZoom)
             {
-                var sim = AFKS.Features.Stage.StageInteractionManager.Instance;
+                var sim = AFKS.Features.Stage.StageInteractionSystem.Instance;
                 foreach (var objectId in objectsToHide)
                 {
                     var obj = sim != null ? sim.GetObject(objectId) : null;

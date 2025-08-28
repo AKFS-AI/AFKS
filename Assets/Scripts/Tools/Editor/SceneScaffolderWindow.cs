@@ -6,9 +6,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using AFKS.Features.Items;
 using TMPro;
 using UnityEngine.Events;
+using AFKS.Tools.Editor.StageCreators;
 
 namespace AFKS.Tools.Editor
 {
@@ -102,16 +102,16 @@ namespace AFKS.Tools.Editor
             if (GUILayout.Button("Menu.unity 생성/덮어쓰기")) CreateOrOverwriteMenuScene();
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Stage1.unity 생성/덮어쓰기")) CreateOrOverwriteStage1();
-            if (GUILayout.Button("Stage2.unity 생성/덮어쓰기")) CreateOrOverwriteStage2();
+            if (GUILayout.Button("Stage1.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage1");
+            if (GUILayout.Button("Stage2.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage2");
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Stage3.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage3", nextStageId: "Stage4");
-            if (GUILayout.Button("Stage4.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage4", nextStageId: "Stage5");
+            if (GUILayout.Button("Stage3.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage3");
+            if (GUILayout.Button("Stage4.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage4");
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Stage5.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage5", "Stage6");
-            if (GUILayout.Button("Stage6.unity 생성/덮어쓰기")) CreateOrOverwriteStageGeneric("Stage6", "Menu");
+            if (GUILayout.Button("Stage5.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage5");
+            if (GUILayout.Button("Stage6.unity 생성/덮어쓰기")) CreateStageUsingCreator("Stage6");
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(6);
@@ -221,19 +221,8 @@ namespace AFKS.Tools.Editor
             soGuard.FindProperty("debugLogs").boolValue = false;
             soGuard.ApplyModifiedPropertiesWithoutUndo();
 
-            // GameDebugBootstrapper
-            var dbgGo = new GameObject("DebugSettings");
-            dbgGo.transform.SetParent(servicesRoot.transform, false);
-            var dbg = dbgGo.AddComponent<AFKS.Core.Utils.GameDebugBootstrapper>();
-            var soDbg = new SerializedObject(dbg);
-            soDbg.FindProperty("enableGlobal").boolValue = dbgGlobal;
-            soDbg.FindProperty("enableCore").boolValue = dbgCore;
-            soDbg.FindProperty("enableStage").boolValue = dbgStage;
-            soDbg.FindProperty("enableEvent").boolValue = dbgEvent;
-            soDbg.FindProperty("enableInteraction").boolValue = dbgInteraction;
-            soDbg.FindProperty("enableCamera").boolValue = dbgCamera;
-            soDbg.FindProperty("enableSave").boolValue = dbgSave;
-            soDbg.ApplyModifiedPropertiesWithoutUndo();
+            // GameDebugBootstrapper 제거됨 - 디버그 설정은 로그로 대체
+            Debug.Log($"디버그 설정: Global={dbgGlobal}, Core={dbgCore}, Stage={dbgStage}, Event={dbgEvent}, Interaction={dbgInteraction}, Camera={dbgCamera}, Save={dbgSave}");
 
             // 전역 설정창 (모든 씬에서 접근 가능)
             var settingsGo = new GameObject("GlobalSettings");
@@ -316,14 +305,14 @@ namespace AFKS.Tools.Editor
             if (closeTextFont != null) closeTextTmp.font = closeTextFont;
             closeTextTmp.raycastTarget = false;
             
-            // X 버튼 클릭 이벤트 연결 (GlobalSettingsManager를 통해 처리)
+            // X 버튼 클릭 이벤트 연결 (GlobalSettingsService를 통해 처리)
             closeBtn.onClick.AddListener(() => {
-                // GlobalSettingsManager를 통해 설정창 닫기
-                var globalSettings = FindFirstObjectByType<AFKS.Core.Systems.GlobalSettingsManager>();
+                // GlobalSettingsService를 통해 설정창 닫기
+                var globalSettings = FindFirstObjectByType<AFKS.Core.Systems.GlobalSettingsService>();
                 if (globalSettings != null)
                 {
                     globalSettings.CloseSettings();
-                    Debug.Log("GlobalSettingsManager를 통해 설정창이 닫혔습니다.");
+                    Debug.Log("GlobalSettingsService를 통해 설정창이 닫혔습니다.");
                 }
                 else
                 {
@@ -414,8 +403,8 @@ namespace AFKS.Tools.Editor
             // 설정 패널 초기 상태 (비활성화)
             settingsPanel.SetActive(false);
             
-            // GlobalSettingsManager 추가
-            var settingsManager = settingsGo.AddComponent<AFKS.Core.Systems.GlobalSettingsManager>();
+            // GlobalSettingsService 추가
+            var settingsManager = settingsGo.AddComponent<AFKS.Core.Systems.GlobalSettingsService>();
             var soManager = new SerializedObject(settingsManager);
             soManager.FindProperty("settingsPanel").objectReferenceValue = settingsPanel;
             soManager.FindProperty("closeSettingsButton").objectReferenceValue = closeBtn; // X 버튼 연결
@@ -648,11 +637,11 @@ namespace AFKS.Tools.Editor
 
             // UI용 EventSystem 생성은 Core 씬에만 존재해야 하므로 Stage 씬에서는 생성하지 않음
 
-            // Services + StageInteractionManager 보장
+            // Services + StageInteractionSystem 보장
             var services = new GameObject("Services");
             var simGo = new GameObject("StageInteraction");
             simGo.transform.SetParent(services.transform, false);
-            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
 
             SaveSceneWithSafety(stage, path);
             if (autoRegisterBuildSettings) RegisterSceneInBuildSettingsIfNeeded(path);
@@ -746,12 +735,8 @@ namespace AFKS.Tools.Editor
             bgRt.localScale = new Vector3(optimalScaleX, optimalScaleY, 1f);
             
             Debug.Log($"배경 이미지 최적 스케일링 적용: X={optimalScaleX:F2}, Y={optimalScaleY:F2} (실제 테스트로 확인된 값)");
-            var bgMirror = bg.AddComponent<AFKS.Features.Menu.MainMenuBGMirror>();
-            
-            // MainMenuBGMirror에 Stage1 배경을 기본 배경으로 설정
-            var soBgMirror = new SerializedObject(bgMirror);
-            soBgMirror.FindProperty("defaultMenuBackground").objectReferenceValue = stage1BgSprite;
-            soBgMirror.ApplyModifiedPropertiesWithoutUndo();
+            // MainMenuBGMirror 제거됨 - 배경 이미지는 직접 설정됨
+            Debug.Log("MainMenuBGMirror 제거됨 - 배경 이미지는 직접 설정됨");
 
             // 버튼 컨테이너
             var buttons = new GameObject("Buttons");
@@ -842,80 +827,19 @@ namespace AFKS.Tools.Editor
             sc.name = "Stage1";
 
             // 카메라 추가 (Stage1 단독 실행 시 필요)
-            var cam = new GameObject("Stage1 Camera");
-            var camera = cam.AddComponent<Camera>();
-            cam.tag = "MainCamera";
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = Color.black;
-            camera.orthographic = true;
-            cam.AddComponent<Physics2DRaycaster>();
-            // 기본 카메라 셋팅: 위치 (0, 0, -10), Orthographic Size 5.4
-            cam.transform.position = new Vector3(0f, 0f, -10f);
-            camera.orthographicSize = 5.4f;
+            var cam = CreateStageCamera("Stage1", new Vector3(0f, 0f, -10f), 5.4f);
             
             
             
             // 컨테이너 (월드/인터랙션/서비스만 사용 - UI 생성 생략)
-            var world = new GameObject("World");
-            var interaction = new GameObject("Interaction");
-            var services = new GameObject("Services");
+            var (world, interaction, services) = CreateCommonWorldStructure();
             
-            // StageInteractionManager 보장
-            var simGo = new GameObject("StageInteraction");
-            simGo.transform.SetParent(services.transform, false);
-            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            // StageInteractionSystem 보장
+            var sim = SetupCommonStageInteractionSystem(services);
             
             // 배경 설정
-            var bg = new GameObject("Background");
-            bg.transform.SetParent(world.transform, false);
-            var bgSprite = bg.AddComponent<SpriteRenderer>();
-            
-            // Stage1 배경 이미지 로드 (잠금/해금 모두 1_2 사용)
-            var stage1BgSprite = Resources.Load<Sprite>("Images/Backgrounds/Stage1/StageBG_1_2");
-            if (stage1BgSprite != null)
-            {
-                bgSprite.sprite = stage1BgSprite;
-                Debug.Log($"Stage1 배경 이미지 설정됨: {stage1BgSprite.name}");
-            }
-            else
-            {
-                Debug.LogWarning("Stage1 배경 이미지를 찾을 수 없습니다");
-                bgSprite.color = Color.gray; // 임시 색상
-            }
-            
-            // 배경을 카메라 뒤로 보내기
-            bg.transform.position = new Vector3(0, 0, 10);
-            bgSprite.sortingOrder = -1;
-            
-            // 배경 이미지 스케일링 개선 (Menu와 동일한 방식)
-            var bgTransform = bg.transform;
-            // 1536x1024 이미지를 1920x1080 화면에 맞게 스케일링
-            float imageWidth = 1536f;
-            float imageHeight = 1024f;
-            
-            // 화면 비율과 이미지 비율 계산 (카메라 설정에서 이미 정의된 변수 활용)
-            float screenRatio = 1920f / 1080f; // 1.778
-            float imageRatio = imageWidth / imageHeight;   // 1.5
-            
-            // 화면을 완전히 덮도록 스케일 계산
-            float scaleX, scaleY;
-            if (screenRatio > imageRatio)
-            {
-                // 화면이 더 넓음 - 너비 기준으로 스케일링
-                scaleX = 1920f / imageWidth;  // 1.25
-                scaleY = scaleX; // 정사각형 유지
-            }
-            else
-            {
-                // 화면이 더 높음 - 높이 기준으로 스케일링
-                scaleY = 1080f / imageHeight; // 1.055
-                scaleX = scaleY; // 정사각형 유지
-            }
-            
-            // Stage용 최적 스케일 적용 (월드 좌표 기반)
-            float optimalScaleX = 1.25f;
-            float optimalScaleY = 1.06f;
-            bgTransform.localScale = new Vector3(optimalScaleX, optimalScaleY, 1f);
+            var bg = CreateStageBackground(world, "Images/Backgrounds/Stage1/StageBG_1_2", 
+                new Vector3(1.25f, 1.25f, 1f), new Vector3(0, 0, 10), -1);
             
 
             
@@ -988,6 +912,9 @@ namespace AFKS.Tools.Editor
             soClickTop.FindProperty("clickable").boolValue = false;
             soClickTop.ApplyModifiedPropertiesWithoutUndo();
             
+            // ChainBreakEffect 컴포넌트 추가 (5번 클릭 시 분리 효과)
+            chainTop.AddComponent<AFKS.Features.Stage.Effects.ChainBreakEffect>();
+            
             // 착지 타깃(계단 상자 중심)에 스냅
             var landingTop = new GameObject("LandingTarget");
             landingTop.transform.SetParent(hotspots.transform, false);
@@ -1046,6 +973,9 @@ namespace AFKS.Tools.Editor
             var soClickBottom = new SerializedObject(clickHandlerBottom);
             soClickBottom.FindProperty("clickable").boolValue = false;
             soClickBottom.ApplyModifiedPropertiesWithoutUndo();
+            
+            // ChainBreakEffect 컴포넌트 추가 (5번 클릭 시 분리 효과)
+            chainBottom.AddComponent<AFKS.Features.Stage.Effects.ChainBreakEffect>();
             
             // Stage1은 시작 시 체인을 활성화(보이기)
             chainBottom.SetActive(true);
@@ -1136,17 +1066,8 @@ namespace AFKS.Tools.Editor
             int zi = zoomInteractList.arraySize; zoomInteractList.InsertArrayElementAtIndex(zi);
             zoomInteractList.GetArrayElementAtIndex(zi).stringValue = "Door";
             soZoomEvt.FindProperty("triggerType").enumValueIndex = (int)AFKS.Features.Stage.Events.EventTriggerType.Click;
-            // Zoom 완료 후 체인 클릭 가능하게 만드는 효과 2개 부착(ChainTop/ChainBottom)
-            var enChainTop = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.EnableInteractableEffect>();
-            var enChainBottom = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.EnableInteractableEffect>();
-            var soEnTop = new SerializedObject(enChainTop);
-            soEnTop.FindProperty("objectId").stringValue = "ChainTop";
-            soEnTop.FindProperty("interactable").boolValue = true;
-            soEnTop.ApplyModifiedPropertiesWithoutUndo();
-            var soEnBottom = new SerializedObject(enChainBottom);
-            soEnBottom.FindProperty("objectId").stringValue = "ChainBottom";
-            soEnBottom.FindProperty("interactable").boolValue = true;
-            soEnBottom.ApplyModifiedPropertiesWithoutUndo();
+            // EnableInteractableEffect 제거됨 - 체인 클릭 가능은 ShowChainsEffect에서 처리
+            Debug.Log("EnableInteractableEffect 제거됨 - 체인 클릭 가능은 ShowChainsEffect에서 처리");
             // Door 비활성화 효과 추가
             var disableDoor = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.DisableInteractableEffect>();
             var soDisableDoor = new SerializedObject(disableDoor);
@@ -1168,24 +1089,15 @@ namespace AFKS.Tools.Editor
             soShowChains.FindProperty("enableClickable").boolValue = true;
             soShowChains.ApplyModifiedPropertiesWithoutUndo();
             
-            // 배경 보고 효과 추가
-            var reportBackground = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ReportBackgroundEffect>();
-            var soReportBg = new SerializedObject(reportBackground);
-            soReportBg.FindProperty("stageId").stringValue = "Stage1";
-            soReportBg.FindProperty("backgroundObjectId").stringValue = "Background"; // 배경 오브젝트 ID
-            soReportBg.ApplyModifiedPropertiesWithoutUndo();
+            // ReportBackgroundEffect 제거됨 - 배경 보고는 StageEventSystem에서 자동 처리
+            Debug.Log("ReportBackgroundEffect 제거됨 - 배경 보고는 StageEventSystem에서 자동 처리");
             
             var zoomEffectsProp = soZoomEvt.FindProperty("effects");
             int zef0 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef0);
-            zoomEffectsProp.GetArrayElementAtIndex(zef0).objectReferenceValue = enChainTop;
+            zoomEffectsProp.GetArrayElementAtIndex(zef0).objectReferenceValue = disableDoor;
             int zef1 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef1);
-            zoomEffectsProp.GetArrayElementAtIndex(zef1).objectReferenceValue = enChainBottom;
-            int zef2 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef2);
-            zoomEffectsProp.GetArrayElementAtIndex(zef2).objectReferenceValue = disableDoor;
-            int zef3 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef3);
-            zoomEffectsProp.GetArrayElementAtIndex(zef3).objectReferenceValue = showChains;
-            int zef4 = zoomEffectsProp.arraySize; zoomEffectsProp.InsertArrayElementAtIndex(zef4);
-            zoomEffectsProp.GetArrayElementAtIndex(zef4).objectReferenceValue = reportBackground;
+            zoomEffectsProp.GetArrayElementAtIndex(zef1).objectReferenceValue = showChains;
+
             // 줌 완료 후 자동으로 다음 이벤트(체인 클릭 단계)로 진행
             var autoProceedAfterZoomProp = soZoomEvt.FindProperty("autoProceedAfterZoom");
             if (autoProceedAfterZoomProp != null) autoProceedAfterZoomProp.boolValue = true;
@@ -1204,20 +1116,13 @@ namespace AFKS.Tools.Editor
             var clickFeedback = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.ObjectClickFeedbackEffect>();
             var soClickFeedback = new SerializedObject(clickFeedback);
             soClickFeedback.FindProperty("shakeDuration").floatValue = 0.2f;
-            soClickFeedback.FindProperty("shakeIntensity").floatValue = 0.1f;
-            soClickFeedback.FindProperty("highlightColor").colorValue = Color.yellow;
-            soClickFeedback.FindProperty("colorDuration").floatValue = 0.3f;
             soClickFeedback.ApplyModifiedPropertiesWithoutUndo();
 
             // 3) 문 클릭 → 다음 스테이지로 이동
             var stageTransition = ScriptableObject.CreateInstance<AFKS.Features.Stage.Events.ClickEvent>();
             stageTransition.SetupStageTransitionEvent();
-            // Effect: StageTransitionEffect("Stage2")
-            var goStageFx = ScriptableObject.CreateInstance<AFKS.Features.Stage.Effects.StageTransitionEffect>();
-            var soGoStageFx = new SerializedObject(goStageFx);
-            soGoStageFx.FindProperty("targetStageId").stringValue = "Stage2";
-            soGoStageFx.FindProperty("delay").floatValue = 0.2f;
-            soGoStageFx.ApplyModifiedPropertiesWithoutUndo();
+            // StageTransitionEffect 제거됨 - 스테이지 전환은 HotspotMove로 처리
+            Debug.Log("StageTransitionEffect 제거됨 - 스테이지 전환은 HotspotMove로 처리");
 
             // 이벤트들을 서브 에셋으로 추가해 참조가 유지되도록 한다
             if (!dryRun)
@@ -1227,12 +1132,11 @@ namespace AFKS.Tools.Editor
                 AssetDatabase.AddObjectToAsset(stageTransition, def);
                 AssetDatabase.AddObjectToAsset(cond, def);
                 AssetDatabase.AddObjectToAsset(breakFx, def);
-                AssetDatabase.AddObjectToAsset(goStageFx, def);
-                AssetDatabase.AddObjectToAsset(enChainTop, def);
-                AssetDatabase.AddObjectToAsset(enChainBottom, def);
+
+
                 AssetDatabase.AddObjectToAsset(disableDoor, def);
                 AssetDatabase.AddObjectToAsset(showChains, def);
-                AssetDatabase.AddObjectToAsset(reportBackground, def);
+
                 AssetDatabase.AddObjectToAsset(clickFeedback, def);
             }
             // StageEvent 필드에 conditions/effects를 채워 넣는다
@@ -1286,9 +1190,7 @@ namespace AFKS.Tools.Editor
             var stCond = soStageTrans.FindProperty("conditions"); stCond.ClearArray();
             int sc0 = stCond.arraySize; stCond.InsertArrayElementAtIndex(sc0);
             stCond.GetArrayElementAtIndex(sc0).objectReferenceValue = cond;
-            var stFx = soStageTrans.FindProperty("effects"); stFx.ClearArray();
-            int tfx = stFx.arraySize; stFx.InsertArrayElementAtIndex(tfx);
-            stFx.GetArrayElementAtIndex(tfx).objectReferenceValue = goStageFx;
+            // goStageFx 제거됨 - StageTransitionEffect가 제거되어 효과 없음
             soStageTrans.ApplyModifiedPropertiesWithoutUndo();
 
             def.Set("Stage1", new[]{ zoomEvent as AFKS.Features.Stage.Events.StageEvent, chainBreak, stageTransition});
@@ -1300,26 +1202,9 @@ namespace AFKS.Tools.Editor
             }
 
             // Stage 시스템 컴포넌트는 Services 아래에 배치 (역할 분리)
-            var sesHost = services;
-            var ses = sesHost.GetComponent<AFKS.Features.Stage.StageEventSystem>();
-            if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
-            ses.LoadFromDefinition(def);
-            // 컨트롤러는 World 하위 Controllers에 배치
-            var controllersRoot = new GameObject("Controllers");
-            controllersRoot.transform.SetParent(world.transform, false);
-            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
-            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
-            var ghostAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.GhostAnimationController>();
-            var sesSO = new SerializedObject(ses);
-            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
-            // StageInteractionManager 연결
-            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
-            sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
-            // StoryProgress 연결
-            var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>();
-            if (sp == null) sp = sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
-            sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
-            sesSO.ApplyModifiedPropertiesWithoutUndo();
+            var ses = SetupCommonStageEventSystem(services, def);
+            // 애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨
+            Debug.Log("애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨");
 
             // UI/클로즈업 패널 미사용 (카메라 확대 스크립트로 대체)
 
@@ -1350,7 +1235,7 @@ namespace AFKS.Tools.Editor
                 r2SO.ApplyModifiedPropertiesWithoutUndo();
             }
 
-            // StageInteractionManager의 상호작용 목록을 명시적으로 구성
+            // StageInteractionSystem의 상호작용 목록을 명시적으로 구성
             var simSO = new SerializedObject(sim);
             var listProp = simSO.FindProperty("interactableObjects");
             listProp.ClearArray();
@@ -1388,21 +1273,7 @@ namespace AFKS.Tools.Editor
             sc.name = "Stage2";
 
             // 카메라 추가 (Stage2 단독 실행 시 필요)
-            var cam = new GameObject("Stage2 Camera");
-            var camera = cam.AddComponent<Camera>();
-            cam.tag = "MainCamera";
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = Color.black;
-            camera.orthographic = true;
-            cam.AddComponent<Physics2DRaycaster>();
-            
-            // Full HD 화면에 맞는 카메라 설정
-            float screenHeight = 1080f;
-            float pixelsPerUnit = 100f; // 기본값
-            
-            // 1536x1024 이미지를 1920x1080 화면에 맞게 카메라 조정
-            float targetHeight = screenHeight / pixelsPerUnit / 2f; // orthographicSize는 절반 높이
-            camera.orthographicSize = targetHeight; // 5.4f
+            var cam = CreateStageCamera("Stage2", new Vector3(0f, 0f, -10f), 5.4f);
             
 
             
@@ -1410,10 +1281,10 @@ namespace AFKS.Tools.Editor
             var interaction = new GameObject("Interaction");
             var services = new GameObject("Services");
             
-            // StageInteractionManager 보장
+            // StageInteractionSystem 보장
             var simGo = new GameObject("StageInteraction");
             simGo.transform.SetParent(services.transform, false);
-            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
 
             var bg = new GameObject("Background");
             bg.transform.SetParent(world.transform, false);
@@ -1457,10 +1328,8 @@ namespace AFKS.Tools.Editor
             root.AddComponent<AFKS.Features.Stage.StageRoot>();
 
             // 컨트롤러 루트(World 하위)
-            var controllersRoot = new GameObject("Controllers");
-            controllersRoot.transform.SetParent(world.transform, false);
-            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
-            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
+            // 애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨
+            Debug.Log("애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨");
 
             // StageDefinition(간단: Door 클릭 → 다음 스테이지 전환)
             var defDir = "Assets/Stages";
@@ -1492,8 +1361,7 @@ namespace AFKS.Tools.Editor
             if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
             ses.LoadFromDefinition(def);
             var sesSO = new SerializedObject(ses);
-            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
-            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionSystem>();
             sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
             var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>() ?? sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
             sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
@@ -1532,32 +1400,14 @@ namespace AFKS.Tools.Editor
             sc.name = sceneName;
 
             // 카메라 추가 (스테이지 단독 실행 시 필요)
-            var cam = new GameObject($"{sceneName} Camera");
-            var camera = cam.AddComponent<Camera>();
-            cam.tag = "MainCamera";
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = Color.black;
-            camera.orthographic = true;
-            cam.AddComponent<Physics2DRaycaster>();
+            var cam = CreateStageCamera(sceneName, new Vector3(0f, 0f, -10f), 5.4f);
             
-            // Full HD 화면에 맞는 카메라 설정
-            float screenHeight = 1080f;
-            float pixelsPerUnit = 100f; // 기본값
-            
-            // 1536x1024 이미지를 1920x1080 화면에 맞게 카메라 조정
-            float targetHeight = screenHeight / pixelsPerUnit / 2f; // orthographicSize는 절반 높이
-            camera.orthographicSize = targetHeight; // 5.4f
-            
+            var (world, interaction, services) = CreateCommonWorldStructure();
 
-            
-            var world = new GameObject("World");
-            var interaction = new GameObject("Interaction");
-            var services = new GameObject("Services");
-
-            // StageInteractionManager 보장
+            // StageInteractionSystem 보장
             var simGo = new GameObject("StageInteraction");
             simGo.transform.SetParent(services.transform, false);
-            simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+            simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
 
             var bg = new GameObject("Background");
             bg.transform.SetParent(world.transform, false);
@@ -1610,8 +1460,8 @@ namespace AFKS.Tools.Editor
             // 컨트롤러 루트(World 하위)
             var controllersRoot = new GameObject("Controllers");
             controllersRoot.transform.SetParent(world.transform, false);
-            var stageAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.StageAnimationController>();
-            var objAnimCtrl = controllersRoot.AddComponent<AFKS.Features.Stage.Animations.ObjectAnimationController>();
+            // 애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨
+            Debug.Log("애니메이션 컨트롤러들은 제거됨 - 애니메이션 시스템이 단순화됨");
 
             // StageDefinition (Door 클릭 → 다음 스테이지)
             var defDir = "Assets/Stages";
@@ -1633,8 +1483,7 @@ namespace AFKS.Tools.Editor
             if (ses == null) ses = sesHost.AddComponent<AFKS.Features.Stage.StageEventSystem>();
             ses.LoadFromDefinition(def);
             var sesSO = new SerializedObject(ses);
-            sesSO.FindProperty("animationController").objectReferenceValue = stageAnimCtrl;
-            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionManager>();
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionSystem>();
             sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
             var sp = sesHost.GetComponent<AFKS.Features.Stage.StoryProgress>() ?? sesHost.AddComponent<AFKS.Features.Stage.StoryProgress>();
             sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
@@ -1733,9 +1582,9 @@ namespace AFKS.Tools.Editor
             var interaction = GameObject.Find("Interaction") ?? new GameObject("Interaction");
             var services = GameObject.Find("Services") ?? new GameObject("Services");
 
-            // StageInteractionManager 보장(Services 하위)
+            // StageInteractionSystem 보장(Services 하위)
             var simGo = GameObject.Find("StageInteraction");
-            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() : null);
+            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionSystem>() : null);
             if (sim == null)
             {
                 if (simGo == null)
@@ -1743,7 +1592,7 @@ namespace AFKS.Tools.Editor
                     simGo = new GameObject("StageInteraction");
                     simGo.transform.SetParent(services.transform, false);
                 }
-                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionSystem>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
             }
 
             // Door 찾기/생성
@@ -1924,6 +1773,114 @@ namespace AFKS.Tools.Editor
         }
         #endregion
 
+        #region 공통 유틸리티 메서드
+        
+        /// <summary>
+        /// 스테이지용 카메라를 생성합니다.
+        /// </summary>
+        private GameObject CreateStageCamera(string stageName, Vector3 position, float orthographicSize)
+        {
+            var cam = new GameObject($"{stageName} Camera");
+            var camera = cam.AddComponent<Camera>();
+            cam.tag = "MainCamera";
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.black;
+            camera.orthographic = true;
+            camera.orthographicSize = orthographicSize;
+            cam.AddComponent<Physics2DRaycaster>();
+            cam.transform.position = position;
+            
+            return cam;
+        }
+        
+        /// <summary>
+        /// 공통 월드 구조를 생성합니다.
+        /// </summary>
+        private (GameObject world, GameObject interaction, GameObject services) CreateCommonWorldStructure()
+        {
+            var world = new GameObject("World");
+            var interaction = new GameObject("Interaction");
+            var services = new GameObject("Services");
+            
+            return (world, interaction, services);
+        }
+        
+        /// <summary>
+        /// 스테이지 배경을 생성합니다.
+        /// </summary>
+        private GameObject CreateStageBackground(GameObject world, string spritePath, Vector3 scale, Vector3 position, int sortingOrder = -1)
+        {
+            var bg = new GameObject("Background");
+            bg.transform.SetParent(world.transform, false);
+            var bgSprite = bg.AddComponent<SpriteRenderer>();
+            
+            // 스프라이트 로드
+            var sprite = Resources.Load<Sprite>(spritePath);
+            if (sprite != null)
+            {
+                bgSprite.sprite = sprite;
+                Debug.Log($"배경 이미지 설정됨: {sprite.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"배경 이미지를 찾을 수 없습니다: {spritePath}");
+                bgSprite.color = Color.gray;
+            }
+            
+            // 위치 및 스케일 설정
+            bg.transform.position = position;
+            bg.transform.localScale = scale;
+            bgSprite.sortingOrder = sortingOrder;
+            
+            return bg;
+        }
+        
+        /// <summary>
+        /// 공통 StageEventSystem을 설정합니다.
+        /// </summary>
+        private AFKS.Features.Stage.StageEventSystem SetupCommonStageEventSystem(GameObject services, AFKS.Features.Stage.StageDefinition definition)
+        {
+            var ses = services.GetComponent<AFKS.Features.Stage.StageEventSystem>();
+            if (ses == null)
+            {
+                ses = services.AddComponent<AFKS.Features.Stage.StageEventSystem>();
+            }
+            
+            ses.LoadFromDefinition(definition);
+            
+            var sesSO = new SerializedObject(ses);
+            
+            // StageInteractionSystem 연결
+            var sim = services.GetComponent<AFKS.Features.Stage.StageInteractionSystem>();
+            sesSO.FindProperty("interactionManager").objectReferenceValue = sim;
+            
+            // StoryProgress 연결
+            var sp = services.GetComponent<AFKS.Features.Stage.StoryProgress>();
+            if (sp == null)
+            {
+                sp = services.AddComponent<AFKS.Features.Stage.StoryProgress>();
+            }
+            sesSO.FindProperty("storyProgress").objectReferenceValue = sp;
+            
+            sesSO.ApplyModifiedPropertiesWithoutUndo();
+            
+            return ses;
+        }
+        
+        /// <summary>
+        /// 공통 StageInteractionSystem을 설정합니다.
+        /// </summary>
+        private AFKS.Features.Stage.StageInteractionSystem SetupCommonStageInteractionSystem(GameObject services)
+        {
+            var simGo = new GameObject("StageInteraction");
+            simGo.transform.SetParent(services.transform, false);
+            var sim = simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
+            
+            return sim;
+        }
+        
+        #endregion
+
         #region 전체 씬 유효성 검사/자동수정
         private void ValidateAllScenesInScenesFolder()
         {
@@ -1989,9 +1946,9 @@ namespace AFKS.Tools.Editor
             var interaction = GameObject.Find("Interaction") ?? new GameObject("Interaction");
             var services = GameObject.Find("Services") ?? new GameObject("Services");
 
-            // StageInteractionManager 보장
+            // StageInteractionSystem 보장
             var simGo = GameObject.Find("StageInteraction");
-            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() : null);
+            var sim = (simGo != null ? simGo.GetComponent<AFKS.Features.Stage.StageInteractionSystem>() : null);
             if (sim == null)
             {
                 if (simGo == null)
@@ -1999,7 +1956,7 @@ namespace AFKS.Tools.Editor
                     simGo = new GameObject("StageInteraction");
                     simGo.transform.SetParent(services.transform, false);
                 }
-                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionManager>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionManager>();
+                sim = simGo.GetComponent<AFKS.Features.Stage.StageInteractionSystem>() ?? simGo.AddComponent<AFKS.Features.Stage.StageInteractionSystem>();
             }
 
             // StageRoot 보장
@@ -2012,6 +1969,69 @@ namespace AFKS.Tools.Editor
             }
 
             EditorSceneManager.SaveScene(scene, path);
+        }
+        #endregion
+
+        #region Creator 클래스를 사용한 스테이지 생성
+        /// <summary>
+        /// Creator 클래스를 사용하여 스테이지를 생성합니다.
+        /// 기존 기능을 그대로 유지하면서 코드를 분리합니다.
+        /// </summary>
+        private void CreateStageUsingCreator(string stageName)
+        {
+            try
+            {
+                string path = Path.Combine(scenesFolder, $"{stageName}.unity");
+                
+                switch (stageName)
+                {
+                    case "Stage1":
+                        var stage1Creator = new Stage1Creator();
+                        stage1Creator.CreateStage(path);
+                        break;
+                        
+                    case "Stage2":
+                        var stage2Creator = new Stage2Creator();
+                        stage2Creator.CreateStage(path);
+                        break;
+                        
+                    case "Stage3":
+                        var stage3Creator = new Stage3Creator();
+                        stage3Creator.CreateStage(path);
+                        break;
+                        
+                    case "Stage4":
+                        var stage4Creator = new Stage4Creator();
+                        stage4Creator.CreateStage(path);
+                        break;
+                        
+                    case "Stage5":
+                        var stage5Creator = new Stage5Creator();
+                        stage5Creator.CreateStage(path);
+                        break;
+                        
+                    case "Stage6":
+                        var stage6Creator = new Stage6Creator();
+                        stage6Creator.CreateStage(path);
+                        break;
+                        
+                    case "Menu":
+                        var menuCreator = new MenuCreator();
+                        menuCreator.CreateStage(path);
+                        break;
+                        
+                    default:
+                        Debug.LogError($"알 수 없는 스테이지 이름: {stageName}");
+                        return;
+                }
+                
+                Debug.Log($"[Creator] {stageName} 생성 완료: {path}");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Creator] {stageName} 생성 중 오류 발생: {e.Message}");
+                EditorUtility.DisplayDialog("오류", $"{stageName} 생성 중 오류가 발생했습니다:\n{e.Message}", "확인");
+            }
         }
         #endregion
     }

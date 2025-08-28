@@ -35,6 +35,14 @@ namespace AFKS.Features.Interaction
         {
             if (!clickable) return;
             
+            // 애니메이션 중 클릭 방지
+            if (IsAnimationPlaying())
+            {
+                if (debugLog)
+                    Debug.Log($"ClickHandler: {gameObject.name} 애니메이션 중 클릭 무시됨");
+                return;
+            }
+            
             if (debugLog)
                 Debug.Log($"ClickHandler: {gameObject.name} 클릭됨");
             
@@ -77,6 +85,28 @@ namespace AFKS.Features.Interaction
         /// 현재 클릭 가능 여부를 반환합니다.
         /// </summary>
         public bool IsClickable => clickable;
+        
+        /// <summary>
+        /// 현재 애니메이션이 재생 중인지 확인합니다.
+        /// </summary>
+        private bool IsAnimationPlaying()
+        {
+            // 체인 흔들림 애니메이션 확인
+            var shakeEffect = GetComponent<AFKS.Features.Stage.Effects.ChainShakeEffect>();
+            if (shakeEffect != null && shakeEffect.IsShaking)
+            {
+                return true;
+            }
+            
+            // 체인 분리 애니메이션 확인
+            var breakEffect = GetComponent<AFKS.Features.Stage.Effects.ChainBreakEffect>();
+            if (breakEffect != null && breakEffect.IsBreaking)
+            {
+                return true;
+            }
+            
+            return false;
+        }
 
         /// <summary>
         /// 클릭 이벤트에 리스너를 추가합니다.

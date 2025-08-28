@@ -119,10 +119,9 @@ namespace AFKS.Core.Services.Scene
                 {
                     if (AFKS.Core.Services.ServiceLocator.TryGet<AFKS.Core.Services.Save.ISaveService>(out var save))
                     {
-                        try { save.SaveAll(); }
-                        catch (System.Exception e)
+                        if (save != null)
                         {
-                            Log.Warn($"[SceneService] 전환 완료 후 저장 실패: {e.Message}");
+                            save.SaveAll();
                         }
                     }
                 }
@@ -169,14 +168,22 @@ namespace AFKS.Core.Services.Scene
         {
             lastLoadSucceeded = false;
 
-            // 사전 검증: 빌드 세팅/에셋번들에 로드 가능 여부 확인
-            if (!Application.CanStreamedLevelBeLoaded(stageId))
+            // 씬 이름 매핑 (코드에서 사용하는 이름을 실제 씬 파일 이름으로 변환)
+            string actualSceneName = MapStageIdToSceneName(stageId);
+            if (string.IsNullOrEmpty(actualSceneName))
             {
-                Log.Error($"[SceneService] 씬 '{stageId}' 을(를) 로드할 수 없습니다. File > Build Settings에 씬을 추가했는지 확인하세요.");
+                Log.Error($"[SceneService] 씬 이름 매핑 실패: '{stageId}' -> 알 수 없는 스테이지 ID");
                 yield break;
             }
 
-            var op = SceneManager.LoadSceneAsync(stageId, LoadSceneMode.Additive);
+            // 사전 검증: 빌드 세팅/에셋번들에 로드 가능 여부 확인
+            if (!Application.CanStreamedLevelBeLoaded(actualSceneName))
+            {
+                Log.Error($"[SceneService] 씬 '{actualSceneName}' (매핑된 이름: {stageId}) 을(를) 로드할 수 없습니다. File > Build Settings에 씬을 추가했는지 확인하세요.");
+                yield break;
+            }
+
+            var op = SceneManager.LoadSceneAsync(actualSceneName, LoadSceneMode.Additive);
             if (op == null)
             {
                 Log.Error($"[SceneService] LoadSceneAsync가 null을 반환했습니다: '{stageId}'");
@@ -235,6 +242,30 @@ namespace AFKS.Core.Services.Scene
                 while (!op.isDone) yield return null;
                 GameEvents.RaiseStageUnloaded(stageId);
             }
+        }
+
+        public void LoadScene(string sceneName, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (debugLog) Log.Info($"[SceneService] LoadScene -> {sceneName} ({mode})");
+            SceneManager.LoadScene(sceneName, mode);
+        }
+
+        /// <summary>
+        /// 스테이지 ID를 실제 씬 파일 이름으로 매핑합니다.
+        /// </summary>
+        private string MapStageIdToSceneName(string stageId)
+        {
+            return stageId switch
+            {
+                "Stage1" => "Stage1",
+                "Stage2" => "Stage2", 
+                "Stage3" => "Stage3",
+                "Stage4" => "Stage4",
+                "Stage5" => "Stage5",
+                "Stage6" => "Stage6",
+                "Stage_Menu" => "Menu",
+                _ => stageId // 매핑되지 않은 경우 원본 이름 반환
+            };
         }
         #endregion
 

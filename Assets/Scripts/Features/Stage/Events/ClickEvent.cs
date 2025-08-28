@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using AFKS.Features.Stage.Animations;
 using AFKS.Core.Services.Save;
 using AFKS.Features.Stage.Effects;
 
@@ -215,17 +214,9 @@ namespace AFKS.Features.Stage.Events
                 return;
             }
             
-            // 애니메이션 컨트롤러 찾기
-            var animationController = FindFirstObjectByType<StageAnimationController>();
-            if (animationController != null)
-            {
-                animationController.PlayAnimationSequence(animations, onComplete);
-            }
-            else
-            {
-                Debug.LogWarning("ClickEvent: StageAnimationController를 찾을 수 없습니다.");
-                OnEventComplete(onComplete);
-            }
+            // 애니메이션 시스템이 제거되어 즉시 완료 처리
+            Debug.Log("ClickEvent: 애니메이션 시스템이 제거되어 즉시 완료 처리합니다.");
+            OnEventComplete(onComplete);
         }
         
         #endregion
@@ -237,7 +228,7 @@ namespace AFKS.Features.Stage.Events
             // 트리거 오브젝트 숨기기
             if (hideTriggerObject)
             {
-                var sim = AFKS.Features.Stage.StageInteractionManager.Instance;
+                var sim = AFKS.Features.Stage.StageInteractionSystem.Instance;
                 foreach (var triggerId in triggerObjectIds)
                 {
                     var obj = sim != null ? sim.GetObject(triggerId) : null;
@@ -252,7 +243,7 @@ namespace AFKS.Features.Stage.Events
             // 새로운 오브젝트 표시
             if (showNewObjects)
             {
-                var sim = AFKS.Features.Stage.StageInteractionManager.Instance;
+                var sim = AFKS.Features.Stage.StageInteractionSystem.Instance;
                 foreach (var objectId in objectsToShow)
                 {
                     var obj = sim != null ? sim.GetObject(objectId) : null;

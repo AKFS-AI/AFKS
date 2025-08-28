@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using AFKS.Features.Stage.Animations;
 using AFKS.Features.Stage.Conditions;
 using AFKS.Features.Stage.Effects;
 
@@ -24,7 +23,7 @@ namespace AFKS.Features.Stage.Events
         [SerializeField] protected EventTriggerType triggerType = EventTriggerType.Click;
         
         [Header("애니메이션")]
-        [SerializeField] protected List<StageAnimation> animations = new List<StageAnimation>();
+        [SerializeField] protected List<ScriptableObject> animations = new List<ScriptableObject>();
         
         [Header("상호작용")]
         [SerializeField] protected List<string> interactableObjects = new List<string>();
@@ -64,6 +63,11 @@ namespace AFKS.Features.Stage.Events
         /// 트리거 타입을 반환합니다.
         /// </summary>
         public EventTriggerType TriggerType => triggerType;
+
+        /// <summary>
+        /// 상호작용 가능한 오브젝트 목록을 반환합니다.
+        /// </summary>
+        public List<string> InteractableObjects => interactableObjects;
 
         /// <summary>
         /// 클릭 트리거 실행에 필요한 트리거 오브젝트가 존재하는지 여부를 반환합니다.
@@ -126,9 +130,9 @@ namespace AFKS.Features.Stage.Events
         /// 애니메이션 목록을 반환합니다.
         /// </summary>
         /// <returns>애니메이션 목록</returns>
-        public virtual List<StageAnimation> GetAnimations()
+        public virtual List<ScriptableObject> GetAnimations()
         {
-            return new List<StageAnimation>(animations);
+            return new List<ScriptableObject>(animations);
         }
 
         /// <summary>
@@ -178,15 +182,9 @@ namespace AFKS.Features.Stage.Events
             }
             else
             {
-                // 공용 코루틴 러너 사용
-                AFKS.Core.Utils.CoroutineRunner.InvokeAfterSeconds(delay, callback);
+                // ScriptableObject이므로 즉시 실행 (지연은 StageEventSystem에서 처리)
+                callback?.Invoke();
             }
-        }
-        
-        private System.Collections.IEnumerator DelayedExecute(float delay, System.Action callback)
-        {
-            yield return new WaitForSeconds(delay);
-            callback?.Invoke();
         }
         
         #endregion
